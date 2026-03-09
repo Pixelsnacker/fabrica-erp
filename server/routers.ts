@@ -26,6 +26,8 @@ import {
   getNoteAttachments, addNoteAttachment, deleteNoteAttachment,
   getNoteReminders, addNoteReminder, deleteNoteReminder,
   getPendingReminders, markReminderSent,
+  getComplaintsByProject, createComplaint, updateComplaint, deleteComplaint,
+  addComplaintAttachment, deleteComplaintAttachment,
 } from "./db";
 
 const EMAIL_SIGNATURE = `\n\nMit freundlichen Grüßen / Best Regards\n\nDaniel Rincón\n\nFabrica GmbH\nHüttenstraße 205\n50170 Kerpen-Sindorf\n\nTel.: +49(0)2273-9529429\nMobil: +49(0)170/8342238\nd.rincon@fabrica3d.eu\nwww.fabrica3d.de`;
@@ -177,7 +179,10 @@ export const appRouter = router({
       unitEk: z.string().optional(),
       unitVk: z.string().optional(),
       notes: z.string().optional(),
-    })).mutation(async ({ input }) => { const { id, ...data } = input; await updateProjectItem(id, data); return { success: true }; }),
+      supplierOfferUrl: z.string().nullable().optional(),
+      supplierOfferKey: z.string().nullable().optional(),
+      supplierOfferName: z.string().nullable().optional(),
+    })).mutation(async ({ input }) => { const { id, ...data } = input; await updateProjectItem(id, data as any); return { success: true }; }),
     delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => { await deleteProjectItem(input.id); return { success: true }; }),
   }),
 
@@ -597,10 +602,71 @@ Erstelle eine professionelle Beratungsantwort oder E-Mail basierend auf der Anfr
         return { success: true };
       }),
   }),
-
-  // ─── Data Export ─────────────────────────────────────────────────────────────
+  // ─── Supplier Offer Upload ────────────────────────────────────────────────────────────
+  supplierOffer: router({
+    upload: protectedProcedure.input(z.object({
+      projectItemId: z.number(),
+      filename: z.string(),
+      fileBase64: z.string(),
+      mimeType: z.string(),
+    })).mutation(async ({ input }) => {
+      const { projectItemId, filename, fileBase64, mimeType } = input;
+      const buffer = Buffer.from(fileBase64, "base64");
+      const key = `supplier-offers/${projectItemId}-${Date.now()}-${filename}`;
+      const { url } = await storagePut(key, buffer, mimeType);
+      await updateProjectItem(projectItemId, {
+        supplierOfferUrl: url,
+        supplierOfferKey: key,
+        supplierOfferName: filename,
+      } as any);
+      return { url, key, filename };
+    }),
+    remove: protectedProcedure.input(z.object({ projectItemId: z.number() })).mutation(async ({ input }) => {
+      await updateProjectItem(input.projectItemId, {
+        supplierOfferUrl: null,
+        supplierOfferKey: null,
+        supplierOfferName: null,
+      } as any);
+      return { success: true };
+    }),
+  }),
+  // ─── Complaints ───────────────────────────────────────────────────────────────
+  complaints: router({
+    list: protectedProcedure.input(z.object({ projectId: z.number() })).query(async ({ input }) => getComplaintsByProject(input.projectId)),
+    create: protectedProcedure.input(z.object({
+      projectId: z.number(),
+      title: z.string().min(1),
+      description: z.string().optional(),
+      status: z.enum(["open","in_progress","resolved","closed"]).default("open"),
+      priority: z.enum(["low","normal","high","critical"]).default("normal"),
+    })).mutation(async ({ input }) => { await createComplaint(input as any); return { success: true }; }),
+    update: protectedProcedure.input(z.object({
+      id: z.number(),
+      title: z.string().optional(),
+      description: z.string().optional(),
+      status: z.enum(["open","in_progress","resolved","closed"]).optional(),
+      priority: z.enum(["low","normal","high","critical"]).optional(),
+      resolution: z.string().optional(),
+      resolvedAt: z.string().optional(),
+    })).mutation(async ({ input }) => { const { id, ...data } = input; await updateComplaint(id, data as any); return { success: true }; }),
+    delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => { await deleteComplaint(input.id); return { success: true }; }),
+    addAttachment: protectedProcedure.input(z.object({
+      complaintId: z.number(),
+      filename: z.string(),
+      fileBase64: z.string(),
+      mimeType: z.string(),
+    })).mutation(async ({ input }) => {
+      const { complaintId, filename, fileBase64, mimeType } = input;
+      const buffer = Buffer.from(fileBase64, "base64");
+      const key = `complaint-attachments/${complaintId}-${Date.now()}-${filename}`;
+      const { url } = await storagePut(key, buffer, mimeType);
+      await addComplaintAttachment({ complaintId, fileUrl: url, fileKey: key, filename, fileType: mimeType });
+      return { url, key, filename };
+    }),
+    deleteAttachment: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => { await deleteComplaintAttachment(input.id); return { success: true }; }),
+  }),
+  // ─── Data Export ───────────────────────────────────────────────────────────────
   export: router({
     full: protectedProcedure.query(async () => getFullExport()),
   }),
-});
-export type AppRouter = typeof appRouter;
+});export type AppRouter = typeof appRouter;

@@ -140,3 +140,16 @@
 - [x] Lieferanten-Seite: bis zu 3 E-Mail-Adressen und 3 Ansprechpartner
 - [x] Lieferanten-Seite: Telefonnummer als klickbarer tel:-Link (grün beim Hover)
 - [x] 20 Tests grün, 0 TypeScript-Fehler
+
+## Phase 14: Kalkulation bearbeitbar + Lieferanten-Angebot-Upload + Reklamationen
+- [x] DB: project_items – Spalten supplier_offer_url, supplier_offer_key, supplier_offer_name hinzugefügt
+- [x] DB: Neue Tabelle complaints (id, project_id, title, description, status, priority, resolved_at, resolution, created_at)
+- [x] DB: complaint_attachments (id, complaint_id, file_url, file_key, filename, file_type)
+- [x] tRPC: project_items.update – alle Felder editierbar inkl. supplierOffer-Felder
+- [x] tRPC: supplierOffer.upload + supplierOffer.remove
+- [x] tRPC: complaints.list, create, update, delete, addAttachment, deleteAttachment
+- [x] Frontend: Positionen inline editierbar – InlineEdit + InlineSelect Komponenten
+- [x] Frontend: Angebot-Upload-Button pro Position (Büroklammer-Icon grün wenn vorhanden), Vorschau/Download-Link
+- [x] Frontend: Reklamations-Tab im Projekt-Detail mit Status-Badges und Priorität
+- [x] Frontend: Reklamations-Dialog mit Status, Priorität, Beschreibung, Lösung, Foto-Upload
+- [x] 20 Tests grün, 0 TypeScript-Fehler

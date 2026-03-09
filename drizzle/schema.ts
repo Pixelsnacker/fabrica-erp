@@ -166,6 +166,10 @@ export const projectItems = mysqlTable("project_items", {
 	totalVk: decimal("total_vk", { precision: 12, scale: 2 }).default('0'),
 	description: text(),
 	sortOrder: int("sort_order").default(0),
+	supplierOfferUrl: text("supplier_offer_url"),
+	supplierOfferKey: varchar("supplier_offer_key", { length: 512 }),
+	supplierOfferName: varchar("supplier_offer_name", { length: 255 }),
+	supplierId: int("supplier_id"),
 });
 
 export const projects = mysqlTable("projects", {
@@ -294,3 +298,30 @@ export type InsertQuickNote = typeof quickNotes.$inferInsert;
 export type Note = typeof notes.$inferSelect;
 export type NoteAttachment = typeof noteAttachments.$inferSelect;
 export type NoteReminder = typeof noteReminders.$inferSelect;
+
+export const complaints = mysqlTable("complaints", {
+	id: int().autoincrement().notNull(),
+	projectId: int("project_id").notNull(),
+	title: varchar({ length: 512 }).notNull(),
+	description: text(),
+	status: mysqlEnum(['open','in_progress','resolved','closed']).default('open').notNull(),
+	priority: mysqlEnum(['low','normal','high','critical']).default('normal').notNull(),
+	reportedAt: timestamp("reported_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	resolvedAt: timestamp("resolved_at", { mode: 'string' }),
+	resolution: text(),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const complaintAttachments = mysqlTable("complaint_attachments", {
+	id: int().autoincrement().notNull(),
+	complaintId: int("complaint_id").notNull(),
+	fileUrl: text("file_url").notNull(),
+	fileKey: varchar("file_key", { length: 512 }).notNull(),
+	filename: varchar({ length: 255 }).notNull(),
+	fileType: varchar("file_type", { length: 64 }),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
+export type InsertComplaint = typeof complaints.$inferInsert;
+export type InsertComplaintAttachment = typeof complaintAttachments.$inferInsert;

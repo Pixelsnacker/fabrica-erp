@@ -18,6 +18,7 @@ import {
   aiSessions, InsertAiSession,
   quickNotes,
   notes, noteAttachments, noteReminders,
+  complaints, complaintAttachments, InsertComplaint, InsertComplaintAttachment,
 } from "../drizzle/schema";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -669,4 +670,47 @@ export async function markReminderSent(id: number) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
   await db.update(noteReminders).set({ isSent: 1 as any }).where(eq(noteReminders.id, id));
+}
+
+// ─── Complaints ───────────────────────────────────────────────────────────────
+export async function getComplaintsByProject(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db.select().from(complaints).where(eq(complaints.projectId, projectId)).orderBy(complaints.createdAt);
+  const attachmentRows = await db.select().from(complaintAttachments);
+  return rows.map(c => ({
+    ...c,
+    attachments: attachmentRows.filter(a => a.complaintId === c.id),
+  }));
+}
+
+export async function createComplaint(data: InsertComplaint) {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(complaints).values(data);
+}
+
+export async function updateComplaint(id: number, data: Partial<InsertComplaint>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(complaints).set(data).where(eq(complaints.id, id));
+}
+
+export async function deleteComplaint(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(complaintAttachments).where(eq(complaintAttachments.complaintId, id));
+  await db.delete(complaints).where(eq(complaints.id, id));
+}
+
+export async function addComplaintAttachment(data: InsertComplaintAttachment) {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(complaintAttachments).values(data);
+}
+
+export async function deleteComplaintAttachment(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(complaintAttachments).where(eq(complaintAttachments.id, id));
 }

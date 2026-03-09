@@ -11,7 +11,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, Plus, Trash2, Package, Truck, FileCode2, MessageSquare, ExternalLink, Bell, StickyNote, Clock, Paperclip, CheckCircle2, Circle, AlertCircle, Zap, Upload, FileText, Image, X } from "lucide-react";
+import {
+  ArrowLeft, Plus, Trash2, Package, Truck, FileCode2, MessageSquare,
+  ExternalLink, Bell, StickyNote, Clock, Paperclip, CheckCircle2, Circle,
+  AlertCircle, Zap, Upload, FileText, Image, X, Edit2, Save, AlertTriangle,
+  ShieldAlert,
+} from "lucide-react";
 import { toast } from "sonner";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -33,6 +38,91 @@ const SOURCE_LABELS: Record<string, string> = {
   whatsapp: "WhatsApp", telefon: "Telefon", persoenlich: "Persönlich",
   email: "E-Mail", sonstiges: "Sonstiges",
 };
+const COMPLAINT_STATUS: Record<string, { label: string; color: string }> = {
+  open: { label: "Offen", color: "text-red-400" },
+  in_progress: { label: "In Bearbeitung", color: "text-yellow-400" },
+  resolved: { label: "Gelöst", color: "text-green-400" },
+  closed: { label: "Geschlossen", color: "text-muted-foreground" },
+};
+const COMPLAINT_PRIORITY: Record<string, { label: string; color: string }> = {
+  low: { label: "Niedrig", color: "text-blue-400" },
+  normal: { label: "Normal", color: "text-muted-foreground" },
+  high: { label: "Hoch", color: "text-orange-400" },
+  critical: { label: "Kritisch", color: "text-red-500" },
+};
+
+// ── Inline-Edit Feld ──────────────────────────────────────────────────────────
+function InlineEdit({ value, onSave, type = "text", step, min, className }: {
+  value: string;
+  onSave: (v: string) => void;
+  type?: string;
+  step?: string;
+  min?: string;
+  className?: string;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+
+  const commit = () => {
+    setEditing(false);
+    if (draft !== value) onSave(draft);
+  };
+
+  if (!editing) {
+    return (
+      <span
+        className={`cursor-pointer hover:underline hover:decoration-dotted hover:text-primary transition-colors ${className}`}
+        onClick={() => { setDraft(value); setEditing(true); }}
+        title="Klicken zum Bearbeiten"
+      >
+        {value || <span className="text-muted-foreground italic text-xs">—</span>}
+      </span>
+    );
+  }
+  return (
+    <input
+      autoFocus
+      type={type}
+      step={step}
+      min={min}
+      value={draft}
+      onChange={e => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={e => { if (e.key === "Enter") commit(); if (e.key === "Escape") setEditing(false); }}
+      className={`bg-secondary border border-primary rounded px-1.5 py-0.5 text-sm focus:outline-none w-full ${className}`}
+    />
+  );
+}
+
+// ── InlineSelect ──────────────────────────────────────────────────────────────
+function InlineSelect({ value, options, onSave }: {
+  value: string;
+  options: { value: string; label: string }[];
+  onSave: (v: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const label = options.find(o => o.value === value)?.label ?? value;
+
+  if (!editing) {
+    return (
+      <span
+        className="cursor-pointer hover:underline hover:decoration-dotted hover:text-primary transition-colors text-xs"
+        onClick={() => setEditing(true)}
+        title="Klicken zum Bearbeiten"
+      >
+        {label}
+      </span>
+    );
+  }
+  return (
+    <Select value={value} onValueChange={v => { onSave(v); setEditing(false); }}>
+      <SelectTrigger className="h-7 text-xs w-auto min-w-[120px]"><SelectValue /></SelectTrigger>
+      <SelectContent>
+        {options.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+      </SelectContent>
+    </Select>
+  );
+}
 
 export default function ProjectDetail() {
   const params = useParams<{ id: string }>();
@@ -47,22 +137,32 @@ export default function ProjectDetail() {
   const { data: consultations = [] } = trpc.consultation.list.useQuery({ projectId: id });
   const { data: projectNotes = [] } = trpc.notes.list.useQuery({ projectId: id });
   const { data: projectQuickNotes = [] } = trpc.quickNotes.list.useQuery({ projectId: id });
+  const { data: complaints = [] } = trpc.complaints.list.useQuery({ projectId: id });
 
   const [showAddItem, setShowAddItem] = useState(false);
   const [showAddShipment, setShowAddShipment] = useState(false);
   const [showAddConsultation, setShowAddConsultation] = useState(false);
   const [showAddNote, setShowAddNote] = useState(false);
   const [showNoteDetail, setShowNoteDetail] = useState<number | null>(null);
+  const [showAddComplaint, setShowAddComplaint] = useState(false);
+  const [showEditComplaint, setShowEditComplaint] = useState<number | null>(null);
+  const [showOfferUpload, setShowOfferUpload] = useState<number | null>(null);
+
   const [itemForm, setItemForm] = useState({ name: "", quantity: 1, material: "", technique: "3d_print", productionType: "external", unitEk: "0.00", unitVk: "0.00" });
   const [shipmentForm, setShipmentForm] = useState({ carrier: "", trackingNumber: "", notes: "" });
   const [consultForm, setConsultForm] = useState({ title: "", content: "", type: "general", outcome: "" });
   const [noteForm, setNoteForm] = useState({ title: "", content: "", priority: "normal" });
+  const [complaintForm, setComplaintForm] = useState({ title: "", description: "", status: "open", priority: "normal" });
 
   const changeStatus = trpc.projects.changeStatus.useMutation({
     onSuccess: () => { utils.projects.byId.invalidate({ id }); toast.success("Status aktualisiert"); },
   });
   const addItem = trpc.projectItems.create.useMutation({
     onSuccess: () => { utils.projectItems.list.invalidate({ projectId: id }); utils.projects.byId.invalidate({ id }); setShowAddItem(false); toast.success("Position hinzugefügt"); },
+  });
+  const updateItem = trpc.projectItems.update.useMutation({
+    onSuccess: () => { utils.projectItems.list.invalidate({ projectId: id }); utils.projects.byId.invalidate({ id }); },
+    onError: () => toast.error("Fehler beim Speichern"),
   });
   const deleteItem = trpc.projectItems.delete.useMutation({
     onSuccess: () => { utils.projectItems.list.invalidate({ projectId: id }); utils.projects.byId.invalidate({ id }); toast.success("Position gelöscht"); },
@@ -74,12 +174,7 @@ export default function ProjectDetail() {
     onSuccess: () => { utils.consultation.list.invalidate({ projectId: id }); setShowAddConsultation(false); toast.success("Beratungseintrag gespeichert"); },
   });
   const createNote = trpc.notes.create.useMutation({
-    onSuccess: () => {
-      utils.notes.list.invalidate({ projectId: id });
-      setShowAddNote(false);
-      setNoteForm({ title: "", content: "", priority: "normal" });
-      toast.success("Notiz gespeichert");
-    },
+    onSuccess: () => { utils.notes.list.invalidate({ projectId: id }); setShowAddNote(false); setNoteForm({ title: "", content: "", priority: "normal" }); toast.success("Notiz gespeichert"); },
     onError: () => toast.error("Fehler beim Speichern"),
   });
   const toggleNoteStatus = trpc.notes.update.useMutation({
@@ -87,6 +182,17 @@ export default function ProjectDetail() {
   });
   const deleteNote = trpc.notes.delete.useMutation({
     onSuccess: () => { utils.notes.list.invalidate({ projectId: id }); toast.success("Notiz gelöscht"); },
+  });
+  const createComplaint = trpc.complaints.create.useMutation({
+    onSuccess: () => { utils.complaints.list.invalidate({ projectId: id }); setShowAddComplaint(false); setComplaintForm({ title: "", description: "", status: "open", priority: "normal" }); toast.success("Reklamation angelegt"); },
+    onError: () => toast.error("Fehler beim Anlegen"),
+  });
+  const updateComplaint = trpc.complaints.update.useMutation({
+    onSuccess: () => { utils.complaints.list.invalidate({ projectId: id }); setShowEditComplaint(null); toast.success("Reklamation gespeichert"); },
+    onError: () => toast.error("Fehler beim Speichern"),
+  });
+  const deleteComplaint = trpc.complaints.delete.useMutation({
+    onSuccess: () => { utils.complaints.list.invalidate({ projectId: id }); toast.success("Reklamation gelöscht"); },
   });
 
   const totalNotesCount = projectNotes.length + projectQuickNotes.length;
@@ -98,6 +204,8 @@ export default function ProjectDetail() {
   const totalVk = parseFloat(project.totalVk ?? "0");
   const margin = totalVk - totalEk;
   const marginPct = parseFloat(project.marginPercent ?? "0");
+
+  const editComplaintData = complaints.find((c: any) => c.id === showEditComplaint);
 
   return (
     <div className="space-y-4 md:space-y-5">
@@ -152,37 +260,128 @@ export default function ProjectDetail() {
         <TabsList className="bg-secondary flex-wrap h-auto gap-0.5 p-1">
           <TabsTrigger value="items" className="gap-1.5 text-xs md:text-sm"><Package className="h-3.5 w-3.5" /><span className="hidden sm:inline">Positionen</span> ({items.length})</TabsTrigger>
           <TabsTrigger value="notes" className="gap-1.5 text-xs md:text-sm"><StickyNote className="h-3.5 w-3.5" /><span className="hidden sm:inline">Notizen</span> ({totalNotesCount})</TabsTrigger>
+          <TabsTrigger value="complaints" className="gap-1.5 text-xs md:text-sm">
+            <ShieldAlert className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Reklamationen</span>
+            {(complaints as any[]).length > 0 && (
+              <span className={`ml-0.5 ${(complaints as any[]).some((c: any) => c.status === "open") ? "text-red-400" : ""}`}>({(complaints as any[]).length})</span>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="shipment" className="gap-1.5 text-xs md:text-sm"><Truck className="h-3.5 w-3.5" /><span className="hidden sm:inline">Versand</span> ({shipments.length})</TabsTrigger>
           <TabsTrigger value="cad" className="gap-1.5 text-xs md:text-sm"><FileCode2 className="h-3.5 w-3.5" /><span className="hidden sm:inline">CAD</span> ({cadFiles.length})</TabsTrigger>
           <TabsTrigger value="consultation" className="gap-1.5 text-xs md:text-sm"><MessageSquare className="h-3.5 w-3.5" /><span className="hidden sm:inline">Beratung</span> ({consultations.length})</TabsTrigger>
         </TabsList>
 
-        {/* ── Positionen ── */}
+        {/* ── Positionen (editierbar) ── */}
         <TabsContent value="items" className="mt-4 space-y-3">
-          <div className="flex justify-end">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-muted-foreground">Klick auf einen Wert zum Bearbeiten · Enter oder Klick außen zum Speichern</p>
             <Button size="sm" onClick={() => setShowAddItem(true)} className="gap-2"><Plus className="h-4 w-4" />Position hinzufügen</Button>
           </div>
           {items.length === 0 ? <div className="text-center py-8 text-muted-foreground text-sm">Noch keine Positionen</div> : (
             <div className="space-y-2">
-              {items.map(item => (
-                <div key={item.id} className="flex items-center gap-3 p-3 md:p-4 rounded-lg bg-card border border-border">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-medium text-sm">{item.name}</span>
-                      <Badge variant="secondary" className="text-xs">{item.quantity}x</Badge>
-                      {item.technique && <Badge variant="outline" className="text-xs">{TECHNIQUE_LABELS[item.technique] ?? item.technique}</Badge>}
-                      <Badge variant={item.productionType === "in_house" ? "default" : "secondary"} className="text-xs">{item.productionType === "in_house" ? "In-House" : "Extern"}</Badge>
+              {items.map(item => {
+                const it = item as any;
+                const saveField = (field: string, value: string | number) => updateItem.mutate({ id: item.id, [field]: value } as any);
+                return (
+                  <div key={item.id} className="p-3 md:p-4 rounded-lg bg-card border border-border hover:border-primary/30 transition-all">
+                    {/* Zeile 1: Name + Badges */}
+                    <div className="flex items-start gap-2 mb-2">
+                      <div className="flex-1 min-w-0">
+                        <InlineEdit
+                          value={item.name}
+                          onSave={v => saveField("name", v)}
+                          className="font-medium text-sm"
+                        />
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {/* Angebot-Upload Button */}
+                        <Button
+                          variant="ghost" size="sm"
+                          className={`h-7 w-7 p-0 ${it.supplierOfferUrl ? "text-green-400 hover:text-green-300" : "text-muted-foreground hover:text-primary"}`}
+                          title={it.supplierOfferUrl ? `Angebot: ${it.supplierOfferName}` : "Lieferanten-Angebot hochladen"}
+                          onClick={() => setShowOfferUpload(item.id)}
+                        >
+                          <Paperclip className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive h-7 w-7 p-0" onClick={() => deleteItem.mutate({ id: item.id })}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </div>
-                    {item.material && <div className="text-xs text-muted-foreground mt-1">{item.material}</div>}
+
+                    {/* Zeile 2: Menge, Material, Technik, Produktion */}
+                    <div className="flex items-center gap-3 flex-wrap text-xs mb-2">
+                      <span className="text-muted-foreground">Menge:</span>
+                      <InlineEdit value={String(item.quantity)} onSave={v => saveField("quantity", parseInt(v) || 1)} type="number" min="1" className="w-12" />
+                      <span className="text-muted-foreground">Material:</span>
+                      <InlineEdit value={item.material ?? ""} onSave={v => saveField("material", v)} className="min-w-[80px]" />
+                      <InlineSelect
+                        value={item.technique ?? "other"}
+                        options={Object.entries(TECHNIQUE_LABELS).map(([v, l]) => ({ value: v, label: l }))}
+                        onSave={v => saveField("technique", v)}
+                      />
+                      <InlineSelect
+                        value={item.productionType ?? "external"}
+                        options={[{ value: "external", label: "Extern" }, { value: "in_house", label: "In-House" }]}
+                        onSave={v => saveField("productionType", v)}
+                      />
+                    </div>
+
+                    {/* Zeile 3: EK / VK / Marge */}
+                    <div className="flex items-center gap-4 flex-wrap text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-muted-foreground">EK/Stk:</span>
+                        <InlineEdit
+                          value={parseFloat(item.unitEk ?? "0").toFixed(2)}
+                          onSave={v => saveField("unitEk", v)}
+                          type="number" step="0.01"
+                          className="w-20 text-yellow-400"
+                        />
+                        <span className="text-muted-foreground">€</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-muted-foreground">VK/Stk:</span>
+                        <InlineEdit
+                          value={parseFloat(item.unitVk ?? "0").toFixed(2)}
+                          onSave={v => saveField("unitVk", v)}
+                          type="number" step="0.01"
+                          className="w-20 text-primary"
+                        />
+                        <span className="text-muted-foreground">€</span>
+                      </div>
+                      <div className="ml-auto text-right">
+                        <div className="text-muted-foreground">EK ges: <span className="text-yellow-400">{parseFloat(item.totalEk ?? "0").toFixed(2)} €</span></div>
+                        <div className="text-muted-foreground">VK ges: <span className="text-primary">{parseFloat(item.totalVk ?? "0").toFixed(2)} €</span></div>
+                        <div className="text-green-400">{parseFloat(item.marginPercent ?? "0").toFixed(1)}%</div>
+                      </div>
+                    </div>
+
+                    {/* Notizen inline */}
+                    <div className="mt-2 text-xs text-muted-foreground">
+                      <span className="mr-1">Notiz:</span>
+                      <InlineEdit value={item.notes ?? ""} onSave={v => saveField("notes", v)} />
+                    </div>
+
+                    {/* Lieferanten-Angebot Link */}
+                    {it.supplierOfferUrl && (
+                      <div className="mt-2 flex items-center gap-2 text-xs">
+                        <FileText className="h-3.5 w-3.5 text-green-400 shrink-0" />
+                        <a href={it.supplierOfferUrl} target="_blank" rel="noopener noreferrer" className="text-green-400 hover:underline truncate max-w-[200px]">
+                          {it.supplierOfferName ?? "Lieferanten-Angebot"}
+                        </a>
+                        <button
+                          onClick={() => updateItem.mutate({ id: item.id, supplierOfferUrl: null, supplierOfferKey: null, supplierOfferName: null } as any)}
+                          className="text-muted-foreground hover:text-destructive"
+                          title="Angebot entfernen"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    )}
                   </div>
-                  <div className="text-right flex-shrink-0">
-                    <div className="text-xs text-muted-foreground">EK: <span className="text-yellow-400">{parseFloat(item.totalEk ?? "0").toFixed(2)} €</span></div>
-                    <div className="text-xs text-muted-foreground">VK: <span className="text-primary">{parseFloat(item.totalVk ?? "0").toFixed(2)} €</span></div>
-                    <div className="text-xs text-green-400">{parseFloat(item.marginPercent ?? "0").toFixed(1)}%</div>
-                  </div>
-                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive shrink-0" onClick={() => deleteItem.mutate({ id: item.id })}><Trash2 className="h-4 w-4" /></Button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </TabsContent>
@@ -196,7 +395,6 @@ export default function ProjectDetail() {
             </Button>
           </div>
 
-          {/* Vollständige Notizen */}
           {projectNotes.length > 0 && (
             <div className="space-y-2">
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
@@ -215,7 +413,6 @@ export default function ProjectDetail() {
             </div>
           )}
 
-          {/* Schnellnotizen */}
           {projectQuickNotes.length > 0 && (
             <div className="space-y-2">
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
@@ -244,6 +441,77 @@ export default function ProjectDetail() {
               <StickyNote className="h-10 w-10 opacity-20" />
               <p className="text-sm">Noch keine Notizen für dieses Projekt</p>
               <Button size="sm" onClick={() => setShowAddNote(true)}>Erste Notiz anlegen</Button>
+            </div>
+          )}
+        </TabsContent>
+
+        {/* ── Reklamationen ── */}
+        <TabsContent value="complaints" className="mt-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-muted-foreground">{(complaints as any[]).length} Reklamation{(complaints as any[]).length !== 1 ? "en" : ""}</p>
+            <Button size="sm" onClick={() => setShowAddComplaint(true)} className="gap-2">
+              <Plus className="h-4 w-4" />Reklamation anlegen
+            </Button>
+          </div>
+
+          {(complaints as any[]).length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground">
+              <ShieldAlert className="h-10 w-10 opacity-20" />
+              <p className="text-sm">Keine Reklamationen für dieses Projekt</p>
+              <Button size="sm" variant="outline" onClick={() => setShowAddComplaint(true)}>Reklamation anlegen</Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {(complaints as any[]).map((c: any) => {
+                const statusCfg = COMPLAINT_STATUS[c.status] ?? COMPLAINT_STATUS.open;
+                const prioCfg = COMPLAINT_PRIORITY[c.priority] ?? COMPLAINT_PRIORITY.normal;
+                return (
+                  <div key={c.id} className="p-4 rounded-lg bg-card border border-border hover:border-primary/30 transition-all group">
+                    <div className="flex items-start gap-3">
+                      <ShieldAlert className={`h-4 w-4 mt-0.5 shrink-0 ${statusCfg.color}`} />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <span className="font-medium text-sm">{c.title}</span>
+                          <Badge variant="outline" className={`text-xs ${statusCfg.color}`}>{statusCfg.label}</Badge>
+                          <Badge variant="outline" className={`text-xs ${prioCfg.color}`}>{prioCfg.label}</Badge>
+                        </div>
+                        {c.description && <p className="text-xs text-muted-foreground whitespace-pre-wrap mb-1">{c.description}</p>}
+                        {c.resolution && (
+                          <div className="text-xs text-green-400 border-t border-border pt-1 mt-1">
+                            <span className="font-medium">Lösung: </span>{c.resolution}
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground">
+                          <Clock className="h-3 w-3" />
+                          <span>{new Date(c.createdAt).toLocaleDateString("de-DE")}</span>
+                          {c.resolvedAt && <span>· Gelöst: {new Date(c.resolvedAt).toLocaleDateString("de-DE")}</span>}
+                          {c.attachments?.length > 0 && <span>· {c.attachments.length} Anhang{c.attachments.length !== 1 ? "hänge" : ""}</span>}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setShowEditComplaint(c.id)}>
+                          <Edit2 className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                          onClick={() => { if (confirm(`Reklamation "${c.title}" wirklich löschen?`)) deleteComplaint.mutate({ id: c.id }); }}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                    {/* Anhänge */}
+                    {c.attachments?.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {c.attachments.map((a: any) => (
+                          <a key={a.id} href={a.fileUrl} target="_blank" rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary px-2 py-1 rounded bg-secondary border border-border">
+                            <FileText className="h-3 w-3" />{a.filename}
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </TabsContent>
@@ -396,16 +664,9 @@ export default function ProjectDetail() {
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle className="flex items-center gap-2"><StickyNote className="h-4 w-4" />Notiz hinzufügen</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <div className="space-y-1.5">
-              <Label>Titel *</Label>
-              <Input placeholder="Kurze Beschreibung..." value={noteForm.title} onChange={e => setNoteForm(f => ({ ...f, title: e.target.value }))} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Inhalt</Label>
-              <Textarea placeholder="Details, Informationen..." value={noteForm.content} onChange={e => setNoteForm(f => ({ ...f, content: e.target.value }))} rows={4} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Priorität</Label>
+            <div className="space-y-1.5"><Label>Titel *</Label><Input placeholder="Kurze Beschreibung..." value={noteForm.title} onChange={e => setNoteForm(f => ({ ...f, title: e.target.value }))} /></div>
+            <div className="space-y-1.5"><Label>Inhalt</Label><Textarea placeholder="Details..." value={noteForm.content} onChange={e => setNoteForm(f => ({ ...f, content: e.target.value }))} rows={4} /></div>
+            <div className="space-y-1.5"><Label>Priorität</Label>
               <Select value={noteForm.priority} onValueChange={v => setNoteForm(f => ({ ...f, priority: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -425,55 +686,98 @@ export default function ProjectDetail() {
         </DialogContent>
       </Dialog>
 
+      {/* Reklamation anlegen */}
+      <Dialog open={showAddComplaint} onOpenChange={setShowAddComplaint}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><ShieldAlert className="h-4 w-4" />Reklamation anlegen</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5"><Label>Titel *</Label><Input placeholder="Kurze Beschreibung des Problems..." value={complaintForm.title} onChange={e => setComplaintForm(f => ({ ...f, title: e.target.value }))} /></div>
+            <div className="space-y-1.5"><Label>Beschreibung</Label><Textarea placeholder="Detaillierte Beschreibung, Fehlerbild, Kundenmeldung..." value={complaintForm.description} onChange={e => setComplaintForm(f => ({ ...f, description: e.target.value }))} rows={4} /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5"><Label>Status</Label>
+                <Select value={complaintForm.status} onValueChange={v => setComplaintForm(f => ({ ...f, status: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="open">Offen</SelectItem>
+                    <SelectItem value="in_progress">In Bearbeitung</SelectItem>
+                    <SelectItem value="resolved">Gelöst</SelectItem>
+                    <SelectItem value="closed">Geschlossen</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5"><Label>Priorität</Label>
+                <Select value={complaintForm.priority} onValueChange={v => setComplaintForm(f => ({ ...f, priority: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Niedrig</SelectItem>
+                    <SelectItem value="normal">Normal</SelectItem>
+                    <SelectItem value="high">Hoch</SelectItem>
+                    <SelectItem value="critical">Kritisch</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddComplaint(false)}>Abbrechen</Button>
+            <Button onClick={() => createComplaint.mutate({ projectId: id, title: complaintForm.title, description: complaintForm.description || undefined, status: complaintForm.status as any, priority: complaintForm.priority as any })} disabled={!complaintForm.title || createComplaint.isPending}>
+              {createComplaint.isPending ? "Speichert..." : "Anlegen"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reklamation bearbeiten */}
+      {showEditComplaint !== null && editComplaintData && (
+        <ComplaintEditDialog
+          complaint={editComplaintData}
+          projectId={id}
+          onClose={() => setShowEditComplaint(null)}
+          onSave={(data) => updateComplaint.mutate({ id: showEditComplaint, ...data })}
+          isPending={updateComplaint.isPending}
+        />
+      )}
+
       {/* Notiz-Detail Dialog */}
       {showNoteDetail && (
         <NoteDetailDialog noteId={showNoteDetail} onClose={() => setShowNoteDetail(null)} onRefresh={() => utils.notes.list.invalidate({ projectId: id })} />
+      )}
+
+      {/* Lieferanten-Angebot Upload */}
+      {showOfferUpload !== null && (
+        <SupplierOfferDialog
+          projectItemId={showOfferUpload}
+          onClose={() => setShowOfferUpload(null)}
+          onSuccess={() => { utils.projectItems.list.invalidate({ projectId: id }); setShowOfferUpload(null); }}
+        />
       )}
     </div>
   );
 }
 
-// ── NoteCard Komponente ──────────────────────────────────────────────
+// ── NoteCard ──────────────────────────────────────────────────────────────────
 function NoteCard({ note, onToggle, onDelete, onOpen, onUpload }: {
   note: { id: number; title: string; content?: string | null; status: string; priority: string; createdAt: Date | string };
-  onToggle: () => void;
-  onDelete: () => void;
-  onOpen: () => void;
-  onUpload?: () => void;
+  onToggle: () => void; onDelete: () => void; onOpen: () => void; onUpload?: () => void;
 }) {
   const prio = PRIORITY_CONFIG[note.priority] ?? PRIORITY_CONFIG.normal;
   const isDone = note.status === "erledigt";
-
   return (
     <div className={`p-3 rounded-lg border transition-all ${isDone ? "bg-secondary/30 border-border opacity-70" : "bg-card border-border hover:border-primary/40"}`}>
       <div className="flex items-start gap-2">
         <button onClick={onToggle} className="mt-0.5 shrink-0">
-          {isDone
-            ? <CheckCircle2 className="h-4 w-4 text-green-400" />
-            : <Circle className="h-4 w-4 text-muted-foreground hover:text-primary" />
-          }
+          {isDone ? <CheckCircle2 className="h-4 w-4 text-green-400" /> : <Circle className="h-4 w-4 text-muted-foreground hover:text-primary" />}
         </button>
         <div className="flex-1 min-w-0 cursor-pointer" onClick={onOpen}>
           <div className="flex items-center gap-2 flex-wrap">
             <span className={`font-medium text-sm ${isDone ? "line-through text-muted-foreground" : ""}`}>{note.title}</span>
-            {note.priority !== "normal" && (
-              <span className={`text-xs ${prio.color}`}>● {prio.label}</span>
-            )}
+            {note.priority !== "normal" && <span className={`text-xs ${prio.color}`}>● {prio.label}</span>}
           </div>
-          {note.content && (
-            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{note.content}</p>
-          )}
-          <div className="flex items-center gap-2 mt-1">
-            <span className="text-xs text-muted-foreground">{new Date(note.createdAt).toLocaleDateString("de-DE")}</span>
-          </div>
+          {note.content && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{note.content}</p>}
+          <span className="text-xs text-muted-foreground mt-1 block">{new Date(note.createdAt).toLocaleDateString("de-DE")}</span>
         </div>
         <div className="flex items-center gap-1 shrink-0">
-          <Button
-            variant="ghost" size="sm"
-            className="h-7 w-7 p-0 text-muted-foreground hover:text-primary"
-            title="Datei anhängen"
-            onClick={(e) => { e.stopPropagation(); onUpload ? onUpload() : onOpen(); }}
-          >
+          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-primary" onClick={(e) => { e.stopPropagation(); onUpload ? onUpload() : onOpen(); }}>
             <Paperclip className="h-3.5 w-3.5" />
           </Button>
           <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive h-7 w-7 p-0" onClick={onDelete}>
@@ -485,7 +789,181 @@ function NoteCard({ note, onToggle, onDelete, onOpen, onUpload }: {
   );
 }
 
-// ── NoteDetailDialog Komponente ──────────────────────────────────────────────
+// ── SupplierOfferDialog ───────────────────────────────────────────────────────
+function SupplierOfferDialog({ projectItemId, onClose, onSuccess }: { projectItemId: number; onClose: () => void; onSuccess: () => void }) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [dragOver, setDragOver] = useState(false);
+
+  const upload = trpc.supplierOffer.upload.useMutation({
+    onSuccess: () => { setIsUploading(false); setProgress(0); toast.success("Angebot hochgeladen"); onSuccess(); },
+    onError: (e) => { setIsUploading(false); setProgress(0); toast.error("Upload fehlgeschlagen: " + e.message); },
+  });
+
+  const handleFile = async (file: File) => {
+    if (file.size > 10 * 1024 * 1024) { toast.error("Max. 10 MB"); return; }
+    const allowed = ["image/jpeg","image/png","image/webp","application/pdf"];
+    if (!allowed.includes(file.type)) { toast.error("Nur JPG, PNG, WebP oder PDF"); return; }
+    setIsUploading(true); setProgress(30);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setProgress(70);
+      const base64 = (e.target?.result as string).split(",")[1];
+      upload.mutate({ projectItemId, filename: file.name, fileBase64: base64, mimeType: file.type });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader><DialogTitle className="flex items-center gap-2"><Paperclip className="h-4 w-4" />Lieferanten-Angebot hochladen</DialogTitle></DialogHeader>
+        <div
+          className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${dragOver ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"} ${isUploading ? "pointer-events-none opacity-60" : ""}`}
+          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={(e) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if (f) handleFile(f); }}
+          onClick={() => !isUploading && fileInputRef.current?.click()}
+        >
+          <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden"
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }} />
+          {isUploading ? (
+            <div className="space-y-2">
+              <Upload className="h-6 w-6 mx-auto text-primary animate-pulse" />
+              <p className="text-sm text-muted-foreground">Wird hochgeladen...</p>
+              <Progress value={progress} className="h-1.5" />
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex justify-center gap-2"><FileText className="h-5 w-5 text-muted-foreground" /><Image className="h-5 w-5 text-muted-foreground" /></div>
+              <p className="text-sm text-muted-foreground">PDF oder Bild hier ablegen oder <span className="text-primary">klicken</span></p>
+              <p className="text-xs text-muted-foreground/60">JPG, PNG, WebP, PDF · max. 10 MB</p>
+            </div>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Schließen</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ── ComplaintEditDialog ───────────────────────────────────────────────────────
+function ComplaintEditDialog({ complaint, projectId, onClose, onSave, isPending }: {
+  complaint: any; projectId: number; onClose: () => void;
+  onSave: (data: any) => void; isPending: boolean;
+}) {
+  const utils = trpc.useUtils();
+  const [form, setForm] = useState({
+    title: complaint.title ?? "",
+    description: complaint.description ?? "",
+    status: complaint.status ?? "open",
+    priority: complaint.priority ?? "normal",
+    resolution: complaint.resolution ?? "",
+  });
+  const [dragOver, setDragOver] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const addAttachment = trpc.complaints.addAttachment.useMutation({
+    onSuccess: () => { utils.complaints.list.invalidate({ projectId }); setIsUploading(false); toast.success("Anhang hochgeladen"); },
+    onError: (e) => { setIsUploading(false); toast.error("Upload fehlgeschlagen: " + e.message); },
+  });
+  const deleteAttachment = trpc.complaints.deleteAttachment.useMutation({
+    onSuccess: () => utils.complaints.list.invalidate({ projectId }),
+  });
+
+  const handleFile = (file: File) => {
+    if (file.size > 10 * 1024 * 1024) { toast.error("Max. 10 MB"); return; }
+    setIsUploading(true);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const base64 = (e.target?.result as string).split(",")[1];
+      addAttachment.mutate({ complaintId: complaint.id, filename: file.name, fileBase64: base64, mimeType: file.type });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader><DialogTitle className="flex items-center gap-2"><ShieldAlert className="h-4 w-4" />Reklamation bearbeiten</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1.5"><Label>Titel *</Label><Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} /></div>
+          <div className="space-y-1.5"><Label>Beschreibung</Label><Textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={3} /></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5"><Label>Status</Label>
+              <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="open">Offen</SelectItem>
+                  <SelectItem value="in_progress">In Bearbeitung</SelectItem>
+                  <SelectItem value="resolved">Gelöst</SelectItem>
+                  <SelectItem value="closed">Geschlossen</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5"><Label>Priorität</Label>
+              <Select value={form.priority} onValueChange={v => setForm(f => ({ ...f, priority: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Niedrig</SelectItem>
+                  <SelectItem value="normal">Normal</SelectItem>
+                  <SelectItem value="high">Hoch</SelectItem>
+                  <SelectItem value="critical">Kritisch</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="space-y-1.5"><Label>Lösung / Maßnahme</Label><Textarea value={form.resolution} onChange={e => setForm(f => ({ ...f, resolution: e.target.value }))} rows={2} placeholder="Wie wurde das Problem gelöst?" /></div>
+
+          {/* Anhänge */}
+          <div className="space-y-2">
+            <Label className="text-xs text-muted-foreground uppercase tracking-wide">Anhänge (Fotos, Dokumente)</Label>
+            {complaint.attachments?.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {complaint.attachments.map((a: any) => (
+                  <div key={a.id} className="flex items-center gap-1 px-2 py-1 rounded bg-secondary border border-border text-xs group">
+                    <a href={a.fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-primary">
+                      <FileText className="h-3 w-3" />{a.filename}
+                    </a>
+                    <button onClick={() => deleteAttachment.mutate({ id: a.id })} className="ml-1 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div
+              className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${dragOver ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"} ${isUploading ? "pointer-events-none opacity-60" : ""}`}
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={(e) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if (f) handleFile(f); }}
+              onClick={() => !isUploading && fileInputRef.current?.click()}
+            >
+              <input ref={fileInputRef} type="file" accept="image/*,application/pdf" className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }} />
+              {isUploading
+                ? <p className="text-xs text-muted-foreground">Wird hochgeladen...</p>
+                : <p className="text-xs text-muted-foreground">Foto oder Dokument hier ablegen oder <span className="text-primary">klicken</span></p>
+              }
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Abbrechen</Button>
+          <Button onClick={() => onSave(form)} disabled={!form.title || isPending}>
+            {isPending ? "Speichert..." : "Speichern"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ── NoteDetailDialog ──────────────────────────────────────────────────────────
 function NoteDetailDialog({ noteId, onClose, onRefresh }: { noteId: number; onClose: () => void; onRefresh: () => void }) {
   const { data: note, isLoading } = trpc.notes.getById.useQuery({ id: noteId });
   const utils = trpc.useUtils();
@@ -501,25 +979,11 @@ function NoteDetailDialog({ noteId, onClose, onRefresh }: { noteId: number; onCl
     onSuccess: () => utils.notes.getById.invalidate({ id: noteId }),
   });
   const uploadAttachment = trpc.notes.uploadAttachment.useMutation({
-    onSuccess: () => {
-      utils.notes.getById.invalidate({ id: noteId });
-      onRefresh();
-      setIsUploading(false);
-      setUploadProgress(0);
-      toast.success("Datei hochgeladen");
-    },
-    onError: (err) => {
-      setIsUploading(false);
-      setUploadProgress(0);
-      toast.error("Upload fehlgeschlagen: " + err.message);
-    },
+    onSuccess: () => { utils.notes.getById.invalidate({ id: noteId }); onRefresh(); setIsUploading(false); setUploadProgress(0); toast.success("Datei hochgeladen"); },
+    onError: (err) => { setIsUploading(false); setUploadProgress(0); toast.error("Upload fehlgeschlagen: " + err.message); },
   });
   const deleteAttachment = trpc.notes.deleteAttachment.useMutation({
-    onSuccess: () => {
-      utils.notes.getById.invalidate({ id: noteId });
-      onRefresh();
-      toast.success("Anhang gelöscht");
-    },
+    onSuccess: () => { utils.notes.getById.invalidate({ id: noteId }); onRefresh(); toast.success("Anhang gelöscht"); },
   });
 
   const [reminderDate, setReminderDate] = useState("");
@@ -530,105 +994,59 @@ function NoteDetailDialog({ noteId, onClose, onRefresh }: { noteId: number; onCl
     if (!reminderDate) return;
     const dt = new Date(`${reminderDate}T${reminderTime}:00`);
     addReminder.mutate({ noteId, remindAt: dt.toISOString(), label: reminderLabel || undefined });
-    setReminderDate("");
-    setReminderLabel("");
+    setReminderDate(""); setReminderLabel("");
   };
 
   const handleFileUpload = async (file: File) => {
-    const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
-    if (file.size > MAX_SIZE) {
-      toast.error(`Datei zu groß: ${(file.size / 1024 / 1024).toFixed(1)} MB (max. 10 MB)`);
-      return;
-    }
-    const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif", "application/pdf"];
-    if (!allowed.includes(file.type)) {
-      toast.error("Nur Bilder (JPG, PNG, WebP) und PDFs erlaubt");
-      return;
-    }
-    setIsUploading(true);
-    setUploadProgress(20);
+    if (file.size > 10 * 1024 * 1024) { toast.error(`Datei zu groß: ${(file.size / 1024 / 1024).toFixed(1)} MB (max. 10 MB)`); return; }
+    const allowed = ["image/jpeg","image/png","image/webp","image/gif","application/pdf"];
+    if (!allowed.includes(file.type)) { toast.error("Nur Bilder und PDFs erlaubt"); return; }
+    setIsUploading(true); setUploadProgress(20);
     const reader = new FileReader();
     reader.onload = (e) => {
       setUploadProgress(60);
       const base64 = (e.target?.result as string).split(",")[1];
       setUploadProgress(80);
-      uploadAttachment.mutate({
-        noteId,
-        filename: file.name,
-        fileData: base64,
-        mimeType: file.type,
-        fileSize: file.size,
-      });
+      uploadAttachment.mutate({ noteId, filename: file.name, fileData: base64, mimeType: file.type, fileSize: file.size });
     };
     reader.readAsDataURL(file);
   };
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(false);
-    const file = e.dataTransfer.files[0];
-    if (file) handleFileUpload(file);
-  };
-
-  if (isLoading) return null;
-  if (!note) return null;
-
+  if (isLoading || !note) return null;
   const now = new Date();
   const images = note.attachments?.filter((a: any) => a.fileType === "image") ?? [];
-  const pdfs = note.attachments?.filter((a: any) => a.fileType === "pdf") ?? [];
-  const others = note.attachments?.filter((a: any) => a.fileType === "other") ?? [];
+  const pdfs = note.attachments?.filter((a: any) => a.fileType !== "image") ?? [];
 
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <StickyNote className="h-4 w-4" />
-            {note.title}
-          </DialogTitle>
-        </DialogHeader>
+        <DialogHeader><DialogTitle className="flex items-center gap-2"><StickyNote className="h-4 w-4" />{note.title}</DialogTitle></DialogHeader>
+        {note.content && <p className="text-sm text-muted-foreground whitespace-pre-wrap">{note.content}</p>}
 
-        {note.content && (
-          <p className="text-sm text-muted-foreground whitespace-pre-wrap">{note.content}</p>
-        )}
-
-        {/* ── Anhänge ── */}
+        {/* Anhänge */}
         <div className="space-y-2">
           <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
             <Paperclip className="h-3.5 w-3.5" /> Anhänge {note.attachments?.length ? `(${note.attachments.length})` : ""}
           </h4>
-
-          {/* Bilder-Galerie */}
           {images.length > 0 && (
             <div className="grid grid-cols-3 gap-2">
               {images.map((att: any) => (
                 <div key={att.id} className="relative group rounded-md overflow-hidden border border-border aspect-square bg-secondary">
-                  <a href={att.fileUrl} target="_blank" rel="noopener noreferrer">
-                    <img src={att.fileUrl} alt={att.filename} className="w-full h-full object-cover" />
-                  </a>
-                  <button
-                    onClick={() => deleteAttachment.mutate({ id: att.id })}
-                    className="absolute top-1 right-1 bg-black/70 rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive"
-                  >
+                  <a href={att.fileUrl} target="_blank" rel="noopener noreferrer"><img src={att.fileUrl} alt={att.filename} className="w-full h-full object-cover" /></a>
+                  <button onClick={() => deleteAttachment.mutate({ id: att.id })} className="absolute top-1 right-1 bg-black/70 rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive">
                     <X className="h-3 w-3 text-white" />
                   </button>
-                  <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-1.5 py-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <p className="text-xs text-white truncate">{att.filename}</p>
-                  </div>
                 </div>
               ))}
             </div>
           )}
-
-          {/* PDFs und sonstige Dateien */}
-          {(pdfs.length > 0 || others.length > 0) && (
+          {pdfs.length > 0 && (
             <div className="flex flex-wrap gap-2">
-              {[...pdfs, ...others].map((att: any) => (
+              {pdfs.map((att: any) => (
                 <div key={att.id} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-secondary border border-border group">
                   <a href={att.fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-xs hover:text-primary transition-colors">
                     <FileText className="h-3.5 w-3.5 text-red-400 shrink-0" />
                     <span className="max-w-[140px] truncate">{att.filename}</span>
-                    {att.fileSize && <span className="text-muted-foreground">({(att.fileSize / 1024).toFixed(0)} KB)</span>}
                   </a>
                   <button onClick={() => deleteAttachment.mutate({ id: att.id })} className="ml-1 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
                     <X className="h-3 w-3" />
@@ -637,50 +1055,26 @@ function NoteDetailDialog({ noteId, onClose, onRefresh }: { noteId: number; onCl
               ))}
             </div>
           )}
-
-          {/* Upload-Zone */}
           <div
-            className={`relative border-2 border-dashed rounded-lg p-4 text-center transition-colors cursor-pointer ${
-              dragOver ? "border-primary bg-primary/5" : "border-border hover:border-primary/50 hover:bg-secondary/30"
-            } ${isUploading ? "pointer-events-none opacity-60" : ""}`}
+            className={`relative border-2 border-dashed rounded-lg p-4 text-center transition-colors cursor-pointer ${dragOver ? "border-primary bg-primary/5" : "border-border hover:border-primary/50 hover:bg-secondary/30"} ${isUploading ? "pointer-events-none opacity-60" : ""}`}
             onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
             onDragLeave={() => setDragOver(false)}
-            onDrop={handleDrop}
+            onDrop={(e) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if (f) handleFileUpload(f); }}
             onClick={() => !isUploading && fileInputRef.current?.click()}
           >
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/gif,application/pdf"
-              className="hidden"
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileUpload(f); e.target.value = ""; }}
-            />
+            <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif,application/pdf" className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileUpload(f); e.target.value = ""; }} />
             {isUploading ? (
-              <div className="space-y-2">
-                <Upload className="h-5 w-5 mx-auto text-primary animate-pulse" />
-                <p className="text-xs text-muted-foreground">Wird hochgeladen...</p>
-                <Progress value={uploadProgress} className="h-1.5" />
-              </div>
+              <div className="space-y-2"><Upload className="h-5 w-5 mx-auto text-primary animate-pulse" /><p className="text-xs text-muted-foreground">Wird hochgeladen...</p><Progress value={uploadProgress} className="h-1.5" /></div>
             ) : (
-              <div className="flex flex-col items-center gap-1.5">
-                <div className="flex items-center gap-2">
-                  <Image className="h-4 w-4 text-muted-foreground" />
-                  <Upload className="h-4 w-4 text-muted-foreground" />
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                </div>
-                <p className="text-xs text-muted-foreground">Bild oder PDF hier ablegen oder <span className="text-primary">klicken</span></p>
-                <p className="text-xs text-muted-foreground/60">JPG, PNG, WebP, GIF, PDF · max. 10 MB</p>
-              </div>
+              <p className="text-xs text-muted-foreground">Bild oder PDF hier ablegen oder <span className="text-primary">klicken</span></p>
             )}
           </div>
         </div>
 
         {/* Erinnerungen */}
         <div className="space-y-2">
-          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-            <Bell className="h-3.5 w-3.5" /> Erinnerungen
-          </h4>
-
+          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"><Bell className="h-3.5 w-3.5" /> Erinnerungen</h4>
           {note.reminders && note.reminders.length > 0 ? (
             <div className="space-y-1.5">
               {note.reminders.map((r: any) => {
@@ -689,13 +1083,7 @@ function NoteDetailDialog({ noteId, onClose, onRefresh }: { noteId: number; onCl
                 const isSent = r.isSent;
                 return (
                   <div key={r.id} className={`flex items-center gap-2 p-2 rounded-md border text-xs ${isSent ? "bg-secondary/30 border-border opacity-60" : isPast ? "bg-red-950/30 border-red-900/50" : "bg-secondary/50 border-border"}`}>
-                    {isSent ? (
-                      <CheckCircle2 className="h-3.5 w-3.5 text-green-400 shrink-0" />
-                    ) : isPast ? (
-                      <AlertCircle className="h-3.5 w-3.5 text-red-400 shrink-0" />
-                    ) : (
-                      <Clock className="h-3.5 w-3.5 text-primary shrink-0" />
-                    )}
+                    {isSent ? <CheckCircle2 className="h-3.5 w-3.5 text-green-400 shrink-0" /> : isPast ? <AlertCircle className="h-3.5 w-3.5 text-red-400 shrink-0" /> : <Clock className="h-3.5 w-3.5 text-primary shrink-0" />}
                     <div className="flex-1 min-w-0">
                       <span className="font-medium">{remindDate.toLocaleDateString("de-DE")} {remindDate.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}</span>
                       {r.label && <span className="text-muted-foreground ml-1.5">— {r.label}</span>}
@@ -709,11 +1097,7 @@ function NoteDetailDialog({ noteId, onClose, onRefresh }: { noteId: number; onCl
                 );
               })}
             </div>
-          ) : (
-            <p className="text-xs text-muted-foreground">Noch keine Erinnerungen</p>
-          )}
-
-          {/* Neue Erinnerung */}
+          ) : <p className="text-xs text-muted-foreground">Noch keine Erinnerungen</p>}
           <div className="flex flex-col gap-2 pt-1 border-t border-border">
             <p className="text-xs text-muted-foreground font-medium">Neue Erinnerung</p>
             <div className="flex gap-2">
@@ -728,10 +1112,7 @@ function NoteDetailDialog({ noteId, onClose, onRefresh }: { noteId: number; onCl
             </div>
           </div>
         </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Schließen</Button>
-        </DialogFooter>
+        <DialogFooter><Button variant="outline" onClick={onClose}>Schließen</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   );
