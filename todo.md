@@ -86,3 +86,18 @@
 - [x] Einstellungen-Menüpunkt in Sidebar-Navigation
 - [ ] Schnellnotizen-Widget auf dem Dashboard (Phase 3)
 - [ ] Schnellnotizen im Projekt-Detail sichtbar (Phase 3)
+
+## Phase 9: Notizen & Erinnerungen + Mobile PWA
+- [x] DB: notes Tabelle (id, title, content, project_id optional, status, priority, created_at)
+- [x] DB: note_attachments Tabelle (id, note_id, filename, file_url, file_key, file_type, size)
+- [x] DB: note_reminders Tabelle (id, note_id, remind_at, is_sent, label)
+- [x] tRPC Router: notes (list, getById, create, update, delete, uploadAttachment, deleteAttachment, addReminder, deleteReminder, pendingReminders, markReminderSent)
+- [x] S3-Upload für Bilder und PDFs pro Notiz (base64 → storagePut)
+- [x] Notizen-Seite: Liste, anlegen, bearbeiten, Anhänge anzeigen, Suche, Filter
+- [x] Erinnerungen: Datum+Uhrzeit, mehrere pro Notiz, Status (offen/erledigt)
+- [x] Browser Push-Benachrichtigungen für Erinnerungen (Notification API)
+- [x] PWA-Manifest (manifest.json, theme-color, apple-mobile-web-app-capable)
+- [x] Mobile Layout-Optimierung: Header, KPI-Cards, Projektliste, Buttons responsive
+- [x] Notizen-Menüpunkt in Sidebar-Navigation (Bell-Icon)
+- [x] Inter-Font eingebunden, font-smoothing aktiviert
+- [x] Vitest: 13 neue Tests für Notes-Logik (alle grün)

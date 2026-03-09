@@ -49,20 +49,22 @@ export default function Projects() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Projekte</h1>
-          <p className="text-muted-foreground text-sm mt-1">{projects.length} Projekte gesamt</p>
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight">Projekte</h1>
+          <p className="text-muted-foreground text-xs md:text-sm mt-0.5">{projects.length} Projekte gesamt</p>
         </div>
-        <Button onClick={() => setShowCreate(true)} className="gap-2">
-          <Plus className="h-4 w-4" /> Neues Projekt
+        <Button onClick={() => setShowCreate(true)} size="sm" className="gap-1.5 text-xs md:text-sm">
+          <Plus className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Neues Projekt</span>
+          <span className="sm:hidden">Neu</span>
         </Button>
       </div>
 
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1 max-w-sm">
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Projekt suchen..." className="pl-9" value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-        <div className="flex border border-border rounded-lg overflow-hidden">
+        <div className="flex border border-border rounded-lg overflow-hidden shrink-0">
           <Button variant={viewMode === "list" ? "default" : "ghost"} size="sm" className="rounded-none" onClick={() => setViewMode("list")}><List className="h-4 w-4" /></Button>
           <Button variant={viewMode === "kanban" ? "default" : "ghost"} size="sm" className="rounded-none" onClick={() => setViewMode("kanban")}><LayoutGrid className="h-4 w-4" /></Button>
         </div>
@@ -79,7 +81,7 @@ export default function Projects() {
       ) : viewMode === "list" ? (
         <div className="space-y-2">
           {filtered.map(project => (
-            <div key={project.id} className="flex items-center gap-4 p-4 rounded-lg bg-card border border-border hover:border-primary/50 cursor-pointer transition-all" onClick={() => setLocation(`/projects/${project.id}`)}>
+            <div key={project.id} className="flex items-center gap-2 md:gap-4 p-3 md:p-4 rounded-lg bg-card border border-border hover:border-primary/50 cursor-pointer transition-all" onClick={() => setLocation(`/projects/${project.id}`)}>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="font-medium truncate">{project.title}</span>

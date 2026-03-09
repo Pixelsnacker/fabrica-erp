@@ -294,3 +294,39 @@ export const quickNotes = mysqlTable("quick_notes", {
 });
 export type QuickNote = typeof quickNotes.$inferSelect;
 export type InsertQuickNote = typeof quickNotes.$inferInsert;
+
+// ─── Notes & Reminders ───────────────────────────────────────────────────────
+export const notes = mysqlTable("notes", {
+  id: int("id").autoincrement().primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  content: text("content"),
+  projectId: int("project_id"),
+  status: mysqlEnum("status", ["offen", "erledigt"]).default("offen").notNull(),
+  priority: mysqlEnum("priority", ["niedrig", "normal", "hoch"]).default("normal").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const noteAttachments = mysqlTable("note_attachments", {
+  id: int("id").autoincrement().primaryKey(),
+  noteId: int("note_id").notNull(),
+  filename: varchar("filename", { length: 255 }).notNull(),
+  fileUrl: text("file_url").notNull(),
+  fileKey: text("file_key").notNull(),
+  fileType: mysqlEnum("file_type", ["image", "pdf", "other"]).default("other").notNull(),
+  fileSize: int("file_size"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const noteReminders = mysqlTable("note_reminders", {
+  id: int("id").autoincrement().primaryKey(),
+  noteId: int("note_id").notNull(),
+  label: varchar("label", { length: 255 }),
+  remindAt: timestamp("remind_at").notNull(),
+  isSent: boolean("is_sent").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Note = typeof notes.$inferSelect;
+export type NoteAttachment = typeof noteAttachments.$inferSelect;
+export type NoteReminder = typeof noteReminders.$inferSelect;

@@ -22,6 +22,10 @@ import {
   getDashboardStats,
   getQuickNotes, createQuickNote, deleteQuickNote,
   getFullExport,
+  getNotes, getNoteById, createNote, updateNote, deleteNote,
+  getNoteAttachments, addNoteAttachment, deleteNoteAttachment,
+  getNoteReminders, addNoteReminder, deleteNoteReminder,
+  getPendingReminders, markReminderSent,
 } from "./db";
 
 const EMAIL_SIGNATURE = `\n\nMit freundlichen Grüßen / Best Regards\n\nDaniel Rincón\n\nFabrica GmbH\nHüttenstraße 205\n50170 Kerpen-Sindorf\n\nTel.: +49(0)2273-9529429\nMobil: +49(0)170/8342238\nd.rincon@fabrica3d.eu\nwww.fabrica3d.de`;
@@ -442,6 +446,122 @@ Erstelle eine professionelle Beratungsantwort oder E-Mail basierend auf der Anfr
       await deleteQuickNote(input.id);
       return { success: true };
     }),
+  }),
+
+  // ─── Notes & Reminders ──────────────────────────────────────────────────────
+  notes: router({
+    list: protectedProcedure
+      .input(z.object({ status: z.string().optional() }).optional())
+      .query(async ({ input }) => getNotes(input?.status)),
+
+    getById: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        const note = await getNoteById(input.id);
+        if (!note) throw new Error("Notiz nicht gefunden");
+        const attachments = await getNoteAttachments(input.id);
+        const reminders = await getNoteReminders(input.id);
+        return { ...note, attachments, reminders };
+      }),
+
+    create: protectedProcedure
+      .input(z.object({
+        title: z.string().min(1),
+        content: z.string().optional(),
+        projectId: z.number().optional().nullable(),
+        priority: z.enum(["niedrig", "normal", "hoch"]).default("normal"),
+      }))
+      .mutation(async ({ input }) => {
+        await createNote(input);
+        return { success: true };
+      }),
+
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        title: z.string().optional(),
+        content: z.string().optional(),
+        status: z.enum(["offen", "erledigt"]).optional(),
+        priority: z.enum(["niedrig", "normal", "hoch"]).optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        await updateNote(id, data);
+        return { success: true };
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await deleteNote(input.id);
+        return { success: true };
+      }),
+
+    // File upload for attachments
+    uploadAttachment: protectedProcedure
+      .input(z.object({
+        noteId: z.number(),
+        filename: z.string(),
+        fileData: z.string(), // base64
+        mimeType: z.string(),
+        fileSize: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const buffer = Buffer.from(input.fileData, "base64");
+        const ext = input.filename.split(".").pop() ?? "bin";
+        const randomSuffix = Math.random().toString(36).substring(2, 8);
+        const fileKey = `notes/${input.noteId}/${Date.now()}-${randomSuffix}.${ext}`;
+        const { url } = await storagePut(fileKey, buffer, input.mimeType);
+        const fileType = input.mimeType.startsWith("image/") ? "image" :
+          input.mimeType === "application/pdf" ? "pdf" : "other";
+        await addNoteAttachment({
+          noteId: input.noteId,
+          filename: input.filename,
+          fileUrl: url,
+          fileKey,
+          fileType,
+          fileSize: input.fileSize,
+        });
+        return { success: true, url };
+      }),
+
+    deleteAttachment: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await deleteNoteAttachment(input.id);
+        return { success: true };
+      }),
+
+    addReminder: protectedProcedure
+      .input(z.object({
+        noteId: z.number(),
+        label: z.string().optional(),
+        remindAt: z.string(), // ISO string
+      }))
+      .mutation(async ({ input }) => {
+        await addNoteReminder({
+          noteId: input.noteId,
+          label: input.label,
+          remindAt: new Date(input.remindAt),
+        });
+        return { success: true };
+      }),
+
+    deleteReminder: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await deleteNoteReminder(input.id);
+        return { success: true };
+      }),
+
+    pendingReminders: protectedProcedure.query(async () => getPendingReminders()),
+
+    markReminderSent: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await markReminderSent(input.id);
+        return { success: true };
+      }),
   }),
 
   // ─── Data Export ─────────────────────────────────────────────────────────────

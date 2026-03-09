@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, Users, Building2, Truck, BookOpen, Image, Bot, Layers, TrendingUp, MessageSquare, FolderKanban, Zap, MessageCircle, Phone, UserCheck, Mail, MoreHorizontal } from "lucide-react";
+import { LayoutDashboard, LogOut, PanelLeft, Users, Building2, Truck, BookOpen, Image, Bot, Layers, TrendingUp, MessageSquare, FolderKanban, Zap, MessageCircle, Phone, UserCheck, Mail, MoreHorizontal, Bell } from "lucide-react";
 import { CSSProperties, useCallback, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -141,6 +141,7 @@ const menuItems = [
   { icon: Image, label: "Bilddatenbank", path: "/images" },
   { icon: Layers, label: "Materialien", path: "/materials" },
   { icon: TrendingUp, label: "Lead-Quellen", path: "/leads" },
+  { icon: Bell, label: "Notizen", path: "/notes" },
   { icon: MoreHorizontal, label: "Einstellungen", path: "/settings" },
 ];
 
@@ -357,32 +358,28 @@ function DashboardLayoutContent({
 
       <QuickNoteModal open={quickNoteOpen} onClose={() => setQuickNoteOpen(false)} />
       <SidebarInset>
-        {isMobile && (
-          <div className="flex border-b h-14 items-center justify-between bg-background/95 px-2 backdrop-blur supports-[backdrop-filter]:backdrop-blur sticky top-0 z-40">
-            <div className="flex items-center gap-2">
-              <SidebarTrigger className="h-9 w-9 rounded-lg bg-background" />
-              <div className="flex items-center gap-3">
-                <div className="flex flex-col gap-1">
-                  <span className="tracking-tight text-foreground">
-                    {activeMenuItem?.label ?? "Menu"}
-                  </span>
-                </div>
-              </div>
-            </div>
+        {/* Mobile + Desktop Header */}
+        <div className="sticky top-0 z-40 flex items-center justify-between px-3 md:px-4 py-2 bg-background/95 backdrop-blur border-b h-14">
+          <div className="flex items-center gap-2">
+            {isMobile && (
+              <SidebarTrigger className="h-9 w-9 rounded-lg bg-background shrink-0" />
+            )}
+            <span className="font-medium text-foreground text-sm md:text-base truncate">
+              {activeMenuItem?.label ?? "Fabrica ERP"}
+            </span>
           </div>
-        )}
-        <div className="sticky top-0 z-30 flex items-center justify-end px-4 py-2 bg-background/80 backdrop-blur border-b">
           <Button
             size="sm"
             variant="outline"
-            className="gap-2 text-yellow-400 border-yellow-400/30 hover:bg-yellow-400/10 hover:text-yellow-300"
+            className="gap-1.5 text-yellow-400 border-yellow-400/30 hover:bg-yellow-400/10 hover:text-yellow-300 text-xs md:text-sm px-2 md:px-3"
             onClick={() => setQuickNoteOpen(true)}
           >
             <Zap className="h-3.5 w-3.5" />
-            Schnellnotiz
+            <span className="hidden sm:inline">Schnellnotiz</span>
+            <span className="sm:hidden">Notiz</span>
           </Button>
         </div>
-        <main className="flex-1 p-4">{children}</main>
+        <main className="flex-1 p-3 md:p-6">{children}</main>
       </SidebarInset>
     </>
   );

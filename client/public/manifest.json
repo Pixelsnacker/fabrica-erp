@@ -1,0 +1,18 @@
+{
+  "name": "Fabrica ERP",
+  "short_name": "Fabrica",
+  "description": "ERP-System für Fabrica GmbH – 3D-Druck & Technische Beratung",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f1117",
+  "theme_color": "#0f1117",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon"
+    }
+  ],
+  "categories": ["business", "productivity"]
+}

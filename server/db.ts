@@ -17,6 +17,7 @@ import {
   imageLibrary, InsertImageLibraryEntry,
   aiSessions, InsertAiSession,
   quickNotes,
+  notes, noteAttachments, noteReminders,
 } from "../drizzle/schema";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -559,4 +560,107 @@ export async function getFullExport() {
     knowledge: allKnowledge,
     quickNotes: allQuickNotes,
   };
+}
+
+// ─── Notes ───────────────────────────────────────────────────────────────────
+export async function getNotes(status?: string) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const query = db.select().from(notes).orderBy(desc(notes.createdAt));
+  if (status) {
+    return await db.select().from(notes).where(eq(notes.status, status as any)).orderBy(desc(notes.createdAt));
+  }
+  return await query;
+}
+
+export async function getNoteById(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const result = await db.select().from(notes).where(eq(notes.id, id)).limit(1);
+  return result[0];
+}
+
+export async function createNote(data: { title: string; content?: string; projectId?: number | null; priority?: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.insert(notes).values({
+    title: data.title,
+    content: data.content ?? null,
+    projectId: data.projectId ?? null,
+    priority: (data.priority as any) ?? "normal",
+  });
+}
+
+export async function updateNote(id: number, data: { title?: string; content?: string; status?: string; priority?: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.update(notes).set(data as any).where(eq(notes.id, id));
+}
+
+export async function deleteNote(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.delete(noteAttachments).where(eq(noteAttachments.noteId, id));
+  await db.delete(noteReminders).where(eq(noteReminders.noteId, id));
+  await db.delete(notes).where(eq(notes.id, id));
+}
+
+export async function getNoteAttachments(noteId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  return await db.select().from(noteAttachments).where(eq(noteAttachments.noteId, noteId));
+}
+
+export async function addNoteAttachment(data: { noteId: number; filename: string; fileUrl: string; fileKey: string; fileType: string; fileSize?: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.insert(noteAttachments).values({
+    noteId: data.noteId,
+    filename: data.filename,
+    fileUrl: data.fileUrl,
+    fileKey: data.fileKey,
+    fileType: (data.fileType as any) ?? "other",
+    fileSize: data.fileSize ?? null,
+  });
+}
+
+export async function deleteNoteAttachment(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.delete(noteAttachments).where(eq(noteAttachments.id, id));
+}
+
+export async function getNoteReminders(noteId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  return await db.select().from(noteReminders).where(eq(noteReminders.noteId, noteId));
+}
+
+export async function addNoteReminder(data: { noteId: number; label?: string; remindAt: Date }) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.insert(noteReminders).values({
+    noteId: data.noteId,
+    label: data.label ?? null,
+    remindAt: data.remindAt,
+  });
+}
+
+export async function deleteNoteReminder(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.delete(noteReminders).where(eq(noteReminders.id, id));
+}
+
+export async function getPendingReminders() {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  return await db.select().from(noteReminders)
+    .where(eq(noteReminders.isSent, false));
+}
+
+export async function markReminderSent(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.update(noteReminders).set({ isSent: true }).where(eq(noteReminders.id, id));
 }
