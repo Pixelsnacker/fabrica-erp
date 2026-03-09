@@ -125,3 +125,18 @@
 - [x] Fix: Date-Typen auf toISOString() konvertiert (string-kompatibel)
 - [x] Fix: Suppliers.tsx und KnowledgeBase.tsx unknown-Typ-Fehler behoben
 - [x] 20 Tests grün, 0 TypeScript-Fehler
+
+## Phase 13: Kunden & Lieferanten – Bearbeiten, Adresse, mehrere E-Mails/Namen, Tel-Link
+- [x] DB: customers – Spalten email2, email3, contact2, contact3, street, zip, city, country hinzugefügt
+- [x] DB: suppliers – Spalten email2, email3, contact2, contact3, street, zip, city, country hinzugefügt
+- [x] tRPC: customers.create + update Prozedur mit allen neuen Feldern
+- [x] tRPC: suppliers.create + update Prozedur mit allen neuen Feldern
+- [x] Kunden-Seite: Edit-Button (Hover) + Bearbeiten-Dialog mit allen Feldern
+- [x] Kunden-Seite: Adressblock (Straße, PLZ, Ort, Land)
+- [x] Kunden-Seite: bis zu 3 E-Mail-Adressen und 3 Ansprechpartner
+- [x] Kunden-Seite: Telefonnummer als klickbarer tel:-Link (grün beim Hover)
+- [x] Lieferanten-Seite: Edit-Button (Hover) + Bearbeiten-Dialog mit allen Feldern
+- [x] Lieferanten-Seite: Adressblock (Straße, PLZ, Ort, Land)
+- [x] Lieferanten-Seite: bis zu 3 E-Mail-Adressen und 3 Ansprechpartner
+- [x] Lieferanten-Seite: Telefonnummer als klickbarer tel:-Link (grün beim Hover)
+- [x] 20 Tests grün, 0 TypeScript-Fehler
