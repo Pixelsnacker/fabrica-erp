@@ -1,4 +1,4 @@
-import { mysqlTable, mysqlSchema, AnyMySqlColumn, int, text, json, timestamp, varchar, mysqlEnum, decimal, foreignKey, index, tinyint, boolean } from "drizzle-orm/mysql-core"
+import { mysqlTable, mysqlSchema, AnyMySqlColumn, int, text, json, timestamp, varchar, mysqlEnum, decimal, foreignKey, index, tinyint, boolean, bigint } from "drizzle-orm/mysql-core"
 import { sql } from "drizzle-orm"
 
 export const aiSessions = mysqlTable("ai_sessions", {
@@ -325,3 +325,95 @@ export const complaintAttachments = mysqlTable("complaint_attachments", {
 
 export type InsertComplaint = typeof complaints.$inferInsert;
 export type InsertComplaintAttachment = typeof complaintAttachments.$inferInsert;
+
+// ─── Invoice Module (GoBD-konform, §14 UStG) ─────────────────────────────────
+export const invoiceSequences = mysqlTable("invoice_sequences", {
+  id: int().autoincrement().primaryKey(),
+  year: int().notNull(),
+  type: mysqlEnum(['invoice','offer','credit_note']).notNull(),
+  lastNumber: int("last_number").notNull().default(0),
+});
+
+export const invoices = mysqlTable("invoices", {
+  id: int().autoincrement().primaryKey(),
+  invoiceNumber: varchar("invoice_number", { length: 32 }).notNull(),
+  type: mysqlEnum(['offer','invoice','credit_note']).notNull().default('offer'),
+  status: mysqlEnum(['draft','sent','accepted','invoiced','paid','cancelled','overdue']).notNull().default('draft'),
+  customerId: int("customer_id"),
+  projectId: int("project_id"),
+  // Absender-Snapshot
+  senderName: varchar("sender_name", { length: 255 }),
+  senderStreet: varchar("sender_street", { length: 255 }),
+  senderZip: varchar("sender_zip", { length: 20 }),
+  senderCity: varchar("sender_city", { length: 100 }),
+  senderTaxId: varchar("sender_tax_id", { length: 50 }),
+  senderVatId: varchar("sender_vat_id", { length: 50 }),
+  senderEmail: varchar("sender_email", { length: 255 }),
+  senderPhone: varchar("sender_phone", { length: 50 }),
+  senderIban: varchar("sender_iban", { length: 50 }),
+  senderBic: varchar("sender_bic", { length: 20 }),
+  // Empfänger-Snapshot
+  recipientName: varchar("recipient_name", { length: 255 }),
+  recipientCompany: varchar("recipient_company", { length: 255 }),
+  recipientStreet: varchar("recipient_street", { length: 255 }),
+  recipientZip: varchar("recipient_zip", { length: 20 }),
+  recipientCity: varchar("recipient_city", { length: 100 }),
+  recipientEmail: varchar("recipient_email", { length: 255 }),
+  // Daten
+  issueDate: varchar("issue_date", { length: 20 }),
+  dueDate: varchar("due_date", { length: 20 }),
+  deliveryDate: varchar("delivery_date", { length: 20 }),
+  paymentTerms: varchar("payment_terms", { length: 255 }).default('Zahlbar innerhalb von 14 Tagen ohne Abzug.'),
+  // Steuer
+  taxMode: mysqlEnum(['standard','reduced','mixed','tax_free','kleinunternehmer']).default('standard'),
+  // Beträge
+  subtotalNet: decimal("subtotal_net", { precision: 12, scale: 2 }).default('0.00'),
+  taxAmount: decimal("tax_amount", { precision: 12, scale: 2 }).default('0.00'),
+  totalGross: decimal("total_gross", { precision: 12, scale: 2 }).default('0.00'),
+  currency: varchar({ length: 3 }).default('EUR'),
+  // Texte
+  introText: text("intro_text"),
+  notes: text(),
+  footerText: text("footer_text"),
+  // GoBD
+  pdfUrl: varchar("pdf_url", { length: 1024 }),
+  pdfKey: varchar("pdf_key", { length: 512 }),
+  contentHash: varchar("content_hash", { length: 64 }),
+  isLocked: tinyint("is_locked").default(0),
+  cancelledBy: int("cancelled_by"),
+  cancelsInvoice: int("cancels_invoice"),
+  createdAt: bigint("created_at", { mode: "number" }),
+  updatedAt: bigint("updated_at", { mode: "number" }),
+});
+
+export const invoiceItems = mysqlTable("invoice_items", {
+  id: int().autoincrement().primaryKey(),
+  invoiceId: int("invoice_id").notNull(),
+  position: int().notNull().default(1),
+  description: text().notNull(),
+  quantity: decimal({ precision: 10, scale: 3 }).default('1.000'),
+  unit: varchar({ length: 20 }).default('Stk.'),
+  unitPriceNet: decimal("unit_price_net", { precision: 12, scale: 2 }).notNull().default('0.00'),
+  taxRate: decimal("tax_rate", { precision: 5, scale: 2 }).default('19.00'),
+  lineTotalNet: decimal("line_total_net", { precision: 12, scale: 2 }).default('0.00'),
+  lineTax: decimal("line_tax", { precision: 12, scale: 2 }).default('0.00'),
+  lineTotalGross: decimal("line_total_gross", { precision: 12, scale: 2 }).default('0.00'),
+});
+
+export const invoiceAuditLog = mysqlTable("invoice_audit_log", {
+  id: int().autoincrement().primaryKey(),
+  invoiceId: int("invoice_id").notNull(),
+  action: mysqlEnum(['created','updated','status_changed','locked','cancelled','pdf_generated']).notNull(),
+  changedBy: varchar("changed_by", { length: 255 }),
+  changedAt: bigint("changed_at", { mode: "number" }).notNull(),
+  fieldChanged: varchar("field_changed", { length: 100 }),
+  oldValue: text("old_value"),
+  newValue: text("new_value"),
+  snapshotJson: text("snapshot_json"),
+});
+
+export type InsertInvoice = typeof invoices.$inferInsert;
+export type InsertInvoiceItem = typeof invoiceItems.$inferInsert;
+export type InsertInvoiceAuditLog = typeof invoiceAuditLog.$inferInsert;
+export type Invoice = typeof invoices.$inferSelect;
+export type InvoiceItem = typeof invoiceItems.$inferSelect;

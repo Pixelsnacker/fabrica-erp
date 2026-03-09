@@ -28,6 +28,8 @@ import {
   getPendingReminders, markReminderSent,
   getComplaintsByProject, getAllComplaints, createComplaint, updateComplaint, deleteComplaint,
   addComplaintAttachment, deleteComplaintAttachment,
+  getInvoices, getInvoiceById, createInvoice, updateInvoice, changeInvoiceStatus,
+  lockInvoice, cancelInvoice, deleteInvoiceDraft, getInvoiceAuditLog, getNextInvoiceNumber,
 } from "./db";
 
 const EMAIL_SIGNATURE = `\n\nMit freundlichen Grüßen / Best Regards\n\nDaniel Rincón\n\nFabrica GmbH\nHüttenstraße 205\n50170 Kerpen-Sindorf\n\nTel.: +49(0)2273-9529429\nMobil: +49(0)170/8342238\nd.rincon@fabrica3d.eu\nwww.fabrica3d.de`;
@@ -666,8 +668,181 @@ Erstelle eine professionelle Beratungsantwort oder E-Mail basierend auf der Anfr
     }),
     deleteAttachment: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => { await deleteComplaintAttachment(input.id); return { success: true }; }),
   }),
-  // ─── Data Export ───────────────────────────────────────────────────────────────
-  export: router({
+  // ─── Invoices (GoBD-konform, §14 UStG) ──────────────────────────────────────────────────────────────────────────────
+  invoices: router({
+    list: protectedProcedure.input(z.object({ type: z.string().optional(), status: z.string().optional() }).optional()).query(async ({ input }) => {
+      return getInvoices(input ?? {});
+    }),
+    getById: protectedProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
+      return getInvoiceById(input.id);
+    }),
+    nextNumber: protectedProcedure.input(z.object({ type: z.enum(['invoice','offer','credit_note']) })).query(async ({ input }) => {
+      // Nur Vorschau, keine Reservierung
+      return { preview: true };
+    }),
+    create: protectedProcedure.input(z.object({
+      type: z.enum(['offer','invoice','credit_note']).default('offer'),
+      customerId: z.number().optional(),
+      projectId: z.number().optional(),
+      senderName: z.string().optional(),
+      senderStreet: z.string().optional(),
+      senderZip: z.string().optional(),
+      senderCity: z.string().optional(),
+      senderTaxId: z.string().optional(),
+      senderVatId: z.string().optional(),
+      senderEmail: z.string().optional(),
+      senderPhone: z.string().optional(),
+      senderIban: z.string().optional(),
+      senderBic: z.string().optional(),
+      recipientName: z.string().optional(),
+      recipientCompany: z.string().optional(),
+      recipientStreet: z.string().optional(),
+      recipientZip: z.string().optional(),
+      recipientCity: z.string().optional(),
+      recipientEmail: z.string().optional(),
+      issueDate: z.string().optional(),
+      dueDate: z.string().optional(),
+      deliveryDate: z.string().optional(),
+      paymentTerms: z.string().optional(),
+      taxMode: z.enum(['standard','reduced','mixed','tax_free','kleinunternehmer']).optional(),
+      subtotalNet: z.string().optional(),
+      taxAmount: z.string().optional(),
+      totalGross: z.string().optional(),
+      introText: z.string().optional(),
+      notes: z.string().optional(),
+      footerText: z.string().optional(),
+      items: z.array(z.object({
+        position: z.number(),
+        description: z.string(),
+        quantity: z.string().optional(),
+        unit: z.string().optional(),
+        unitPriceNet: z.string(),
+        taxRate: z.string().optional(),
+        lineTotalNet: z.string().optional(),
+        lineTax: z.string().optional(),
+        lineTotalGross: z.string().optional(),
+      })).default([]),
+    })).mutation(async ({ input, ctx }) => {
+      const { items, ...invoiceData } = input;
+      const invoiceNumber = await getNextInvoiceNumber(input.type);
+      const id = await createInvoice(
+        { ...invoiceData as any, invoiceNumber },
+        items as any,
+        ctx.user.email ?? 'system',
+      );
+      return { id, invoiceNumber };
+    }),
+    update: protectedProcedure.input(z.object({
+      id: z.number(),
+      customerId: z.number().optional(),
+      projectId: z.number().optional(),
+      senderName: z.string().optional(),
+      senderStreet: z.string().optional(),
+      senderZip: z.string().optional(),
+      senderCity: z.string().optional(),
+      senderTaxId: z.string().optional(),
+      senderVatId: z.string().optional(),
+      senderEmail: z.string().optional(),
+      senderPhone: z.string().optional(),
+      senderIban: z.string().optional(),
+      senderBic: z.string().optional(),
+      recipientName: z.string().optional(),
+      recipientCompany: z.string().optional(),
+      recipientStreet: z.string().optional(),
+      recipientZip: z.string().optional(),
+      recipientCity: z.string().optional(),
+      recipientEmail: z.string().optional(),
+      issueDate: z.string().optional(),
+      dueDate: z.string().optional(),
+      deliveryDate: z.string().optional(),
+      paymentTerms: z.string().optional(),
+      taxMode: z.enum(['standard','reduced','mixed','tax_free','kleinunternehmer']).optional(),
+      subtotalNet: z.string().optional(),
+      taxAmount: z.string().optional(),
+      totalGross: z.string().optional(),
+      introText: z.string().optional(),
+      notes: z.string().optional(),
+      footerText: z.string().optional(),
+      items: z.array(z.object({
+        position: z.number(),
+        description: z.string(),
+        quantity: z.string().optional(),
+        unit: z.string().optional(),
+        unitPriceNet: z.string(),
+        taxRate: z.string().optional(),
+        lineTotalNet: z.string().optional(),
+        lineTax: z.string().optional(),
+        lineTotalGross: z.string().optional(),
+      })).optional(),
+    })).mutation(async ({ input, ctx }) => {
+      const { id, items, ...data } = input;
+      await updateInvoice(id, data as any, items as any ?? null, ctx.user.email ?? 'system');
+      return { success: true };
+    }),
+    changeStatus: protectedProcedure.input(z.object({ id: z.number(), status: z.string() })).mutation(async ({ input, ctx }) => {
+      await changeInvoiceStatus(input.id, input.status, ctx.user.email ?? 'system');
+      return { success: true };
+    }),
+    lock: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input, ctx }) => {
+      // PDF-URL wird nach PDF-Generierung gesetzt; hier zunächst ohne PDF sperren
+      await lockInvoice(input.id, '', '', ctx.user.email ?? 'system');
+      return { success: true };
+    }),
+    cancel: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input, ctx }) => {
+      await cancelInvoice(input.id, ctx.user.email ?? 'system');
+      return { success: true };
+    }),
+    delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
+      await deleteInvoiceDraft(input.id);
+      return { success: true };
+    }),
+    auditLog: protectedProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
+      return getInvoiceAuditLog(input.id);
+    }),
+    exportCsv: protectedProcedure.input(z.object({ type: z.string().optional(), status: z.string().optional() }).optional()).query(async ({ input }) => {
+      const all = await getInvoices(input ?? {});
+      // CSV-Header
+      const header = 'Nummer;Typ;Status;Empfänger;Datum;Fälligkeit;Netto;MwSt;Brutto;Währung';
+      const rows = all.map(inv => [
+        inv.invoiceNumber,
+        inv.type === 'invoice' ? 'Rechnung' : inv.type === 'offer' ? 'Angebot' : 'Gutschrift',
+        inv.status,
+        [inv.recipientCompany, inv.recipientName].filter(Boolean).join(' / '),
+        inv.issueDate ?? '',
+        inv.dueDate ?? '',
+        inv.subtotalNet ?? '0',
+        inv.taxAmount ?? '0',
+        inv.totalGross ?? '0',
+        inv.currency ?? 'EUR',
+      ].join(';'));
+      return { csv: [header, ...rows].join('\n') };
+    }),
+    exportDatev: protectedProcedure.input(z.object({ year: z.number().optional() }).optional()).query(async ({ input }) => {
+      const year = input?.year ?? new Date().getFullYear();
+      const all = await getInvoices({ type: 'invoice' });
+      const filtered = all.filter(inv => inv.issueDate?.startsWith(String(year)));
+      // DATEV Buchungsstapel (vereinfacht)
+      const header = 'Umsatz (ohne Soll/Haben-Kz);Soll/Haben-Kennzeichen;WKZ Umsatz;Kurs;Basis-Umsatz;WKZ Basis-Umsatz;Konto;Gegenkonto (ohne BU-Schlüssel);BU-Schlüssel;Belegdatum;Belegfeld 1;Buchungstext';
+      const rows = filtered.map(inv => [
+        (parseFloat(String(inv.totalGross ?? 0))).toFixed(2).replace('.', ','),
+        'H',
+        'EUR',
+        '',
+        (parseFloat(String(inv.subtotalNet ?? 0))).toFixed(2).replace('.', ','),
+        'EUR',
+        '8400',
+        '10000',
+        '',
+        inv.issueDate?.replace(/-/g, '').slice(4) ?? '',
+        inv.invoiceNumber,
+        [inv.recipientCompany, inv.recipientName].filter(Boolean).join(' '),
+      ].join(';'));
+      return { csv: [header, ...rows].join('\n'), filename: `DATEV-${year}.csv` };
+    }),
+  }),
+  // ─── Data Export ───────────────────────────────────────────────────────────────────────────────────
+  dataExport: router({
     full: protectedProcedure.query(async () => getFullExport()),
   }),
-});export type AppRouter = typeof appRouter;
+});
+export type AppRouter = typeof appRouter;

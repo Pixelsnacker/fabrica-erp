@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { eq, desc, and, like, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
@@ -19,6 +20,8 @@ import {
   quickNotes,
   notes, noteAttachments, noteReminders,
   complaints, complaintAttachments, InsertComplaint, InsertComplaintAttachment,
+  invoices, invoiceItems, invoiceAuditLog, invoiceSequences,
+  InsertInvoice, InsertInvoiceItem, InsertInvoiceAuditLog,
 } from "../drizzle/schema";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -739,4 +742,219 @@ export async function getAllComplaints() {
       complaints.createdAt
     );
   return rows;
+}
+
+// ─── Invoice Module ───────────────────────────────────────────────────────────
+
+/** Atomare Nummernvergabe – sicher gegen Race Conditions */
+export async function getNextInvoiceNumber(type: 'invoice' | 'offer' | 'credit_note'): Promise<string> {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const year = new Date().getFullYear();
+  // Upsert + Increment
+  await db.execute(
+    sql`INSERT INTO invoice_sequences (year, type, last_number) VALUES (${year}, ${type}, 1)
+        ON DUPLICATE KEY UPDATE last_number = last_number + 1`
+  );
+  const rows = await db.select().from(invoiceSequences)
+    .where(and(eq(invoiceSequences.year, year), eq(invoiceSequences.type, type)));
+  const num = rows[0]?.lastNumber ?? 1;
+  const prefix = type === 'invoice' ? 'RE' : type === 'offer' ? 'AN' : 'GS';
+  return `${prefix}-${year}-${String(num).padStart(4, '0')}`;
+}
+
+export async function getInvoices(filters?: { type?: string; status?: string }) {
+  const db = await getDb();
+  if (!db) return [];
+  let query = db.select().from(invoices);
+  const rows = await query.orderBy(desc(invoices.createdAt));
+  return rows.filter(r => {
+    if (filters?.type && r.type !== filters.type) return false;
+    if (filters?.status && r.status !== filters.status) return false;
+    return true;
+  });
+}
+
+export async function getInvoiceById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(invoices).where(eq(invoices.id, id));
+  if (!rows[0]) return null;
+  const items = await db.select().from(invoiceItems)
+    .where(eq(invoiceItems.invoiceId, id))
+    .orderBy(invoiceItems.position);
+  const auditLog = await db.select().from(invoiceAuditLog)
+    .where(eq(invoiceAuditLog.invoiceId, id))
+    .orderBy(invoiceAuditLog.changedAt);
+  return { ...rows[0], items, auditLog };
+}
+
+export async function createInvoice(data: InsertInvoice, items: InsertInvoiceItem[], changedBy: string) {
+  const db = await getDb();
+  if (!db) return;
+  const now = Date.now();
+  await db.insert(invoices).values({ ...data, createdAt: now, updatedAt: now });
+  const created = await db.select().from(invoices).where(eq(invoices.invoiceNumber, data.invoiceNumber!));
+  const invoiceId = created[0]?.id;
+  if (!invoiceId) return;
+  // Items einfügen
+  for (const item of items) {
+    await db.insert(invoiceItems).values({ ...item, invoiceId });
+  }
+  // Audit-Log
+  await db.insert(invoiceAuditLog).values({
+    invoiceId,
+    action: 'created',
+    changedBy,
+    changedAt: now,
+    snapshotJson: JSON.stringify({ ...data, items }),
+  });
+  return invoiceId;
+}
+
+export async function updateInvoice(id: number, data: Partial<InsertInvoice>, items: InsertInvoiceItem[] | null, changedBy: string) {
+  const db = await getDb();
+  if (!db) return;
+  // Gesperrte Rechnungen nicht änderbar
+  const existing = await db.select().from(invoices).where(eq(invoices.id, id));
+  if (existing[0]?.isLocked) throw new Error("LOCKED: Finalisierte Rechnungen können nicht geändert werden.");
+  const now = Date.now();
+  await db.update(invoices).set({ ...data, updatedAt: now }).where(eq(invoices.id, id));
+  if (items !== null) {
+    await db.delete(invoiceItems).where(eq(invoiceItems.invoiceId, id));
+    for (const item of items) {
+      await db.insert(invoiceItems).values({ ...item, invoiceId: id });
+    }
+  }
+  await db.insert(invoiceAuditLog).values({
+    invoiceId: id,
+    action: 'updated',
+    changedBy,
+    changedAt: now,
+    snapshotJson: JSON.stringify({ ...data, items }),
+  });
+}
+
+export async function changeInvoiceStatus(id: number, newStatus: string, changedBy: string) {
+  const db = await getDb();
+  if (!db) return;
+  const existing = await db.select().from(invoices).where(eq(invoices.id, id));
+  const oldStatus = existing[0]?.status;
+  const now = Date.now();
+  await db.update(invoices).set({ status: newStatus as any, updatedAt: now }).where(eq(invoices.id, id));
+  await db.insert(invoiceAuditLog).values({
+    invoiceId: id,
+    action: 'status_changed',
+    changedBy,
+    changedAt: now,
+    fieldChanged: 'status',
+    oldValue: oldStatus ?? '',
+    newValue: newStatus,
+  });
+}
+
+export async function lockInvoice(id: number, pdfUrl: string, pdfKey: string, changedBy: string) {
+  const db = await getDb();
+  if (!db) return;
+  const inv = await getInvoiceById(id);
+  if (!inv) return;
+  // SHA-256 Hash über Rechnungsinhalt
+  const hashInput = JSON.stringify({
+    invoiceNumber: inv.invoiceNumber,
+    type: inv.type,
+    customerId: inv.customerId,
+    items: inv.items,
+    subtotalNet: inv.subtotalNet,
+    taxAmount: inv.taxAmount,
+    totalGross: inv.totalGross,
+    issueDate: inv.issueDate,
+  });
+  const contentHash = crypto.createHash('sha256').update(hashInput).digest('hex');
+  const now = Date.now();
+  await db.update(invoices).set({
+    isLocked: 1,
+    pdfUrl,
+    pdfKey,
+    contentHash,
+    status: 'invoiced' as any,
+    updatedAt: now,
+  }).where(eq(invoices.id, id));
+  await db.insert(invoiceAuditLog).values({
+    invoiceId: id,
+    action: 'locked',
+    changedBy,
+    changedAt: now,
+    newValue: contentHash,
+    snapshotJson: hashInput,
+  });
+}
+
+export async function cancelInvoice(id: number, changedBy: string) {
+  const db = await getDb();
+  if (!db) return;
+  const inv = await db.select().from(invoices).where(eq(invoices.id, id));
+  if (!inv[0]) return;
+  // Stornierung: Original auf 'cancelled' setzen
+  const now = Date.now();
+  await db.update(invoices).set({ status: 'cancelled' as any, updatedAt: now }).where(eq(invoices.id, id));
+  // Gutschrift anlegen
+  const creditNumber = await getNextInvoiceNumber('credit_note');
+  await db.insert(invoices).values({
+    invoiceNumber: creditNumber,
+    type: 'credit_note',
+    status: 'invoiced' as any,
+    customerId: inv[0].customerId,
+    projectId: inv[0].projectId,
+    senderName: inv[0].senderName,
+    senderStreet: inv[0].senderStreet,
+    senderZip: inv[0].senderZip,
+    senderCity: inv[0].senderCity,
+    senderTaxId: inv[0].senderTaxId,
+    senderVatId: inv[0].senderVatId,
+    senderEmail: inv[0].senderEmail,
+    senderPhone: inv[0].senderPhone,
+    senderIban: inv[0].senderIban,
+    senderBic: inv[0].senderBic,
+    recipientName: inv[0].recipientName,
+    recipientCompany: inv[0].recipientCompany,
+    recipientStreet: inv[0].recipientStreet,
+    recipientZip: inv[0].recipientZip,
+    recipientCity: inv[0].recipientCity,
+    recipientEmail: inv[0].recipientEmail,
+    issueDate: new Date().toISOString().slice(0, 10),
+    taxMode: inv[0].taxMode,
+    subtotalNet: inv[0].subtotalNet,
+    taxAmount: inv[0].taxAmount,
+    totalGross: inv[0].totalGross,
+    currency: inv[0].currency,
+    notes: `Gutschrift zu ${inv[0].invoiceNumber}`,
+    cancelsInvoice: id,
+    isLocked: 1,
+    createdAt: now,
+    updatedAt: now,
+  });
+  await db.insert(invoiceAuditLog).values({
+    invoiceId: id,
+    action: 'cancelled',
+    changedBy,
+    changedAt: now,
+    newValue: creditNumber,
+  });
+}
+
+export async function deleteInvoiceDraft(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  const inv = await db.select().from(invoices).where(eq(invoices.id, id));
+  if (inv[0]?.isLocked || inv[0]?.status !== 'draft') throw new Error("Nur Entwürfe können gelöscht werden.");
+  await db.delete(invoiceItems).where(eq(invoiceItems.invoiceId, id));
+  await db.delete(invoices).where(eq(invoices.id, id));
+}
+
+export async function getInvoiceAuditLog(invoiceId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(invoiceAuditLog)
+    .where(eq(invoiceAuditLog.invoiceId, invoiceId))
+    .orderBy(invoiceAuditLog.changedAt);
 }

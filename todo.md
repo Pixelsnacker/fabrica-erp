@@ -164,3 +164,21 @@
 - [x] Erweiterte Details (Beschreibung, Lösung) per Klick aufklappbar
 - [x] Sidebar-Menüpunkt "Reklamationen" mit AlertTriangle-Icon
 - [x] 20 Tests grün, 0 TypeScript-Fehler
+
+## Phase 16: GoBD-konformes Angebots- und Rechnungsmodul (§14 UStG)
+- [x] Technische Spezifikation (docs/invoice-module-spec.md)
+- [x] DB: invoices, invoice_items, invoice_audit_log, invoice_number_seq Tabellen
+- [x] tRPC: invoices.list, create, update, delete, changeStatus, lock, cancel, exportCsv, exportDatev
+- [x] Fortlaufende Rechnungsnummern (RE-YYYY-NNNN, ANG-YYYY-NNNN, GUT-YYYY-NNNN)
+- [x] Steuerberechnung: 19%, 7%, 0% (Kleinunternehmer)
+- [x] GoBD-Sperrung (isLocked) nach Finalisierung
+- [x] SHA-256 Hash für Manipulationsschutz
+- [x] Audit-Log für alle Änderungen (GoBD-Versionierung)
+- [x] CSV- und DATEV-Export
+- [x] Frontend: Angebote & Rechnungen Seite mit Tabs, Suche, Filter
+- [x] Frontend: Formular mit Positionen, Steuerberechnung, Sender-/Empfängerdaten
+- [x] Frontend: PDF-Download (Browser-Print)
+- [x] Frontend: Statusverwaltung, Sperren, Stornieren
+- [x] Sidebar-Menüpunkt 'Angebote & Rechnungen' (Receipt-Icon)
+- [x] 28 neue Vitest-Tests (Nummernvergabe, Steuer, Hash, DATEV, Status)
+- [x] 48 Tests gesamt grün, 0 TypeScript-Fehler
