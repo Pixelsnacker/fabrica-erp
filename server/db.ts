@@ -714,3 +714,29 @@ export async function deleteComplaintAttachment(id: number) {
   if (!db) return;
   await db.delete(complaintAttachments).where(eq(complaintAttachments.id, id));
 }
+
+export async function getAllComplaints() {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db
+    .select({
+      id: complaints.id,
+      projectId: complaints.projectId,
+      title: complaints.title,
+      description: complaints.description,
+      status: complaints.status,
+      priority: complaints.priority,
+      resolution: complaints.resolution,
+      resolvedAt: complaints.resolvedAt,
+      createdAt: complaints.createdAt,
+      projectTitle: projects.title,
+      projectNumber: projects.projectNumber,
+    })
+    .from(complaints)
+    .leftJoin(projects, eq(complaints.projectId, projects.id))
+    .orderBy(
+      sql`CASE priority WHEN 'critical' THEN 1 WHEN 'high' THEN 2 WHEN 'normal' THEN 3 WHEN 'low' THEN 4 ELSE 5 END`,
+      complaints.createdAt
+    );
+  return rows;
+}

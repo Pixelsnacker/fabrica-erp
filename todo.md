@@ -153,3 +153,14 @@
 - [x] Frontend: Reklamations-Tab im Projekt-Detail mit Status-Badges und Priorität
 - [x] Frontend: Reklamations-Dialog mit Status, Priorität, Beschreibung, Lösung, Foto-Upload
 - [x] 20 Tests grün, 0 TypeScript-Fehler
+
+## Phase 15: Globale Reklamations-Übersicht
+- [x] tRPC: complaints.listAll – alle Reklamationen aller Projekte mit Projekt-Name (JOIN mit projects)
+- [x] Reklamationen-Seite: Liste aller Reklamationen, sortiert nach Priorität (kritisch zuerst)
+- [x] Filter: nach Status (Offen/In Bearbeitung/Gelöst/Geschlossen) und Priorität
+- [x] Suche nach Titel, Projekt-Name und Beschreibung
+- [x] Klick auf Projekt-Name → direkt zum Projekt-Detail
+- [x] Status direkt in der Liste änderbar (Dropdown)
+- [x] Erweiterte Details (Beschreibung, Lösung) per Klick aufklappbar
+- [x] Sidebar-Menüpunkt "Reklamationen" mit AlertTriangle-Icon
+- [x] 20 Tests grün, 0 TypeScript-Fehler

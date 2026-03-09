@@ -26,7 +26,7 @@ import {
   getNoteAttachments, addNoteAttachment, deleteNoteAttachment,
   getNoteReminders, addNoteReminder, deleteNoteReminder,
   getPendingReminders, markReminderSent,
-  getComplaintsByProject, createComplaint, updateComplaint, deleteComplaint,
+  getComplaintsByProject, getAllComplaints, createComplaint, updateComplaint, deleteComplaint,
   addComplaintAttachment, deleteComplaintAttachment,
 } from "./db";
 
@@ -633,6 +633,7 @@ Erstelle eine professionelle Beratungsantwort oder E-Mail basierend auf der Anfr
   // ─── Complaints ───────────────────────────────────────────────────────────────
   complaints: router({
     list: protectedProcedure.input(z.object({ projectId: z.number() })).query(async ({ input }) => getComplaintsByProject(input.projectId)),
+    listAll: protectedProcedure.query(async () => getAllComplaints()),
     create: protectedProcedure.input(z.object({
       projectId: z.number(),
       title: z.string().min(1),

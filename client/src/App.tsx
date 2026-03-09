@@ -18,6 +18,7 @@ import LeadSources from "./pages/LeadSources";
 import Consultation from "./pages/Consultation";
 import Settings from "@/pages/Settings";
 import Notes from "@/pages/Notes";
+import Complaints from "@/pages/Complaints";
 
 function Router() {
   return (
@@ -36,6 +37,7 @@ function Router() {
         <Route path="/consultation" component={Consultation} />
         <Route path="/settings" component={Settings} />
         <Route path="/notes" component={Notes} />
+        <Route path="/complaints" component={Complaints} />
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />
       </Switch>
