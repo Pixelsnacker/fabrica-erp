@@ -20,6 +20,8 @@ import {
   getImageLibrary, createImageEntry, deleteImageEntry,
   getAiSessions, createAiSession, updateAiSession,
   getDashboardStats,
+  getQuickNotes, createQuickNote, deleteQuickNote,
+  getFullExport,
 } from "./db";
 
 const EMAIL_SIGNATURE = `\n\nMit freundlichen Grüßen / Best Regards\n\nDaniel Rincón\n\nFabrica GmbH\nHüttenstraße 205\n50170 Kerpen-Sindorf\n\nTel.: +49(0)2273-9529429\nMobil: +49(0)170/8342238\nd.rincon@fabrica3d.eu\nwww.fabrica3d.de`;
@@ -419,11 +421,32 @@ Erstelle eine professionelle Beratungsantwort oder E-Mail basierend auf der Anfr
 
       return { text: finalText, usedKnowledge: knowledge.slice(0, 5) };
     }),
-    markSent: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
+     markSent: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
       await updateAiSession(input.id, { sentAsEmail: true, sentAt: new Date() });
       return { success: true };
     }),
   }),
-});
 
+  // ─── Quick Notes ────────────────────────────────────────────────────────────
+  quickNotes: router({
+    list: protectedProcedure.query(async () => getQuickNotes(100)),
+    create: protectedProcedure.input(z.object({
+      text: z.string().min(1),
+      projectId: z.number().optional().nullable(),
+      source: z.enum(["whatsapp", "telefon", "persoenlich", "email", "sonstiges"]).default("sonstiges"),
+    })).mutation(async ({ input }) => {
+      await createQuickNote(input);
+      return { success: true };
+    }),
+    delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
+      await deleteQuickNote(input.id);
+      return { success: true };
+    }),
+  }),
+
+  // ─── Data Export ─────────────────────────────────────────────────────────────
+  export: router({
+    full: protectedProcedure.query(async () => getFullExport()),
+  }),
+});
 export type AppRouter = typeof appRouter;

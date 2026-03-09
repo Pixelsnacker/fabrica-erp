@@ -74,3 +74,15 @@
 - [x] "Fehler beim Anlegen" Toast erscheint beim Anlegen (Projekt oder Kunde) — Behoben: Fehlende DB-Tabellen direkt per SQL angelegt (16 Tabellen jetzt vorhanden)
 - [x] "Fehler beim Anlegen" bei Lieferanten — Behoben: fehlende `address`-Spalte in suppliers per ALTER TABLE ergänzt
 - [x] "Fehler beim Anlegen" bei Kunden — Behoben: alle Spalten korrekt, Insert funktioniert
+
+## Phase 8: Schnellnotiz-Funktion & Datensicherung
+- [x] DB-Tabelle: quick_notes (id, text, project_id optional, source, created_at)
+- [x] tRPC Router: quickNotes.create, quickNotes.list, quickNotes.delete
+- [x] Globaler Schnellnotiz-Button (gelber Blitz) im Header — immer sichtbar
+- [x] Modal: Textfeld + optionale Projektzuordnung + Quelle (WhatsApp, Telefon, Persönlich, E-Mail, Sonstiges)
+- [x] Strg+Enter Tastenkürzel zum schnellen Speichern
+- [x] tRPC Router: export.full (vollständiger JSON-Export aller Tabellen)
+- [x] Einstellungen-Seite mit Schnellnotiz-Liste, Löschfunktion und Daten-Export-Button
+- [x] Einstellungen-Menüpunkt in Sidebar-Navigation
+- [ ] Schnellnotizen-Widget auf dem Dashboard (Phase 3)
+- [ ] Schnellnotizen im Projekt-Detail sichtbar (Phase 3)

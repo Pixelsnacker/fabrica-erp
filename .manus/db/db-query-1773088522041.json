@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS quick_notes (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  text TEXT NOT NULL,\n  project_id INT,\n  source ENUM('whatsapp', 'telefon', 'persoenlich', 'email', 'sonstiges') NOT NULL DEFAULT 'sonstiges',\n  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 9NNjvn7NV7enobv.7ea640e70a8c --database YMZow7uQxpBVyBGbmbpvvd --execute CREATE TABLE IF NOT EXISTS quick_notes (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  text TEXT NOT NULL,\n  project_id INT,\n  source ENUM('whatsapp', 'telefon', 'persoenlich', 'email', 'sonstiges') NOT NULL DEFAULT 'sonstiges',\n  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 71
+}

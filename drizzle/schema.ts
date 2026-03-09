@@ -283,3 +283,14 @@ export const aiSessions = mysqlTable("ai_sessions", {
 
 export type AiSession = typeof aiSessions.$inferSelect;
 export type InsertAiSession = typeof aiSessions.$inferInsert;
+
+// ─── Quick Notes (Schnellnotizen aus WhatsApp/Telefon) ────────────────────────
+export const quickNotes = mysqlTable("quick_notes", {
+  id: int("id").autoincrement().primaryKey(),
+  text: text("text").notNull(),
+  projectId: int("project_id"),
+  source: mysqlEnum("source", ["whatsapp", "telefon", "persoenlich", "email", "sonstiges"]).default("sonstiges").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type QuickNote = typeof quickNotes.$inferSelect;
+export type InsertQuickNote = typeof quickNotes.$inferInsert;

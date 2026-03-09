@@ -16,6 +16,7 @@ import {
   knowledgeEntries, InsertKnowledgeEntry,
   imageLibrary, InsertImageLibraryEntry,
   aiSessions, InsertAiSession,
+  quickNotes,
 } from "../drizzle/schema";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -498,5 +499,64 @@ export async function getDashboardStats() {
     monthlyVk: monthlyVk.toFixed(2),
     monthlyMargin: (monthlyVk - monthlyEk).toFixed(2),
     statusCounts,
+  };
+}
+
+// ─── Quick Notes ──────────────────────────────────────────────────────────────
+export async function getQuickNotes(limit = 50) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(quickNotes).orderBy(desc(quickNotes.createdAt)).limit(limit);
+}
+
+export async function createQuickNote(data: { text: string; projectId?: number | null; source?: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.insert(quickNotes).values({
+    text: data.text,
+    projectId: data.projectId ?? null,
+    source: (data.source as any) ?? "sonstiges",
+  });
+}
+
+export async function deleteQuickNote(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.delete(quickNotes).where(eq(quickNotes.id, id));
+}
+
+// ─── Full Data Export ─────────────────────────────────────────────────────────
+export async function getFullExport() {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const [
+    allCustomers, allProjects, allProjectItems, allSuppliers,
+    allLeadSources, allShipments, allConsultations, allMaterials,
+    allKnowledge, allQuickNotes,
+  ] = await Promise.all([
+    db.select().from(customers),
+    db.select().from(projects),
+    db.select().from(projectItems),
+    db.select().from(suppliers),
+    db.select().from(leadSources),
+    db.select().from(shipments),
+    db.select().from(consultationEntries),
+    db.select().from(materialsLibrary),
+    db.select().from(knowledgeEntries),
+    db.select().from(quickNotes),
+  ]);
+  return {
+    exportedAt: new Date().toISOString(),
+    version: "1.0",
+    customers: allCustomers,
+    projects: allProjects,
+    projectItems: allProjectItems,
+    suppliers: allSuppliers,
+    leadSources: allLeadSources,
+    shipments: allShipments,
+    consultations: allConsultations,
+    materials: allMaterials,
+    knowledge: allKnowledge,
+    quickNotes: allQuickNotes,
   };
 }

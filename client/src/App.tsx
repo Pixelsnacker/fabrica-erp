@@ -16,6 +16,7 @@ import AIAssistant from "./pages/AIAssistant";
 import Materials from "./pages/Materials";
 import LeadSources from "./pages/LeadSources";
 import Consultation from "./pages/Consultation";
+import Settings from "./pages/Settings";
 
 function Router() {
   return (
@@ -32,6 +33,7 @@ function Router() {
         <Route path="/materials" component={Materials} />
         <Route path="/leads" component={LeadSources} />
         <Route path="/consultation" component={Consultation} />
+        <Route path="/settings" component={Settings} />
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />
       </Switch>

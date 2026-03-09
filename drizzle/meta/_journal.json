@@ -8,6 +8,13 @@
       "when": 1773084529238,
       "tag": "0000_new_scarlet_spider",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1773088736733,
+      "tag": "0001_many_gauntlet",
+      "breakpoints": true
     }
   ]
 }
