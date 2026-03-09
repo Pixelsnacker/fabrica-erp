@@ -116,3 +116,12 @@
 - [x] Anhänge-Vorschau: Bilder als Thumbnail-Grid, PDFs als Link mit Icon
 - [x] Anhang löschen direkt aus dem Notizen-Tab (Hover-X-Button)
 - [x] Max. 10 MB Dateigrößen-Validierung mit Fehlermeldung
+
+## Phase 12: Bugfix Schnellnotiz speichern
+- [x] Bug: "Fehler beim Speichern" beim Klick auf Speichern im QuickNote-Modal
+- [x] Root Cause: drizzle-introspect hatte schema.ts überschrieben → tinyint nicht importiert, Insert-Typen fehlten
+- [x] Fix: tinyint/boolean zu schema.ts Import hinzugefügt, alle Insert-Typen wiederhergestellt
+- [x] Fix: boolean-Vergleiche auf 0/1 umgestellt (tinyint-kompatibel)
+- [x] Fix: Date-Typen auf toISOString() konvertiert (string-kompatibel)
+- [x] Fix: Suppliers.tsx und KnowledgeBase.tsx unknown-Typ-Fehler behoben
+- [x] 20 Tests grün, 0 TypeScript-Fehler

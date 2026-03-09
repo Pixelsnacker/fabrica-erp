@@ -149,7 +149,7 @@ function ReminderItem({
   reminder,
   onDelete,
 }: {
-  reminder: { id: number; label: string | null; remindAt: Date | string; isSent: boolean };
+  reminder: { id: number; label: string | null; remindAt: Date | string; isSent: boolean | number };
   onDelete: (id: number) => void;
 }) {
   const isPast = new Date(reminder.remindAt as string) < new Date();

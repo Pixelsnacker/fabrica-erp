@@ -72,7 +72,7 @@ export const appRouter = router({
       address: z.string().optional(),
       notes: z.string().optional(),
       isActive: z.boolean().optional(),
-    })).mutation(async ({ input }) => { const { id, ...data } = input; await updateCustomer(id, data); return { success: true }; }),
+    })).mutation(async ({ input }) => { const { id, ...data } = input; await updateCustomer(id, data as any); return { success: true }; }),
     delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => { await deleteCustomer(input.id); return { success: true }; }),
   }),
 
@@ -92,7 +92,7 @@ export const appRouter = router({
       monthlyCost: z.string().optional(),
       notes: z.string().optional(),
       isActive: z.boolean().optional(),
-    })).mutation(async ({ input }) => { const { id, ...data } = input; await updateLeadSource(id, data); return { success: true }; }),
+    })).mutation(async ({ input }) => { const { id, ...data } = input; await updateLeadSource(id, data as any); return { success: true }; }),
     delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => { await deleteLeadSource(input.id); return { success: true }; }),
   }),
 
@@ -114,7 +114,7 @@ export const appRouter = router({
       notes: z.string().optional(),
       internalNotes: z.string().optional(),
       deadline: z.date().optional(),
-    })).mutation(async ({ input }) => { await createProject(input); return { success: true }; }),
+    })).mutation(async ({ input }) => { await createProject(input as any); return { success: true }; }),
     update: protectedProcedure.input(z.object({
       id: z.number(),
       title: z.string().optional(),
@@ -127,7 +127,7 @@ export const appRouter = router({
       notes: z.string().optional(),
       internalNotes: z.string().optional(),
       deadline: z.date().nullable().optional(),
-    })).mutation(async ({ input }) => { const { id, ...data } = input; await updateProject(id, data); return { success: true }; }),
+    })).mutation(async ({ input }) => { const { id, ...data } = input; await updateProject(id, data as any); return { success: true }; }),
     delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => { await deleteProject(input.id); return { success: true }; }),
     changeStatus: protectedProcedure.input(z.object({
       id: z.number(),
@@ -190,7 +190,7 @@ export const appRouter = router({
       rating: z.number().min(1).max(5).optional(),
       isActive: z.boolean().optional(),
       notes: z.string().optional(),
-    })).mutation(async ({ input }) => { const { id, ...data } = input; await updateSupplier(id, data); return { success: true }; }),
+    })).mutation(async ({ input }) => { const { id, ...data } = input; await updateSupplier(id, data as any); return { success: true }; }),
     delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => { await deleteSupplier(input.id); return { success: true }; }),
   }),
 
@@ -204,11 +204,11 @@ export const appRouter = router({
       description: z.string().optional(),
       deadline: z.date().optional(),
       supplierIds: z.array(z.number()).default([]),
-    })).mutation(async ({ input }) => { await createRfq(input); return { success: true }; }),
+    })).mutation(async ({ input }) => { await createRfq(input as any); return { success: true }; }),
     updateStatus: protectedProcedure.input(z.object({
       id: z.number(),
       status: z.enum(["draft", "sent", "responses_received", "completed"]),
-    })).mutation(async ({ input }) => { await updateRfq(input.id, { status: input.status }); return { success: true }; }),
+    })).mutation(async ({ input }) => { await updateRfq(input.id, { status: input.status as any }); return { success: true }; }),
     responses: protectedProcedure.input(z.object({ rfqId: z.number() })).query(async ({ input }) => getRfqResponses(input.rfqId)),
     addResponse: protectedProcedure.input(z.object({
       rfqId: z.number(),
@@ -233,7 +233,7 @@ export const appRouter = router({
       shippedAt: z.date().optional(),
       estimatedDelivery: z.date().optional(),
       notes: z.string().optional(),
-    })).mutation(async ({ input }) => { await createShipment(input); return { success: true }; }),
+    })).mutation(async ({ input }) => { await createShipment(input as any); return { success: true }; }),
     update: protectedProcedure.input(z.object({
       id: z.number(),
       carrier: z.string().optional(),
@@ -242,7 +242,7 @@ export const appRouter = router({
       estimatedDelivery: z.date().optional(),
       deliveredAt: z.date().optional(),
       notes: z.string().optional(),
-    })).mutation(async ({ input }) => { const { id, ...data } = input; await updateShipment(id, data); return { success: true }; }),
+    })).mutation(async ({ input }) => { const { id, ...data } = input; await updateShipment(id, data as any); return { success: true }; }),
   }),
 
   // ─── CAD Files ───────────────────────────────────────────────────────────────
@@ -351,7 +351,7 @@ export const appRouter = router({
       tags: z.array(z.string()).optional(),
       source: z.string().optional(),
       isActive: z.boolean().optional(),
-    })).mutation(async ({ input }) => { const { id, ...data } = input; await updateKnowledgeEntry(id, data); return { success: true }; }),
+    })).mutation(async ({ input }) => { const { id, ...data } = input; await updateKnowledgeEntry(id, data as any); return { success: true }; }),
     delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => { await deleteKnowledgeEntry(input.id); return { success: true }; }),
   }),
 
@@ -426,7 +426,7 @@ Erstelle eine professionelle Beratungsantwort oder E-Mail basierend auf der Anfr
       return { text: finalText, usedKnowledge: knowledge.slice(0, 5) };
     }),
      markSent: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
-      await updateAiSession(input.id, { sentAsEmail: true, sentAt: new Date() });
+      await updateAiSession(input.id, { sentAsEmail: 1 as any, sentAt: new Date().toISOString() as any });
       return { success: true };
     }),
   }),

@@ -22,7 +22,7 @@ export default function Suppliers() {
 
   const filtered = suppliers.filter(s =>
     s.name.toLowerCase().includes(search.toLowerCase()) ||
-    (Array.isArray(s.capabilities) ? s.capabilities.join(",") : (s.capabilities ?? "")).toLowerCase().includes(search.toLowerCase())
+    (Array.isArray(s.capabilities) ? (s.capabilities as unknown[]).map(String).join(",") : String(s.capabilities ?? "")).toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -62,9 +62,9 @@ export default function Suppliers() {
                   {supplier.email && <span className="text-xs text-muted-foreground flex items-center gap-1"><Mail className="h-3 w-3" />{supplier.email}</span>}
                   {supplier.phone && <span className="text-xs text-muted-foreground flex items-center gap-1"><Phone className="h-3 w-3" />{supplier.phone}</span>}
                 </div>
-                {supplier.capabilities && (
+                {Boolean(supplier.capabilities) && (
                   <div className="flex flex-wrap gap-1 mt-2">
-                    {(Array.isArray(supplier.capabilities) ? supplier.capabilities : (supplier.capabilities as string).split(",")).map((cap: string) => cap.trim()).filter(Boolean).map((cap: string) => (
+                    {(Array.isArray(supplier.capabilities) ? (supplier.capabilities as unknown[]).map(String) : String(supplier.capabilities ?? "").split(",")).map((cap: string) => cap.trim()).filter(Boolean).map((cap: string) => (
                       <Badge key={cap} variant="outline" className="text-xs">{cap}</Badge>
                     ))}
                   </div>

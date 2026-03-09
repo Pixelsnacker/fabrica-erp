@@ -1,0 +1,13 @@
+{
+  "query": "SELECT GROUP_CONCAT(COLUMN_NAME ORDER BY ORDINAL_POSITION) as columns FROM information_schema.COLUMNS WHERE TABLE_NAME = 'quick_notes' AND TABLE_SCHEMA = DATABASE();",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 9NNjvn7NV7enobv.7ea640e70a8c --database YMZow7uQxpBVyBGbmbpvvd --execute SELECT GROUP_CONCAT(COLUMN_NAME ORDER BY ORDINAL_POSITION) as columns FROM information_schema.COLUMNS WHERE TABLE_NAME = 'quick_notes' AND TABLE_SCHEMA = DATABASE();",
+  "rows": [
+    {
+      "columns": "id,text,project_id,source,created_at"
+    }
+  ],
+  "messages": [],
+  "stdout": "columns\nid,text,project_id,source,created_at\n",
+  "stderr": "",
+  "execution_time_ms": 55
+}

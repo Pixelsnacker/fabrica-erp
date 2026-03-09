@@ -53,8 +53,8 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     values.lastSignedIn = user.lastSignedIn;
     updateSet.lastSignedIn = user.lastSignedIn;
   }
-  if (!values.lastSignedIn) values.lastSignedIn = new Date();
-  if (Object.keys(updateSet).length === 0) updateSet.lastSignedIn = new Date();
+  if (!values.lastSignedIn) values.lastSignedIn = new Date().toISOString() as any;
+  if (Object.keys(updateSet).length === 0) updateSet.lastSignedIn = new Date().toISOString() as any;
   await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
 }
 
@@ -152,7 +152,7 @@ export async function createProject(data: InsertProject) {
 export async function updateProject(id: number, data: Partial<InsertProject>) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
-  await db.update(projects).set({ ...data, updatedAt: new Date() }).where(eq(projects.id, id));
+  await db.update(projects).set({ ...data, updatedAt: new Date().toISOString() as any }).where(eq(projects.id, id));
 }
 
 export async function deleteProject(id: number) {
@@ -292,8 +292,8 @@ export async function createRfqResponse(data: InsertRfqResponse) {
 export async function selectBestRfqResponse(rfqId: number, responseId: number) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
-  await db.update(rfqResponses).set({ isSelected: false }).where(eq(rfqResponses.rfqId, rfqId));
-  await db.update(rfqResponses).set({ isSelected: true }).where(eq(rfqResponses.id, responseId));
+  await db.update(rfqResponses).set({ isSelected: 0 as any }).where(eq(rfqResponses.rfqId, rfqId));
+  await db.update(rfqResponses).set({ isSelected: 1 as any }).where(eq(rfqResponses.id, responseId));
 }
 
 // ─── Shipments ────────────────────────────────────────────────────────────────
@@ -397,12 +397,12 @@ export async function getKnowledgeEntries(search?: string) {
   if (search) {
     return db.select().from(knowledgeEntries)
       .where(and(
-        eq(knowledgeEntries.isActive, true),
+        eq(knowledgeEntries.isActive, 1 as any),
         sql`(${knowledgeEntries.title} LIKE ${`%${search}%`} OR ${knowledgeEntries.content} LIKE ${`%${search}%`})`
       ))
       .orderBy(desc(knowledgeEntries.useCount));
   }
-  return db.select().from(knowledgeEntries).where(eq(knowledgeEntries.isActive, true)).orderBy(desc(knowledgeEntries.useCount));
+  return db.select().from(knowledgeEntries).where(eq(knowledgeEntries.isActive, 1 as any)).orderBy(desc(knowledgeEntries.useCount));
 }
 
 export async function createKnowledgeEntry(data: InsertKnowledgeEntry) {
@@ -641,13 +641,14 @@ export async function getNoteReminders(noteId: number) {
   return await db.select().from(noteReminders).where(eq(noteReminders.noteId, noteId));
 }
 
-export async function addNoteReminder(data: { noteId: number; label?: string; remindAt: Date }) {
+export async function addNoteReminder(data: { noteId: number; label?: string; remindAt: Date | string }) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
+  const remindAt = typeof data.remindAt === 'string' ? data.remindAt : data.remindAt.toISOString().slice(0, 19).replace('T', ' ');
   await db.insert(noteReminders).values({
     noteId: data.noteId,
     label: data.label ?? null,
-    remindAt: data.remindAt,
+    remindAt: remindAt as any,
   });
 }
 
@@ -661,11 +662,11 @@ export async function getPendingReminders() {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
   return await db.select().from(noteReminders)
-    .where(eq(noteReminders.isSent, false));
+    .where(eq(noteReminders.isSent, 0 as any));
 }
 
 export async function markReminderSent(id: number) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
-  await db.update(noteReminders).set({ isSent: true }).where(eq(noteReminders.id, id));
+  await db.update(noteReminders).set({ isSent: 1 as any }).where(eq(noteReminders.id, id));
 }

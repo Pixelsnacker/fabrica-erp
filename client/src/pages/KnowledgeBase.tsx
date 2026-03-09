@@ -79,9 +79,9 @@ export default function KnowledgeBase() {
                 </Button>
               </div>
               <p className="text-sm text-muted-foreground mt-2 line-clamp-4 whitespace-pre-wrap">{entry.content}</p>
-              {entry.tags && Array.isArray(entry.tags) && entry.tags.length > 0 && (
+              {Boolean(entry.tags && Array.isArray(entry.tags) && (entry.tags as unknown[]).length > 0) && (
                 <div className="flex flex-wrap gap-1 mt-2">
-                  {(entry.tags as string[]).map(tag => <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>)}
+                  {(entry.tags as unknown[]).map((tag, i) => <Badge key={i} variant="outline" className="text-xs">{String(tag)}</Badge>)}
                 </div>
               )}
             </div>

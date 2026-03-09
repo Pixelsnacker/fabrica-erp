@@ -1,0 +1,8 @@
+{
+  "query": "INSERT INTO quick_notes (text, project_id, source, createdAt) VALUES ('Test-Notiz', NULL, 'email', NOW()); SELECT * FROM quick_notes ORDER BY id DESC LIMIT 3;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 9NNjvn7NV7enobv.7ea640e70a8c --database YMZow7uQxpBVyBGbmbpvvd --execute INSERT INTO quick_notes (text, project_id, source, createdAt) VALUES ('Test-Notiz', NULL, 'email', NOW()); SELECT * FROM quick_notes ORDER BY id DESC LIMIT 3;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 1: Unknown column 'createdAt' in 'field list'"
+  ]
+}
