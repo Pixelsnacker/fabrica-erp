@@ -69,3 +69,6 @@
 - [x] Vitest: router structure tests (alle Router vorhanden + Procedures)
 - [x] TypeScript: 0 Fehler
 - [x] Checkpoint erstellen
+
+## Bugs
+- [x] "Fehler beim Anlegen" Toast erscheint beim Anlegen (Projekt oder Kunde) — Behoben: Fehlende DB-Tabellen direkt per SQL angelegt (16 Tabellen jetzt vorhanden)

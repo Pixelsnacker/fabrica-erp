@@ -1,0 +1,34 @@
+{
+  "query": "SHOW FULL TABLES;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 9NNjvn7NV7enobv.7ea640e70a8c --database YMZow7uQxpBVyBGbmbpvvd --execute SHOW FULL TABLES;",
+  "rows": [
+    {
+      "Tables_in_YMZow7uQxpBVyBGbmbpvvd": "__drizzle_migrations",
+      "Table_type": "BASE TABLE"
+    },
+    {
+      "Tables_in_YMZow7uQxpBVyBGbmbpvvd": "ai_sessions",
+      "Table_type": "BASE TABLE"
+    },
+    {
+      "Tables_in_YMZow7uQxpBVyBGbmbpvvd": "cad_files",
+      "Table_type": "BASE TABLE"
+    },
+    {
+      "Tables_in_YMZow7uQxpBVyBGbmbpvvd": "image_library",
+      "Table_type": "BASE TABLE"
+    },
+    {
+      "Tables_in_YMZow7uQxpBVyBGbmbpvvd": "knowledge_entries",
+      "Table_type": "BASE TABLE"
+    },
+    {
+      "Tables_in_YMZow7uQxpBVyBGbmbpvvd": "users",
+      "Table_type": "BASE TABLE"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_YMZow7uQxpBVyBGbmbpvvd\tTable_type\n__drizzle_migrations\tBASE TABLE\nai_sessions\tBASE TABLE\ncad_files\tBASE TABLE\nimage_library\tBASE TABLE\nknowledge_entries\tBASE TABLE\nusers\tBASE TABLE\n",
+  "stderr": "",
+  "execution_time_ms": 48
+}

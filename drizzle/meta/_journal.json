@@ -5,29 +5,8 @@
     {
       "idx": 0,
       "version": "5",
-      "when": 1773081855014,
-      "tag": "0000_lonely_hobgoblin",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "5",
-      "when": 1773082329536,
-      "tag": "0001_odd_wild_pack",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "5",
-      "when": 1773082359827,
-      "tag": "0002_zippy_titania",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "5",
-      "when": 1773082509894,
-      "tag": "0003_bitter_ken_ellis",
+      "when": 1773084529238,
+      "tag": "0000_new_scarlet_spider",
       "breakpoints": true
     }
   ]
