@@ -45,7 +45,7 @@ const SOURCE_OPTIONS = [
 function QuickNoteModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [text, setText] = useState("");
   const [source, setSource] = useState("whatsapp");
-  const [projectId, setProjectId] = useState<string>("");
+  const [projectId, setProjectId] = useState<string>("none");
   const { data: projects } = trpc.projects.list.useQuery();
   const utils = trpc.useUtils();
   const createNote = trpc.quickNotes.create.useMutation({
@@ -53,7 +53,7 @@ function QuickNoteModal({ open, onClose }: { open: boolean; onClose: () => void 
       toast.success("Notiz gespeichert");
       setText("");
       setSource("whatsapp");
-      setProjectId("");
+      setProjectId("none");
       utils.quickNotes.list.invalidate();
       utils.dashboard.stats.invalidate();
       onClose();
@@ -65,7 +65,7 @@ function QuickNoteModal({ open, onClose }: { open: boolean; onClose: () => void 
     createNote.mutate({
       text: text.trim(),
       source: source as any,
-      projectId: projectId ? parseInt(projectId) : null,
+      projectId: projectId !== "none" ? parseInt(projectId) : null,
     });
   };
   useEffect(() => {
@@ -110,7 +110,7 @@ function QuickNoteModal({ open, onClose }: { open: boolean; onClose: () => void 
                 <SelectValue placeholder="Projekt zuordnen (optional)" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Kein Projekt</SelectItem>
+                <SelectItem value="none">Kein Projekt</SelectItem>
                 {(projects ?? []).map((p: any) => (
                   <SelectItem key={p.id} value={String(p.id)}>{p.title}</SelectItem>
                 ))}

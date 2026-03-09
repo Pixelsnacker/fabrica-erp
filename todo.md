@@ -101,3 +101,10 @@
 - [x] Notizen-Menüpunkt in Sidebar-Navigation (Bell-Icon)
 - [x] Inter-Font eingebunden, font-smoothing aktiviert
 - [x] Vitest: 13 neue Tests für Notes-Logik (alle grün)
+
+## Phase 10: Bugfix + Notizen im Projekt-Detail
+- [x] Bug: Schnellnotiz-Modal crashed beim Öffnen (leerer SelectItem value "") — behoben mit "none"-Sentinel
+- [ ] Projekt-Detail: Notizen-Tab mit allen projektbezogenen Notizen
+- [ ] Projekt-Detail: Neue Notiz direkt aus dem Projekt anlegen (Projekt vorausgefüllt)
+- [ ] Projekt-Detail: Erinnerungen pro Notiz sichtbar mit Status (offen/überfällig/erledigt)
+- [ ] Projekt-Detail: Schnellnotizen (quick_notes) ebenfalls im Tab anzeigen
