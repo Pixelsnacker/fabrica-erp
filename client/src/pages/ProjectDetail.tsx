@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { useParams, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Plus, Trash2, Package, Truck, FileCode2, MessageSquare, ExternalLink, Bell, StickyNote, Clock, Paperclip, CheckCircle2, Circle, AlertCircle, Zap } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { ArrowLeft, Plus, Trash2, Package, Truck, FileCode2, MessageSquare, ExternalLink, Bell, StickyNote, Clock, Paperclip, CheckCircle2, Circle, AlertCircle, Zap, Upload, FileText, Image, X } from "lucide-react";
 import { toast } from "sonner";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -208,6 +209,7 @@ export default function ProjectDetail() {
                   onToggle={() => toggleNoteStatus.mutate({ id: note.id, status: note.status === "offen" ? "erledigt" : "offen" })}
                   onDelete={() => deleteNote.mutate({ id: note.id })}
                   onOpen={() => setShowNoteDetail(note.id)}
+                  onUpload={() => setShowNoteDetail(note.id)}
                 />
               ))}
             </div>
@@ -431,12 +433,13 @@ export default function ProjectDetail() {
   );
 }
 
-// ── NoteCard Komponente ──────────────────────────────────────────────────────
-function NoteCard({ note, onToggle, onDelete, onOpen }: {
+// ── NoteCard Komponente ──────────────────────────────────────────────
+function NoteCard({ note, onToggle, onDelete, onOpen, onUpload }: {
   note: { id: number; title: string; content?: string | null; status: string; priority: string; createdAt: Date | string };
   onToggle: () => void;
   onDelete: () => void;
   onOpen: () => void;
+  onUpload?: () => void;
 }) {
   const prio = PRIORITY_CONFIG[note.priority] ?? PRIORITY_CONFIG.normal;
   const isDone = note.status === "erledigt";
@@ -464,9 +467,19 @@ function NoteCard({ note, onToggle, onDelete, onOpen }: {
             <span className="text-xs text-muted-foreground">{new Date(note.createdAt).toLocaleDateString("de-DE")}</span>
           </div>
         </div>
-        <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive shrink-0 h-7 w-7 p-0" onClick={onDelete}>
-          <Trash2 className="h-3.5 w-3.5" />
-        </Button>
+        <div className="flex items-center gap-1 shrink-0">
+          <Button
+            variant="ghost" size="sm"
+            className="h-7 w-7 p-0 text-muted-foreground hover:text-primary"
+            title="Datei anhängen"
+            onClick={(e) => { e.stopPropagation(); onUpload ? onUpload() : onOpen(); }}
+          >
+            <Paperclip className="h-3.5 w-3.5" />
+          </Button>
+          <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive h-7 w-7 p-0" onClick={onDelete}>
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -476,12 +489,37 @@ function NoteCard({ note, onToggle, onDelete, onOpen }: {
 function NoteDetailDialog({ noteId, onClose, onRefresh }: { noteId: number; onClose: () => void; onRefresh: () => void }) {
   const { data: note, isLoading } = trpc.notes.getById.useQuery({ id: noteId });
   const utils = trpc.useUtils();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
 
   const addReminder = trpc.notes.addReminder.useMutation({
     onSuccess: () => { utils.notes.getById.invalidate({ id: noteId }); toast.success("Erinnerung gesetzt"); },
   });
   const deleteReminder = trpc.notes.deleteReminder.useMutation({
     onSuccess: () => utils.notes.getById.invalidate({ id: noteId }),
+  });
+  const uploadAttachment = trpc.notes.uploadAttachment.useMutation({
+    onSuccess: () => {
+      utils.notes.getById.invalidate({ id: noteId });
+      onRefresh();
+      setIsUploading(false);
+      setUploadProgress(0);
+      toast.success("Datei hochgeladen");
+    },
+    onError: (err) => {
+      setIsUploading(false);
+      setUploadProgress(0);
+      toast.error("Upload fehlgeschlagen: " + err.message);
+    },
+  });
+  const deleteAttachment = trpc.notes.deleteAttachment.useMutation({
+    onSuccess: () => {
+      utils.notes.getById.invalidate({ id: noteId });
+      onRefresh();
+      toast.success("Anhang gelöscht");
+    },
   });
 
   const [reminderDate, setReminderDate] = useState("");
@@ -496,14 +534,53 @@ function NoteDetailDialog({ noteId, onClose, onRefresh }: { noteId: number; onCl
     setReminderLabel("");
   };
 
+  const handleFileUpload = async (file: File) => {
+    const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
+    if (file.size > MAX_SIZE) {
+      toast.error(`Datei zu groß: ${(file.size / 1024 / 1024).toFixed(1)} MB (max. 10 MB)`);
+      return;
+    }
+    const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif", "application/pdf"];
+    if (!allowed.includes(file.type)) {
+      toast.error("Nur Bilder (JPG, PNG, WebP) und PDFs erlaubt");
+      return;
+    }
+    setIsUploading(true);
+    setUploadProgress(20);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setUploadProgress(60);
+      const base64 = (e.target?.result as string).split(",")[1];
+      setUploadProgress(80);
+      uploadAttachment.mutate({
+        noteId,
+        filename: file.name,
+        fileData: base64,
+        mimeType: file.type,
+        fileSize: file.size,
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleFileUpload(file);
+  };
+
   if (isLoading) return null;
   if (!note) return null;
 
   const now = new Date();
+  const images = note.attachments?.filter((a: any) => a.fileType === "image") ?? [];
+  const pdfs = note.attachments?.filter((a: any) => a.fileType === "pdf") ?? [];
+  const others = note.attachments?.filter((a: any) => a.fileType === "other") ?? [];
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <StickyNote className="h-4 w-4" />
@@ -515,23 +592,88 @@ function NoteDetailDialog({ noteId, onClose, onRefresh }: { noteId: number; onCl
           <p className="text-sm text-muted-foreground whitespace-pre-wrap">{note.content}</p>
         )}
 
-        {/* Anhänge */}
-        {note.attachments && note.attachments.length > 0 && (
-          <div className="space-y-2">
-            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-              <Paperclip className="h-3.5 w-3.5" /> Anhänge ({note.attachments.length})
-            </h4>
-            <div className="flex flex-wrap gap-2">
-              {note.attachments.map((att: any) => (
-                <a key={att.id} href={att.fileUrl} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-secondary text-xs hover:bg-secondary/80 transition-colors">
-                  <Paperclip className="h-3 w-3" />
-                  {att.filename}
-                </a>
+        {/* ── Anhänge ── */}
+        <div className="space-y-2">
+          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+            <Paperclip className="h-3.5 w-3.5" /> Anhänge {note.attachments?.length ? `(${note.attachments.length})` : ""}
+          </h4>
+
+          {/* Bilder-Galerie */}
+          {images.length > 0 && (
+            <div className="grid grid-cols-3 gap-2">
+              {images.map((att: any) => (
+                <div key={att.id} className="relative group rounded-md overflow-hidden border border-border aspect-square bg-secondary">
+                  <a href={att.fileUrl} target="_blank" rel="noopener noreferrer">
+                    <img src={att.fileUrl} alt={att.filename} className="w-full h-full object-cover" />
+                  </a>
+                  <button
+                    onClick={() => deleteAttachment.mutate({ id: att.id })}
+                    className="absolute top-1 right-1 bg-black/70 rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive"
+                  >
+                    <X className="h-3 w-3 text-white" />
+                  </button>
+                  <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-1.5 py-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <p className="text-xs text-white truncate">{att.filename}</p>
+                  </div>
+                </div>
               ))}
             </div>
+          )}
+
+          {/* PDFs und sonstige Dateien */}
+          {(pdfs.length > 0 || others.length > 0) && (
+            <div className="flex flex-wrap gap-2">
+              {[...pdfs, ...others].map((att: any) => (
+                <div key={att.id} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-secondary border border-border group">
+                  <a href={att.fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-xs hover:text-primary transition-colors">
+                    <FileText className="h-3.5 w-3.5 text-red-400 shrink-0" />
+                    <span className="max-w-[140px] truncate">{att.filename}</span>
+                    {att.fileSize && <span className="text-muted-foreground">({(att.fileSize / 1024).toFixed(0)} KB)</span>}
+                  </a>
+                  <button onClick={() => deleteAttachment.mutate({ id: att.id })} className="ml-1 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Upload-Zone */}
+          <div
+            className={`relative border-2 border-dashed rounded-lg p-4 text-center transition-colors cursor-pointer ${
+              dragOver ? "border-primary bg-primary/5" : "border-border hover:border-primary/50 hover:bg-secondary/30"
+            } ${isUploading ? "pointer-events-none opacity-60" : ""}`}
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={handleDrop}
+            onClick={() => !isUploading && fileInputRef.current?.click()}
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif,application/pdf"
+              className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileUpload(f); e.target.value = ""; }}
+            />
+            {isUploading ? (
+              <div className="space-y-2">
+                <Upload className="h-5 w-5 mx-auto text-primary animate-pulse" />
+                <p className="text-xs text-muted-foreground">Wird hochgeladen...</p>
+                <Progress value={uploadProgress} className="h-1.5" />
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-1.5">
+                <div className="flex items-center gap-2">
+                  <Image className="h-4 w-4 text-muted-foreground" />
+                  <Upload className="h-4 w-4 text-muted-foreground" />
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <p className="text-xs text-muted-foreground">Bild oder PDF hier ablegen oder <span className="text-primary">klicken</span></p>
+                <p className="text-xs text-muted-foreground/60">JPG, PNG, WebP, GIF, PDF · max. 10 MB</p>
+              </div>
+            )}
           </div>
-        )}
+        </div>
 
         {/* Erinnerungen */}
         <div className="space-y-2">

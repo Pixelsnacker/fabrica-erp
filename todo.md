@@ -108,3 +108,11 @@
 - [x] Projekt-Detail: Neue Notiz direkt aus dem Projekt anlegen (Projekt vorausgefüllt)
 - [x] Projekt-Detail: Erinnerungen pro Notiz sichtbar mit Status (offen/überfällig/erledigt)
 - [x] Projekt-Detail: Schnellnotizen (quick_notes) ebenfalls im Tab anzeigen
+
+## Phase 11: Datei-Upload im Notizen-Tab des Projekts
+- [x] Datei-Upload-Button direkt in NoteCard (Büroklammer-Icon)
+- [x] Drag & Drop oder Klick zum Hochladen von Bildern (jpg/png/webp) und PDFs
+- [x] Fortschrittsanzeige während des Uploads (base64 → S3)
+- [x] Anhänge-Vorschau: Bilder als Thumbnail-Grid, PDFs als Link mit Icon
+- [x] Anhang löschen direkt aus dem Notizen-Tab (Hover-X-Button)
+- [x] Max. 10 MB Dateigrößen-Validierung mit Fehlermeldung
