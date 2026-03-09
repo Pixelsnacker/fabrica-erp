@@ -1,0 +1,330 @@
+{
+  "query": "\nSELECT table_name, column_name, data_type \nFROM information_schema.columns \nWHERE table_schema = DATABASE() \n  AND table_name IN ('customers','lead_sources','suppliers','knowledge_entries','project_items','consultation_entries')\nORDER BY table_name, ordinal_position;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 9NNjvn7NV7enobv.7ea640e70a8c --database YMZow7uQxpBVyBGbmbpvvd --execute \nSELECT table_name, column_name, data_type \nFROM information_schema.columns \nWHERE table_schema = DATABASE() \n  AND table_name IN ('customers','lead_sources','suppliers','knowledge_entries','project_items','consultation_entries')\nORDER BY table_name, ordinal_position;\n",
+  "rows": [
+    {
+      "table_name": "consultation_entries",
+      "column_name": "id",
+      "data_type": "int"
+    },
+    {
+      "table_name": "consultation_entries",
+      "column_name": "project_id",
+      "data_type": "int"
+    },
+    {
+      "table_name": "consultation_entries",
+      "column_name": "customer_id",
+      "data_type": "int"
+    },
+    {
+      "table_name": "consultation_entries",
+      "column_name": "type",
+      "data_type": "enum"
+    },
+    {
+      "table_name": "consultation_entries",
+      "column_name": "title",
+      "data_type": "varchar"
+    },
+    {
+      "table_name": "consultation_entries",
+      "column_name": "content",
+      "data_type": "text"
+    },
+    {
+      "table_name": "consultation_entries",
+      "column_name": "tags",
+      "data_type": "json"
+    },
+    {
+      "table_name": "consultation_entries",
+      "column_name": "createdAt",
+      "data_type": "timestamp"
+    },
+    {
+      "table_name": "consultation_entries",
+      "column_name": "updatedAt",
+      "data_type": "timestamp"
+    },
+    {
+      "table_name": "customers",
+      "column_name": "id",
+      "data_type": "int"
+    },
+    {
+      "table_name": "customers",
+      "column_name": "name",
+      "data_type": "varchar"
+    },
+    {
+      "table_name": "customers",
+      "column_name": "company",
+      "data_type": "varchar"
+    },
+    {
+      "table_name": "customers",
+      "column_name": "type",
+      "data_type": "enum"
+    },
+    {
+      "table_name": "customers",
+      "column_name": "email",
+      "data_type": "varchar"
+    },
+    {
+      "table_name": "customers",
+      "column_name": "phone",
+      "data_type": "varchar"
+    },
+    {
+      "table_name": "customers",
+      "column_name": "address",
+      "data_type": "text"
+    },
+    {
+      "table_name": "customers",
+      "column_name": "notes",
+      "data_type": "text"
+    },
+    {
+      "table_name": "customers",
+      "column_name": "sevdesk_id",
+      "data_type": "varchar"
+    },
+    {
+      "table_name": "customers",
+      "column_name": "is_active",
+      "data_type": "tinyint"
+    },
+    {
+      "table_name": "customers",
+      "column_name": "createdAt",
+      "data_type": "timestamp"
+    },
+    {
+      "table_name": "customers",
+      "column_name": "updatedAt",
+      "data_type": "timestamp"
+    },
+    {
+      "table_name": "knowledge_entries",
+      "column_name": "id",
+      "data_type": "int"
+    },
+    {
+      "table_name": "knowledge_entries",
+      "column_name": "title",
+      "data_type": "varchar"
+    },
+    {
+      "table_name": "knowledge_entries",
+      "column_name": "category",
+      "data_type": "enum"
+    },
+    {
+      "table_name": "knowledge_entries",
+      "column_name": "content",
+      "data_type": "text"
+    },
+    {
+      "table_name": "knowledge_entries",
+      "column_name": "tags",
+      "data_type": "json"
+    },
+    {
+      "table_name": "knowledge_entries",
+      "column_name": "source",
+      "data_type": "varchar"
+    },
+    {
+      "table_name": "knowledge_entries",
+      "column_name": "is_active",
+      "data_type": "tinyint"
+    },
+    {
+      "table_name": "knowledge_entries",
+      "column_name": "use_count",
+      "data_type": "int"
+    },
+    {
+      "table_name": "knowledge_entries",
+      "column_name": "createdAt",
+      "data_type": "timestamp"
+    },
+    {
+      "table_name": "knowledge_entries",
+      "column_name": "updatedAt",
+      "data_type": "timestamp"
+    },
+    {
+      "table_name": "lead_sources",
+      "column_name": "id",
+      "data_type": "int"
+    },
+    {
+      "table_name": "lead_sources",
+      "column_name": "name",
+      "data_type": "varchar"
+    },
+    {
+      "table_name": "lead_sources",
+      "column_name": "type",
+      "data_type": "enum"
+    },
+    {
+      "table_name": "lead_sources",
+      "column_name": "monthly_cost",
+      "data_type": "decimal"
+    },
+    {
+      "table_name": "lead_sources",
+      "column_name": "notes",
+      "data_type": "text"
+    },
+    {
+      "table_name": "lead_sources",
+      "column_name": "is_active",
+      "data_type": "tinyint"
+    },
+    {
+      "table_name": "lead_sources",
+      "column_name": "createdAt",
+      "data_type": "timestamp"
+    },
+    {
+      "table_name": "lead_sources",
+      "column_name": "updatedAt",
+      "data_type": "timestamp"
+    },
+    {
+      "table_name": "project_items",
+      "column_name": "id",
+      "data_type": "int"
+    },
+    {
+      "table_name": "project_items",
+      "column_name": "project_id",
+      "data_type": "int"
+    },
+    {
+      "table_name": "project_items",
+      "column_name": "name",
+      "data_type": "varchar"
+    },
+    {
+      "table_name": "project_items",
+      "column_name": "quantity",
+      "data_type": "int"
+    },
+    {
+      "table_name": "project_items",
+      "column_name": "material",
+      "data_type": "varchar"
+    },
+    {
+      "table_name": "project_items",
+      "column_name": "technology",
+      "data_type": "enum"
+    },
+    {
+      "table_name": "project_items",
+      "column_name": "production_type",
+      "data_type": "enum"
+    },
+    {
+      "table_name": "project_items",
+      "column_name": "ek_price",
+      "data_type": "decimal"
+    },
+    {
+      "table_name": "project_items",
+      "column_name": "vk_price",
+      "data_type": "decimal"
+    },
+    {
+      "table_name": "project_items",
+      "column_name": "margin_percent",
+      "data_type": "decimal"
+    },
+    {
+      "table_name": "project_items",
+      "column_name": "notes",
+      "data_type": "text"
+    },
+    {
+      "table_name": "project_items",
+      "column_name": "supplier_id",
+      "data_type": "int"
+    },
+    {
+      "table_name": "project_items",
+      "column_name": "createdAt",
+      "data_type": "timestamp"
+    },
+    {
+      "table_name": "project_items",
+      "column_name": "updatedAt",
+      "data_type": "timestamp"
+    },
+    {
+      "table_name": "suppliers",
+      "column_name": "id",
+      "data_type": "int"
+    },
+    {
+      "table_name": "suppliers",
+      "column_name": "name",
+      "data_type": "varchar"
+    },
+    {
+      "table_name": "suppliers",
+      "column_name": "company",
+      "data_type": "varchar"
+    },
+    {
+      "table_name": "suppliers",
+      "column_name": "email",
+      "data_type": "varchar"
+    },
+    {
+      "table_name": "suppliers",
+      "column_name": "phone",
+      "data_type": "varchar"
+    },
+    {
+      "table_name": "suppliers",
+      "column_name": "capabilities",
+      "data_type": "json"
+    },
+    {
+      "table_name": "suppliers",
+      "column_name": "rating",
+      "data_type": "int"
+    },
+    {
+      "table_name": "suppliers",
+      "column_name": "notes",
+      "data_type": "text"
+    },
+    {
+      "table_name": "suppliers",
+      "column_name": "is_active",
+      "data_type": "tinyint"
+    },
+    {
+      "table_name": "suppliers",
+      "column_name": "createdAt",
+      "data_type": "timestamp"
+    },
+    {
+      "table_name": "suppliers",
+      "column_name": "updatedAt",
+      "data_type": "timestamp"
+    }
+  ],
+  "messages": [],
+  "stdout": "table_name\tcolumn_name\tdata_type\nconsultation_entries\tid\tint\nconsultation_entries\tproject_id\tint\nconsultation_entries\tcustomer_id\tint\nconsultation_entries\ttype\tenum\nconsultation_entries\ttitle\tvarchar\nconsultation_entries\tcontent\ttext\nconsultation_entries\ttags\tjson\nconsultation_entries\tcreatedAt\ttimestamp\nconsultation_entries\tupdatedAt\ttimestamp\ncustomers\tid\tint\ncustomers\tname\tvarchar\ncustomers\tcompany\tvarchar\ncustomers\ttype\tenum\ncustomers\temail\tvarchar\ncustomers\tphone\tvarchar\ncustomers\taddress\ttext\ncustomers\tnotes\ttext\ncustomers\tsevdesk_id\tvarchar\ncustomers\tis_active\ttinyint\ncustomers\tcreatedAt\ttimestamp\ncustomers\tupdatedAt\ttimestamp\nknowledge_entries\tid\tint\nknowledge_entries\ttitle\tvarchar\nknowledge_entries\tcategory\tenum\nknowledge_entries\tcontent\ttext\nknowledge_entries\ttags\tjson\nknowledge_entries\tsource\tvarchar\nknowledge_entries\tis_active\ttinyint\nknowledge_entries\tuse_count\tint\nknowledge_entries\tcreatedAt\ttimestamp\nknowledge_entries\tupdatedAt\ttimestamp\nlead_sources\tid\tint\nlead_sources\tname\tvarchar\nlead_sources\ttype\tenum\nlead_sources\tmonthly_cost\tdecimal\nlead_sources\tnotes\ttext\nlead_sources\tis_active\ttinyint\nlead_sources\tcreatedAt\ttimestamp\nlead_sources\tupdatedAt\ttimestamp\nproject_items\tid\tint\nproject_items\tproject_id\tint\nproject_items\tname\tvarchar\nproject_items\tquantity\tint\nproject_items\tmaterial\tvarchar\nproject_items\ttechnology\tenum\nproject_items\tproduction_type\tenum\nproject_items\tek_price\tdecimal\nproject_items\tvk_price\tdecimal\nproject_items\tmargin_percent\tdecimal\nproject_items\tnotes\ttext\nproject_items\tsupplier_id\tint\nproject_items\tcreatedAt\ttimestamp\nproject_items\tupdatedAt\ttimestamp\nsuppliers\tid\tint\nsuppliers\tname\tvarchar\nsuppliers\tcompany\tvarchar\nsuppliers\temail\tvarchar\nsuppliers\tphone\tvarchar\nsuppliers\tcapabilities\tjson\nsuppliers\trating\tint\nsuppliers\tnotes\ttext\nsuppliers\tis_active\ttinyint\nsuppliers\tcreatedAt\ttimestamp\nsuppliers\tupdatedAt\ttimestamp\n",
+  "stderr": "",
+  "execution_time_ms": 54
+}

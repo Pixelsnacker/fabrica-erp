@@ -1,0 +1,9 @@
+{
+  "query": "\nALTER TABLE `project_items` \n  CHANGE COLUMN `technology` `technique` enum('3d_print','cnc','painting','cad_work','model_making','assembly','other') DEFAULT 'other',\n  CHANGE COLUMN `ek_price` `unit_ek` decimal(12,2) DEFAULT 0,\n  CHANGE COLUMN `vk_price` `unit_vk` decimal(12,2) DEFAULT 0,\n  ADD COLUMN IF NOT EXISTS `total_ek` decimal(12,2) DEFAULT 0,\n  ADD COLUMN IF NOT EXISTS `total_vk` decimal(12,2) DEFAULT 0,\n  ADD COLUMN IF NOT EXISTS `description` text,\n  ADD COLUMN IF NOT EXISTS `sort_order` int DEFAULT 0,\n  DROP COLUMN IF EXISTS `supplier_id`;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 9NNjvn7NV7enobv.7ea640e70a8c --database YMZow7uQxpBVyBGbmbpvvd --execute \nALTER TABLE `project_items` \n  CHANGE COLUMN `technology` `technique` enum('3d_print','cnc','painting','cad_work','model_making','assembly','other') DEFAULT 'other',\n  CHANGE COLUMN `ek_price` `unit_ek` decimal(12,2) DEFAULT 0,\n  CHANGE COLUMN `vk_price` `unit_vk` decimal(12,2) DEFAULT 0,\n  ADD COLUMN IF NOT EXISTS `total_ek` decimal(12,2) DEFAULT 0,\n  ADD COLUMN IF NOT EXISTS `total_vk` decimal(12,2) DEFAULT 0,\n  ADD COLUMN IF NOT EXISTS `description` text,\n  ADD COLUMN IF NOT EXISTS `sort_order` int DEFAULT 0,\n  DROP COLUMN IF EXISTS `supplier_id`;\n",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1034
+}
