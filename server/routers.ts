@@ -433,7 +433,9 @@ Erstelle eine professionelle Beratungsantwort oder E-Mail basierend auf der Anfr
 
   // ─── Quick Notes ────────────────────────────────────────────────────────────
   quickNotes: router({
-    list: protectedProcedure.query(async () => getQuickNotes(100)),
+    list: protectedProcedure
+      .input(z.object({ projectId: z.number().optional().nullable() }).optional())
+      .query(async ({ input }) => getQuickNotes(100, input?.projectId ?? undefined)),
     create: protectedProcedure.input(z.object({
       text: z.string().min(1),
       projectId: z.number().optional().nullable(),
@@ -451,8 +453,8 @@ Erstelle eine professionelle Beratungsantwort oder E-Mail basierend auf der Anfr
   // ─── Notes & Reminders ──────────────────────────────────────────────────────
   notes: router({
     list: protectedProcedure
-      .input(z.object({ status: z.string().optional() }).optional())
-      .query(async ({ input }) => getNotes(input?.status)),
+      .input(z.object({ status: z.string().optional(), projectId: z.number().optional().nullable() }).optional())
+      .query(async ({ input }) => getNotes(input?.status, input?.projectId ?? undefined)),
 
     getById: protectedProcedure
       .input(z.object({ id: z.number() }))

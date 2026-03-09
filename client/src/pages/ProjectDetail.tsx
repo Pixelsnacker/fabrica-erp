@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Plus, Trash2, Package, Truck, FileCode2, MessageSquare, ExternalLink } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Package, Truck, FileCode2, MessageSquare, ExternalLink, Bell, StickyNote, Clock, Paperclip, CheckCircle2, Circle, AlertCircle, Zap } from "lucide-react";
 import { toast } from "sonner";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -22,6 +22,15 @@ const STATUS_ORDER = ["inquiry","calculation","offer","order","production","ship
 const TECHNIQUE_LABELS: Record<string, string> = {
   "3d_print": "3D-Druck", cnc: "CNC", painting: "Lackierung",
   cad_work: "CAD-Bearbeitung", model_making: "Modellbau", assembly: "Montage", other: "Sonstige",
+};
+const PRIORITY_CONFIG: Record<string, { label: string; color: string }> = {
+  niedrig: { label: "Niedrig", color: "text-blue-400" },
+  normal: { label: "Normal", color: "text-muted-foreground" },
+  hoch: { label: "Hoch", color: "text-red-400" },
+};
+const SOURCE_LABELS: Record<string, string> = {
+  whatsapp: "WhatsApp", telefon: "Telefon", persoenlich: "Persönlich",
+  email: "E-Mail", sonstiges: "Sonstiges",
 };
 
 export default function ProjectDetail() {
@@ -35,13 +44,18 @@ export default function ProjectDetail() {
   const { data: shipments = [] } = trpc.shipments.byProject.useQuery({ projectId: id });
   const { data: cadFiles = [] } = trpc.cadFiles.byProject.useQuery({ projectId: id });
   const { data: consultations = [] } = trpc.consultation.list.useQuery({ projectId: id });
+  const { data: projectNotes = [] } = trpc.notes.list.useQuery({ projectId: id });
+  const { data: projectQuickNotes = [] } = trpc.quickNotes.list.useQuery({ projectId: id });
 
   const [showAddItem, setShowAddItem] = useState(false);
   const [showAddShipment, setShowAddShipment] = useState(false);
   const [showAddConsultation, setShowAddConsultation] = useState(false);
+  const [showAddNote, setShowAddNote] = useState(false);
+  const [showNoteDetail, setShowNoteDetail] = useState<number | null>(null);
   const [itemForm, setItemForm] = useState({ name: "", quantity: 1, material: "", technique: "3d_print", productionType: "external", unitEk: "0.00", unitVk: "0.00" });
   const [shipmentForm, setShipmentForm] = useState({ carrier: "", trackingNumber: "", notes: "" });
   const [consultForm, setConsultForm] = useState({ title: "", content: "", type: "general", outcome: "" });
+  const [noteForm, setNoteForm] = useState({ title: "", content: "", priority: "normal" });
 
   const changeStatus = trpc.projects.changeStatus.useMutation({
     onSuccess: () => { utils.projects.byId.invalidate({ id }); toast.success("Status aktualisiert"); },
@@ -58,6 +72,23 @@ export default function ProjectDetail() {
   const addConsultation = trpc.consultation.create.useMutation({
     onSuccess: () => { utils.consultation.list.invalidate({ projectId: id }); setShowAddConsultation(false); toast.success("Beratungseintrag gespeichert"); },
   });
+  const createNote = trpc.notes.create.useMutation({
+    onSuccess: () => {
+      utils.notes.list.invalidate({ projectId: id });
+      setShowAddNote(false);
+      setNoteForm({ title: "", content: "", priority: "normal" });
+      toast.success("Notiz gespeichert");
+    },
+    onError: () => toast.error("Fehler beim Speichern"),
+  });
+  const toggleNoteStatus = trpc.notes.update.useMutation({
+    onSuccess: () => utils.notes.list.invalidate({ projectId: id }),
+  });
+  const deleteNote = trpc.notes.delete.useMutation({
+    onSuccess: () => { utils.notes.list.invalidate({ projectId: id }); toast.success("Notiz gelöscht"); },
+  });
+
+  const totalNotesCount = projectNotes.length + projectQuickNotes.length;
 
   if (isLoading) return <div className="p-6 text-muted-foreground">Lade Projekt...</div>;
   if (!project) return <div className="p-6 text-muted-foreground">Projekt nicht gefunden</div>;
@@ -68,21 +99,21 @@ export default function ProjectDetail() {
   const marginPct = parseFloat(project.marginPercent ?? "0");
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-start gap-4">
-        <Button variant="ghost" size="sm" onClick={() => setLocation("/projects")} className="mt-0.5">
+    <div className="space-y-4 md:space-y-5">
+      <div className="flex items-start gap-3">
+        <Button variant="ghost" size="sm" onClick={() => setLocation("/projects")} className="mt-0.5 shrink-0">
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-2xl font-bold truncate">{project.title}</h1>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="text-xl md:text-2xl font-bold truncate">{project.title}</h1>
             {project.projectNumber && <span className="text-muted-foreground text-sm">#{project.projectNumber}</span>}
             <Badge className={`status-${project.status}`}>{STATUS_LABELS[project.status]}</Badge>
           </div>
           {project.notes && <p className="text-sm text-muted-foreground mt-1">{project.notes}</p>}
         </div>
         {project.driveFolderUrl && (
-          <Button variant="outline" size="sm" asChild>
+          <Button variant="outline" size="sm" asChild className="shrink-0">
             <a href={project.driveFolderUrl} target="_blank" rel="noopener noreferrer" className="gap-2">
               <ExternalLink className="h-4 w-4" /> Drive
             </a>
@@ -94,36 +125,38 @@ export default function ProjectDetail() {
       <div className="flex items-center gap-1 overflow-x-auto pb-1">
         {STATUS_ORDER.slice(0, 7).map(s => (
           <button key={s} onClick={() => changeStatus.mutate({ id, status: s as any })}
-            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${project.status === s ? `status-${s} scale-105` : "border-border text-muted-foreground hover:border-primary/50"}`}>
+            className={`flex-shrink-0 px-2.5 py-1 rounded-full text-xs font-medium transition-all border ${project.status === s ? `status-${s} scale-105` : "border-border text-muted-foreground hover:border-primary/50"}`}>
             {STATUS_LABELS[s]}
           </button>
         ))}
       </div>
 
       {/* Financials */}
-      <div className="grid grid-cols-3 gap-3">
-        <Card className="bg-card border-border"><CardContent className="p-4">
-          <div className="text-xs text-muted-foreground mb-1">Einkauf (EK)</div>
-          <div className="text-xl font-bold text-yellow-400">{totalEk.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</div>
+      <div className="grid grid-cols-3 gap-2 md:gap-3">
+        <Card className="bg-card border-border"><CardContent className="p-3 md:p-4">
+          <div className="text-xs text-muted-foreground mb-1">EK</div>
+          <div className="text-lg md:text-xl font-bold text-yellow-400">{totalEk.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</div>
         </CardContent></Card>
-        <Card className="bg-card border-border"><CardContent className="p-4">
-          <div className="text-xs text-muted-foreground mb-1">Verkauf (VK)</div>
-          <div className="text-xl font-bold text-primary">{totalVk.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</div>
+        <Card className="bg-card border-border"><CardContent className="p-3 md:p-4">
+          <div className="text-xs text-muted-foreground mb-1">VK</div>
+          <div className="text-lg md:text-xl font-bold text-primary">{totalVk.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</div>
         </CardContent></Card>
-        <Card className="bg-card border-border"><CardContent className="p-4">
+        <Card className="bg-card border-border"><CardContent className="p-3 md:p-4">
           <div className="text-xs text-muted-foreground mb-1">Marge</div>
-          <div className="text-xl font-bold text-green-400">{margin.toLocaleString("de-DE", { minimumFractionDigits: 2 })} € <span className="text-sm">({marginPct.toFixed(1)}%)</span></div>
+          <div className="text-lg md:text-xl font-bold text-green-400">{margin.toLocaleString("de-DE", { minimumFractionDigits: 2 })} € <span className="text-xs">({marginPct.toFixed(1)}%)</span></div>
         </CardContent></Card>
       </div>
 
       <Tabs defaultValue="items">
-        <TabsList className="bg-secondary">
-          <TabsTrigger value="items" className="gap-2"><Package className="h-4 w-4" />Positionen ({items.length})</TabsTrigger>
-          <TabsTrigger value="shipment" className="gap-2"><Truck className="h-4 w-4" />Versand ({shipments.length})</TabsTrigger>
-          <TabsTrigger value="cad" className="gap-2"><FileCode2 className="h-4 w-4" />CAD ({cadFiles.length})</TabsTrigger>
-          <TabsTrigger value="consultation" className="gap-2"><MessageSquare className="h-4 w-4" />Beratung ({consultations.length})</TabsTrigger>
+        <TabsList className="bg-secondary flex-wrap h-auto gap-0.5 p-1">
+          <TabsTrigger value="items" className="gap-1.5 text-xs md:text-sm"><Package className="h-3.5 w-3.5" /><span className="hidden sm:inline">Positionen</span> ({items.length})</TabsTrigger>
+          <TabsTrigger value="notes" className="gap-1.5 text-xs md:text-sm"><StickyNote className="h-3.5 w-3.5" /><span className="hidden sm:inline">Notizen</span> ({totalNotesCount})</TabsTrigger>
+          <TabsTrigger value="shipment" className="gap-1.5 text-xs md:text-sm"><Truck className="h-3.5 w-3.5" /><span className="hidden sm:inline">Versand</span> ({shipments.length})</TabsTrigger>
+          <TabsTrigger value="cad" className="gap-1.5 text-xs md:text-sm"><FileCode2 className="h-3.5 w-3.5" /><span className="hidden sm:inline">CAD</span> ({cadFiles.length})</TabsTrigger>
+          <TabsTrigger value="consultation" className="gap-1.5 text-xs md:text-sm"><MessageSquare className="h-3.5 w-3.5" /><span className="hidden sm:inline">Beratung</span> ({consultations.length})</TabsTrigger>
         </TabsList>
 
+        {/* ── Positionen ── */}
         <TabsContent value="items" className="mt-4 space-y-3">
           <div className="flex justify-end">
             <Button size="sm" onClick={() => setShowAddItem(true)} className="gap-2"><Plus className="h-4 w-4" />Position hinzufügen</Button>
@@ -131,7 +164,7 @@ export default function ProjectDetail() {
           {items.length === 0 ? <div className="text-center py-8 text-muted-foreground text-sm">Noch keine Positionen</div> : (
             <div className="space-y-2">
               {items.map(item => (
-                <div key={item.id} className="flex items-center gap-4 p-4 rounded-lg bg-card border border-border">
+                <div key={item.id} className="flex items-center gap-3 p-3 md:p-4 rounded-lg bg-card border border-border">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-medium text-sm">{item.name}</span>
@@ -146,13 +179,74 @@ export default function ProjectDetail() {
                     <div className="text-xs text-muted-foreground">VK: <span className="text-primary">{parseFloat(item.totalVk ?? "0").toFixed(2)} €</span></div>
                     <div className="text-xs text-green-400">{parseFloat(item.marginPercent ?? "0").toFixed(1)}%</div>
                   </div>
-                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => deleteItem.mutate({ id: item.id })}><Trash2 className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive shrink-0" onClick={() => deleteItem.mutate({ id: item.id })}><Trash2 className="h-4 w-4" /></Button>
                 </div>
               ))}
             </div>
           )}
         </TabsContent>
 
+        {/* ── Notizen & Erinnerungen ── */}
+        <TabsContent value="notes" className="mt-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-muted-foreground">{projectNotes.length} Notiz{projectNotes.length !== 1 ? "en" : ""} · {projectQuickNotes.length} Schnellnotiz{projectQuickNotes.length !== 1 ? "en" : ""}</p>
+            <Button size="sm" onClick={() => setShowAddNote(true)} className="gap-2">
+              <Plus className="h-4 w-4" />Notiz hinzufügen
+            </Button>
+          </div>
+
+          {/* Vollständige Notizen */}
+          {projectNotes.length > 0 && (
+            <div className="space-y-2">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                <StickyNote className="h-3.5 w-3.5" /> Notizen
+              </h3>
+              {projectNotes.map(note => (
+                <NoteCard
+                  key={note.id}
+                  note={note}
+                  onToggle={() => toggleNoteStatus.mutate({ id: note.id, status: note.status === "offen" ? "erledigt" : "offen" })}
+                  onDelete={() => deleteNote.mutate({ id: note.id })}
+                  onOpen={() => setShowNoteDetail(note.id)}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Schnellnotizen */}
+          {projectQuickNotes.length > 0 && (
+            <div className="space-y-2">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                <Zap className="h-3.5 w-3.5 text-yellow-400" /> Schnellnotizen
+              </h3>
+              {projectQuickNotes.map((qn: any) => (
+                <div key={qn.id} className="p-3 rounded-lg bg-card border border-border">
+                  <div className="flex items-start gap-2">
+                    <Zap className="h-3.5 w-3.5 text-yellow-400 mt-0.5 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm">{qn.text}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-xs text-muted-foreground">{SOURCE_LABELS[qn.source] ?? qn.source}</span>
+                        <span className="text-xs text-muted-foreground">·</span>
+                        <span className="text-xs text-muted-foreground">{new Date(qn.createdAt).toLocaleDateString("de-DE")}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {totalNotesCount === 0 && (
+            <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground">
+              <StickyNote className="h-10 w-10 opacity-20" />
+              <p className="text-sm">Noch keine Notizen für dieses Projekt</p>
+              <Button size="sm" onClick={() => setShowAddNote(true)}>Erste Notiz anlegen</Button>
+            </div>
+          )}
+        </TabsContent>
+
+        {/* ── Versand ── */}
         <TabsContent value="shipment" className="mt-4 space-y-3">
           <div className="flex justify-end">
             <Button size="sm" onClick={() => setShowAddShipment(true)} className="gap-2"><Plus className="h-4 w-4" />Versand hinzufügen</Button>
@@ -178,6 +272,7 @@ export default function ProjectDetail() {
           )}
         </TabsContent>
 
+        {/* ── CAD ── */}
         <TabsContent value="cad" className="mt-4">
           <div className="text-center py-8 text-muted-foreground text-sm">
             <FileCode2 className="h-8 w-8 mx-auto mb-2 opacity-30" />
@@ -185,6 +280,7 @@ export default function ProjectDetail() {
           </div>
         </TabsContent>
 
+        {/* ── Beratung ── */}
         <TabsContent value="consultation" className="mt-4 space-y-3">
           <div className="flex justify-end">
             <Button size="sm" onClick={() => setShowAddConsultation(true)} className="gap-2"><Plus className="h-4 w-4" />Beratungseintrag</Button>
@@ -209,7 +305,7 @@ export default function ProjectDetail() {
         </TabsContent>
       </Tabs>
 
-      {/* Dialogs */}
+      {/* ── Dialogs ── */}
       <Dialog open={showAddItem} onOpenChange={setShowAddItem}>
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>Position hinzufügen</DialogTitle></DialogHeader>
@@ -278,12 +374,11 @@ export default function ProjectDetail() {
                   <SelectItem value="technical_analysis">Technische Analyse</SelectItem>
                   <SelectItem value="offer_discussion">Angebotsgespräch</SelectItem>
                   <SelectItem value="general">Allgemein</SelectItem>
-                  <SelectItem value="other">Sonstige</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1.5"><Label>Inhalt *</Label><Textarea value={consultForm.content} onChange={e => setConsultForm(f => ({ ...f, content: e.target.value }))} rows={5} placeholder="Beratungsinhalt, Empfehlungen, Diskussion..." /></div>
-            <div className="space-y-1.5"><Label>Ergebnis / Entscheidung</Label><Textarea value={consultForm.outcome} onChange={e => setConsultForm(f => ({ ...f, outcome: e.target.value }))} rows={2} placeholder="Welche Entscheidung wurde getroffen?" /></div>
+            <div className="space-y-1.5"><Label>Inhalt *</Label><Textarea value={consultForm.content} onChange={e => setConsultForm(f => ({ ...f, content: e.target.value }))} rows={4} /></div>
+            <div className="space-y-1.5"><Label>Ergebnis</Label><Input value={consultForm.outcome} onChange={e => setConsultForm(f => ({ ...f, outcome: e.target.value }))} /></div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAddConsultation(false)}>Abbrechen</Button>
@@ -293,6 +388,209 @@ export default function ProjectDetail() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Neue Notiz Dialog */}
+      <Dialog open={showAddNote} onOpenChange={setShowAddNote}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><StickyNote className="h-4 w-4" />Notiz hinzufügen</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label>Titel *</Label>
+              <Input placeholder="Kurze Beschreibung..." value={noteForm.title} onChange={e => setNoteForm(f => ({ ...f, title: e.target.value }))} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Inhalt</Label>
+              <Textarea placeholder="Details, Informationen..." value={noteForm.content} onChange={e => setNoteForm(f => ({ ...f, content: e.target.value }))} rows={4} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Priorität</Label>
+              <Select value={noteForm.priority} onValueChange={v => setNoteForm(f => ({ ...f, priority: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="niedrig">Niedrig</SelectItem>
+                  <SelectItem value="normal">Normal</SelectItem>
+                  <SelectItem value="hoch">Hoch</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddNote(false)}>Abbrechen</Button>
+            <Button onClick={() => createNote.mutate({ title: noteForm.title, content: noteForm.content || undefined, projectId: id, priority: noteForm.priority as any })} disabled={!noteForm.title || createNote.isPending}>
+              {createNote.isPending ? "Speichert..." : "Speichern"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Notiz-Detail Dialog */}
+      {showNoteDetail && (
+        <NoteDetailDialog noteId={showNoteDetail} onClose={() => setShowNoteDetail(null)} onRefresh={() => utils.notes.list.invalidate({ projectId: id })} />
+      )}
     </div>
+  );
+}
+
+// ── NoteCard Komponente ──────────────────────────────────────────────────────
+function NoteCard({ note, onToggle, onDelete, onOpen }: {
+  note: { id: number; title: string; content?: string | null; status: string; priority: string; createdAt: Date | string };
+  onToggle: () => void;
+  onDelete: () => void;
+  onOpen: () => void;
+}) {
+  const prio = PRIORITY_CONFIG[note.priority] ?? PRIORITY_CONFIG.normal;
+  const isDone = note.status === "erledigt";
+
+  return (
+    <div className={`p-3 rounded-lg border transition-all ${isDone ? "bg-secondary/30 border-border opacity-70" : "bg-card border-border hover:border-primary/40"}`}>
+      <div className="flex items-start gap-2">
+        <button onClick={onToggle} className="mt-0.5 shrink-0">
+          {isDone
+            ? <CheckCircle2 className="h-4 w-4 text-green-400" />
+            : <Circle className="h-4 w-4 text-muted-foreground hover:text-primary" />
+          }
+        </button>
+        <div className="flex-1 min-w-0 cursor-pointer" onClick={onOpen}>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className={`font-medium text-sm ${isDone ? "line-through text-muted-foreground" : ""}`}>{note.title}</span>
+            {note.priority !== "normal" && (
+              <span className={`text-xs ${prio.color}`}>● {prio.label}</span>
+            )}
+          </div>
+          {note.content && (
+            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{note.content}</p>
+          )}
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-xs text-muted-foreground">{new Date(note.createdAt).toLocaleDateString("de-DE")}</span>
+          </div>
+        </div>
+        <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive shrink-0 h-7 w-7 p-0" onClick={onDelete}>
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ── NoteDetailDialog Komponente ──────────────────────────────────────────────
+function NoteDetailDialog({ noteId, onClose, onRefresh }: { noteId: number; onClose: () => void; onRefresh: () => void }) {
+  const { data: note, isLoading } = trpc.notes.getById.useQuery({ id: noteId });
+  const utils = trpc.useUtils();
+
+  const addReminder = trpc.notes.addReminder.useMutation({
+    onSuccess: () => { utils.notes.getById.invalidate({ id: noteId }); toast.success("Erinnerung gesetzt"); },
+  });
+  const deleteReminder = trpc.notes.deleteReminder.useMutation({
+    onSuccess: () => utils.notes.getById.invalidate({ id: noteId }),
+  });
+
+  const [reminderDate, setReminderDate] = useState("");
+  const [reminderTime, setReminderTime] = useState("09:00");
+  const [reminderLabel, setReminderLabel] = useState("");
+
+  const handleAddReminder = () => {
+    if (!reminderDate) return;
+    const dt = new Date(`${reminderDate}T${reminderTime}:00`);
+    addReminder.mutate({ noteId, remindAt: dt.toISOString(), label: reminderLabel || undefined });
+    setReminderDate("");
+    setReminderLabel("");
+  };
+
+  if (isLoading) return null;
+  if (!note) return null;
+
+  const now = new Date();
+
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <StickyNote className="h-4 w-4" />
+            {note.title}
+          </DialogTitle>
+        </DialogHeader>
+
+        {note.content && (
+          <p className="text-sm text-muted-foreground whitespace-pre-wrap">{note.content}</p>
+        )}
+
+        {/* Anhänge */}
+        {note.attachments && note.attachments.length > 0 && (
+          <div className="space-y-2">
+            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+              <Paperclip className="h-3.5 w-3.5" /> Anhänge ({note.attachments.length})
+            </h4>
+            <div className="flex flex-wrap gap-2">
+              {note.attachments.map((att: any) => (
+                <a key={att.id} href={att.fileUrl} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-secondary text-xs hover:bg-secondary/80 transition-colors">
+                  <Paperclip className="h-3 w-3" />
+                  {att.filename}
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Erinnerungen */}
+        <div className="space-y-2">
+          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+            <Bell className="h-3.5 w-3.5" /> Erinnerungen
+          </h4>
+
+          {note.reminders && note.reminders.length > 0 ? (
+            <div className="space-y-1.5">
+              {note.reminders.map((r: any) => {
+                const remindDate = new Date(r.remindAt);
+                const isPast = remindDate < now;
+                const isSent = r.isSent;
+                return (
+                  <div key={r.id} className={`flex items-center gap-2 p-2 rounded-md border text-xs ${isSent ? "bg-secondary/30 border-border opacity-60" : isPast ? "bg-red-950/30 border-red-900/50" : "bg-secondary/50 border-border"}`}>
+                    {isSent ? (
+                      <CheckCircle2 className="h-3.5 w-3.5 text-green-400 shrink-0" />
+                    ) : isPast ? (
+                      <AlertCircle className="h-3.5 w-3.5 text-red-400 shrink-0" />
+                    ) : (
+                      <Clock className="h-3.5 w-3.5 text-primary shrink-0" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <span className="font-medium">{remindDate.toLocaleDateString("de-DE")} {remindDate.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}</span>
+                      {r.label && <span className="text-muted-foreground ml-1.5">— {r.label}</span>}
+                      {isSent && <span className="text-green-400 ml-1.5">✓ Gesendet</span>}
+                      {isPast && !isSent && <span className="text-red-400 ml-1.5">Überfällig</span>}
+                    </div>
+                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive shrink-0" onClick={() => deleteReminder.mutate({ id: r.id })}>
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">Noch keine Erinnerungen</p>
+          )}
+
+          {/* Neue Erinnerung */}
+          <div className="flex flex-col gap-2 pt-1 border-t border-border">
+            <p className="text-xs text-muted-foreground font-medium">Neue Erinnerung</p>
+            <div className="flex gap-2">
+              <Input type="date" value={reminderDate} onChange={e => setReminderDate(e.target.value)} className="text-xs h-8 flex-1" />
+              <Input type="time" value={reminderTime} onChange={e => setReminderTime(e.target.value)} className="text-xs h-8 w-24" />
+            </div>
+            <div className="flex gap-2">
+              <Input placeholder="Bezeichnung (optional)" value={reminderLabel} onChange={e => setReminderLabel(e.target.value)} className="text-xs h-8 flex-1" />
+              <Button size="sm" onClick={handleAddReminder} disabled={!reminderDate || addReminder.isPending} className="h-8 gap-1 text-xs">
+                <Bell className="h-3 w-3" /> Setzen
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Schließen</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

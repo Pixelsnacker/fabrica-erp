@@ -504,9 +504,12 @@ export async function getDashboardStats() {
 }
 
 // ─── Quick Notes ──────────────────────────────────────────────────────────────
-export async function getQuickNotes(limit = 50) {
+export async function getQuickNotes(limit = 50, projectId?: number | null) {
   const db = await getDb();
   if (!db) return [];
+  if (projectId !== undefined && projectId !== null) {
+    return db.select().from(quickNotes).where(eq(quickNotes.projectId, projectId)).orderBy(desc(quickNotes.createdAt)).limit(limit);
+  }
   return db.select().from(quickNotes).orderBy(desc(quickNotes.createdAt)).limit(limit);
 }
 
@@ -563,14 +566,16 @@ export async function getFullExport() {
 }
 
 // ─── Notes ───────────────────────────────────────────────────────────────────
-export async function getNotes(status?: string) {
+export async function getNotes(status?: string, projectId?: number | null) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
-  const query = db.select().from(notes).orderBy(desc(notes.createdAt));
-  if (status) {
-    return await db.select().from(notes).where(eq(notes.status, status as any)).orderBy(desc(notes.createdAt));
+  const conditions = [];
+  if (status) conditions.push(eq(notes.status, status as any));
+  if (projectId !== undefined && projectId !== null) conditions.push(eq(notes.projectId, projectId));
+  if (conditions.length > 0) {
+    return await db.select().from(notes).where(and(...conditions)).orderBy(desc(notes.createdAt));
   }
-  return await query;
+  return await db.select().from(notes).orderBy(desc(notes.createdAt));
 }
 
 export async function getNoteById(id: number) {

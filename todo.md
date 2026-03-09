@@ -104,7 +104,7 @@
 
 ## Phase 10: Bugfix + Notizen im Projekt-Detail
 - [x] Bug: Schnellnotiz-Modal crashed beim Öffnen (leerer SelectItem value "") — behoben mit "none"-Sentinel
-- [ ] Projekt-Detail: Notizen-Tab mit allen projektbezogenen Notizen
-- [ ] Projekt-Detail: Neue Notiz direkt aus dem Projekt anlegen (Projekt vorausgefüllt)
-- [ ] Projekt-Detail: Erinnerungen pro Notiz sichtbar mit Status (offen/überfällig/erledigt)
-- [ ] Projekt-Detail: Schnellnotizen (quick_notes) ebenfalls im Tab anzeigen
+- [x] Projekt-Detail: Notizen-Tab mit allen projektbezogenen Notizen
+- [x] Projekt-Detail: Neue Notiz direkt aus dem Projekt anlegen (Projekt vorausgefüllt)
+- [x] Projekt-Detail: Erinnerungen pro Notiz sichtbar mit Status (offen/überfällig/erledigt)
+- [x] Projekt-Detail: Schnellnotizen (quick_notes) ebenfalls im Tab anzeigen
