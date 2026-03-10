@@ -52,6 +52,19 @@ const COMPLAINT_PRIORITY: Record<string, { label: string; color: string }> = {
   critical: { label: "Kritisch", color: "text-red-500" },
 };
 
+// ── Tracking-URL Helfer ─────────────────────────────────────────────────────────
+function getTrackingUrl(carrier: string, trackingNumber: string): string {
+  const c = carrier.toLowerCase();
+  const t = encodeURIComponent(trackingNumber);
+  if (c.includes('dhl')) return `https://www.dhl.de/de/privatkunden/pakete-empfangen/verfolgen.html?piececode=${t}`;
+  if (c.includes('ups')) return `https://www.ups.com/track?tracknum=${t}&loc=de_DE`;
+  if (c.includes('fedex')) return `https://www.fedex.com/fedextrack/?trknbr=${t}&locale=de_DE`;
+  if (c.includes('dpd')) return `https://tracking.dpd.de/status/de_DE/parcel/${t}`;
+  if (c.includes('hermes') || c.includes('myhermes')) return `https://www.myhermes.de/empfangen/sendungsverfolgung/#${t}`;
+  // Fallback: Google-Suche nach der Trackingnummer
+  return `https://www.google.com/search?q=${t}+tracking`;
+}
+
 // ── Inline-Edit Feld ──────────────────────────────────────────────────────────
 function InlineEdit({ value, onSave, type = "text", step, min, className }: {
   value: string;
@@ -577,7 +590,18 @@ export default function ProjectDetail() {
                   <div className="flex items-center justify-between">
                     <div>
                       <span className="font-medium text-sm">{s.carrier ?? "Unbekannter Carrier"}</span>
-                      {s.trackingNumber && <div className="text-xs text-primary mt-1 font-mono">{s.trackingNumber}</div>}
+                      {s.trackingNumber && (
+                        <a
+                          href={getTrackingUrl(s.carrier ?? '', s.trackingNumber)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-primary mt-1 font-mono hover:underline flex items-center gap-1 group"
+                          title="Sendungsverfolgung öffnen"
+                        >
+                          {s.trackingNumber}
+                          <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </a>
+                      )}
                     </div>
                     <div className="text-right text-xs text-muted-foreground">
                       {s.shippedAt && <div>Versandt: {new Date(s.shippedAt).toLocaleDateString("de-DE")}</div>}

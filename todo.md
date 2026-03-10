@@ -280,7 +280,8 @@
 - [x] 107 Tests grün, 0 TypeScript-Fehler
 
 ## Phase 29: Klickbare Trackingnummern
-- [ ] Tracking-URLs für DHL, UPS, FedEx, DPD, Hermes implementieren
-- [ ] Klick auf Trackingnummer öffnet Tracking-Seite im neuen Tab
-- [ ] Carrier-Erkennung automatisch (aus dem Carrier-Feld)
-- [ ] Tracking-Link überall wo Trackingnummern angezeigt werden (Projekt-Detail, Versand-Tab)
+- [x] Tracking-URLs für DHL, UPS, FedEx, DPD, Hermes (+ Google-Fallback) implementiert
+- [x] Klick auf Trackingnummer öffnet Tracking-Seite im neuen Tab
+- [x] Carrier-Erkennung automatisch aus dem Carrier-Feld (case-insensitive)
+- [x] ExternalLink-Icon erscheint beim Hover
+- [x] 107 Tests grün, 0 TypeScript-Fehler
