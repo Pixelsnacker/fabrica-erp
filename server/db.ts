@@ -960,7 +960,7 @@ export async function getInvoiceAuditLog(invoiceId: number) {
     .orderBy(invoiceAuditLog.changedAt);
 }
 
-// ─── Company Settings ─────────────────────────────────────────────────────────
+// ─── Company Settings ────────────────────────────────────────────────────────────
 export async function getCompanySettings() {
   const db = await getDb();
   if (!db) return null;

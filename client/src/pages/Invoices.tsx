@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -14,7 +15,7 @@ import { toast } from "sonner";
 import {
   Plus, FileText, Receipt, Search, Download, Lock, XCircle,
   ChevronDown, ChevronUp, Trash2, Eye, History, AlertTriangle,
-  CheckCircle, Clock, Send, Euro
+  CheckCircle, Clock, Send, Euro, Loader2, Printer, BookOpen
 } from "lucide-react";
 
 // ─── Typen ───────────────────────────────────────────────────────────────────
@@ -127,6 +128,20 @@ export default function Invoices() {
   const [showDetail, setShowDetail] = useState<number | null>(null);
   const [showAudit, setShowAudit] = useState<number | null>(null);
 
+  // Datenblatt-Generator State
+  const [showDatasheetGen, setShowDatasheetGen] = useState(false);
+  const [dsForm, setDsForm] = useState({
+    topic: '',
+    audience: 'customer' as 'customer' | 'internal' | 'supplier',
+    language: 'de' as 'de' | 'en',
+    detail: 'standard' as 'brief' | 'standard' | 'detailed',
+    customerName: '',
+    projectName: '',
+    selectedEntryIds: [] as number[],
+  });
+  const [generatedDatasheet, setGeneratedDatasheet] = useState('');
+  const [showDsEntrySelector, setShowDsEntrySelector] = useState(false);
+
   // Daten laden
   const { data: invoiceList = [], isLoading } = trpc.invoices.list.useQuery(undefined);
   const { data: customers = [] } = trpc.customers.list.useQuery();
@@ -148,6 +163,14 @@ export default function Invoices() {
   const deleteMut = trpc.invoices.delete.useMutation({ onSuccess: () => { utils.invoices.list.invalidate(); toast.success('Gelöscht'); } });
   const { data: csvData } = trpc.invoices.exportCsv.useQuery(undefined);
   const { data: datevData } = trpc.invoices.exportDatev.useQuery(undefined);
+  const { data: knowledgeEntries = [] } = trpc.knowledge.list.useQuery({});
+  const generateDsMut = trpc.knowledge.generateDatasheet.useMutation({
+    onSuccess: (data) => {
+      setGeneratedDatasheet(data.text);
+      toast.success(`Datenblatt generiert — ${data.usedEntries.length} Wissenseinträge verwendet`);
+    },
+    onError: () => toast.error('Fehler bei der Datenblatt-Generierung'),
+  });
 
   // Formular-State
   const [form, setForm] = useState({
@@ -695,6 +718,52 @@ export default function Invoices() {
               </div>
             </div>
 
+            {/* Datenblatt-Generator */}
+            <div className="border border-primary/30 rounded-lg p-4 bg-primary/5">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <BookOpen className="h-4 w-4 text-primary" />
+                  <h3 className="font-semibold text-sm">KI-Datenblatt generieren</h3>
+                  <Badge variant="secondary" className="text-xs">optional</Badge>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 border-primary/40 text-primary hover:bg-primary/10"
+                  onClick={() => {
+                    setDsForm(f => ({
+                      ...f,
+                      topic: form.projectId ? (projects.find((p: any) => p.id === form.projectId) as any)?.name ?? '' : '',
+                      customerName: form.recipientCompany || form.recipientName,
+                      projectName: form.projectId ? (projects.find((p: any) => p.id === form.projectId) as any)?.name ?? '' : '',
+                    }));
+                    setGeneratedDatasheet('');
+                    setShowDatasheetGen(true);
+                  }}
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  Datenblatt erstellen
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Generieren Sie ein technisches Datenblatt aus Ihrer Wissensdatenbank und fügen Sie es dem Angebot bei.
+                {generatedDatasheet && (
+                  <span className="text-green-400 ml-2">✓ Datenblatt bereit — wird beim Drucken beigefügt</span>
+                )}
+              </p>
+              {generatedDatasheet && (
+                <div className="mt-2 flex gap-2">
+                  <Button type="button" variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => setShowDatasheetGen(true)}>
+                    <Eye className="h-3 w-3" /> Vorschau
+                  </Button>
+                  <Button type="button" variant="ghost" size="sm" className="gap-1.5 text-xs text-muted-foreground" onClick={() => setGeneratedDatasheet('')}>
+                    <XCircle className="h-3 w-3" /> Entfernen
+                  </Button>
+                </div>
+              )}
+            </div>
+
             {/* Texte */}
             <div className="grid grid-cols-1 gap-3">
               <div><Label>Einleitungstext</Label><Textarea value={form.introText} onChange={e => setForm(f => ({ ...f, introText: e.target.value }))} rows={2} placeholder="z.B. Vielen Dank für Ihre Anfrage..." /></div>
@@ -774,8 +843,189 @@ export default function Invoices() {
         </DialogContent>
       </Dialog>
 
-      {/* ─── Audit-Log-Dialog ─────────────────────────────────────────────────── */}
-      <Dialog open={showAudit !== null} onOpenChange={() => setShowAudit(null)}>
+      {/* ─── Datenblatt-Generator-Dialog ──────────────────────────────────────────────── */}
+      <Dialog open={showDatasheetGen} onOpenChange={setShowDatasheetGen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BookOpen className="h-5 w-5 text-primary" />
+              KI-Datenblatt generieren
+            </DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Links: Konfiguration */}
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label>Thema / Titel des Datenblatts *</Label>
+                <Input
+                  placeholder="z.B. FDM-Druck in PETG, Toleranzen und Oberflächen"
+                  value={dsForm.topic}
+                  onChange={e => setDsForm(f => ({ ...f, topic: e.target.value }))}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Zielgruppe</Label>
+                  <Select value={dsForm.audience} onValueChange={v => setDsForm(f => ({ ...f, audience: v as any }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="customer">Kunde (B2B)</SelectItem>
+                      <SelectItem value="internal">Intern</SelectItem>
+                      <SelectItem value="supplier">Lieferant</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Sprache</Label>
+                  <Select value={dsForm.language} onValueChange={v => setDsForm(f => ({ ...f, language: v as any }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="de">Deutsch</SelectItem>
+                      <SelectItem value="en">English</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Detailtiefe</Label>
+                <Select value={dsForm.detail} onValueChange={v => setDsForm(f => ({ ...f, detail: v as any }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="brief">Kurz (max. 300 Wörter)</SelectItem>
+                    <SelectItem value="standard">Standard (400–700 Wörter)</SelectItem>
+                    <SelectItem value="detailed">Detailliert (700–1200 Wörter)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Kundenname (optional)</Label>
+                  <Input placeholder="Keck GmbH" value={dsForm.customerName} onChange={e => setDsForm(f => ({ ...f, customerName: e.target.value }))} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Projektname (optional)</Label>
+                  <Input placeholder="KZ Testmodell" value={dsForm.projectName} onChange={e => setDsForm(f => ({ ...f, projectName: e.target.value }))} />
+                </div>
+              </div>
+              {knowledgeEntries.length > 0 && (
+                <div className="space-y-1.5">
+                  <button
+                    type="button"
+                    className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                    onClick={() => setShowDsEntrySelector(s => !s)}
+                  >
+                    {showDsEntrySelector ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    Wissenseinträge auswählen
+                    {dsForm.selectedEntryIds.length > 0 && (
+                      <Badge variant="secondary" className="text-xs">{dsForm.selectedEntryIds.length} ausgewählt</Badge>
+                    )}
+                  </button>
+                  {showDsEntrySelector && (
+                    <div className="border border-border rounded-lg p-3 space-y-2 max-h-40 overflow-y-auto">
+                      <p className="text-xs text-muted-foreground">Leer lassen = KI wählt automatisch passende Einträge</p>
+                      {knowledgeEntries.map((e: any) => (
+                        <div key={e.id} className="flex items-center gap-2">
+                          <Checkbox
+                            id={`ds-entry-${e.id}`}
+                            checked={dsForm.selectedEntryIds.includes(e.id)}
+                            onCheckedChange={() => setDsForm(f => ({
+                              ...f,
+                              selectedEntryIds: f.selectedEntryIds.includes(e.id)
+                                ? f.selectedEntryIds.filter(x => x !== e.id)
+                                : [...f.selectedEntryIds, e.id],
+                            }))}
+                          />
+                          <label htmlFor={`ds-entry-${e.id}`} className="text-sm cursor-pointer">
+                            {e.title}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              {knowledgeEntries.length === 0 && (
+                <p className="text-xs text-amber-400 bg-amber-400/10 rounded p-2">
+                  Noch keine Wissenseinträge vorhanden. Das Datenblatt wird auf Basis allgemeinen 3D-Druck-Fachwissens erstellt.
+                </p>
+              )}
+              <Button
+                onClick={() => {
+                  if (!dsForm.topic.trim()) { toast.error('Bitte ein Thema eingeben'); return; }
+                  setGeneratedDatasheet('');
+                  generateDsMut.mutate(dsForm);
+                }}
+                disabled={!dsForm.topic.trim() || generateDsMut.isPending}
+                className="w-full gap-2"
+              >
+                {generateDsMut.isPending ? (
+                  <><Loader2 className="h-4 w-4 animate-spin" />Generiere Datenblatt...</>
+                ) : (
+                  <><FileText className="h-4 w-4" />Datenblatt generieren</>
+                )}
+              </Button>
+            </div>
+            {/* Rechts: Vorschau */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Vorschau</Label>
+                {generatedDatasheet && (
+                  <Button variant="outline" size="sm" onClick={() => {
+                    const w = window.open('', '_blank');
+                    if (!w) return;
+                    w.document.write(`<html><head><title>Datenblatt – ${dsForm.topic}</title>
+                    <style>body{font-family:Arial,sans-serif;font-size:12pt;line-height:1.6;margin:2cm;color:#000;}
+                    h1{font-size:18pt;border-bottom:2px solid #333;padding-bottom:6px;}
+                    h2{font-size:14pt;color:#333;margin-top:20px;}h3{font-size:12pt;}
+                    table{width:100%;border-collapse:collapse;margin:10px 0;}
+                    td,th{border:1px solid #ccc;padding:6px 10px;text-align:left;}
+                    th{background:#f0f0f0;font-weight:bold;}li{margin-bottom:4px;}
+                    @media print{body{margin:1.5cm;}}</style></head><body>
+                    <div id='c'></div>
+                    <script>document.getElementById('c').innerHTML=${JSON.stringify(
+                      generatedDatasheet
+                        .replace(/^# (.+)$/gm,'<h1>$1</h1>')
+                        .replace(/^## (.+)$/gm,'<h2>$1</h2>')
+                        .replace(/^### (.+)$/gm,'<h3>$1</h3>')
+                        .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+                        .replace(/^- (.+)$/gm,'<li>$1</li>')
+                        .replace(/\n\n/g,'</p><p>')
+                    )};window.print();</script></body></html>`);
+                    w.document.close();
+                  }} className="gap-1.5">
+                    <Printer className="h-3.5 w-3.5" /> Als PDF drucken
+                  </Button>
+                )}
+              </div>
+              <div className="border border-border rounded-lg p-4 min-h-64 max-h-[45vh] overflow-y-auto bg-muted/20 text-sm">
+                {generateDsMut.isPending ? (
+                  <div className="flex flex-col items-center justify-center h-48 gap-3 text-muted-foreground">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <p className="text-sm">KI erstellt Datenblatt aus Ihrer Wissensdatenbank...</p>
+                  </div>
+                ) : generatedDatasheet ? (
+                  <div className="whitespace-pre-wrap text-xs leading-relaxed">{generatedDatasheet}</div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-48 gap-2 text-muted-foreground">
+                    <FileText className="h-10 w-10 opacity-20" />
+                    <p className="text-sm">Hier erscheint das generierte Datenblatt</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDatasheetGen(false)}>Schließen</Button>
+            {generatedDatasheet && (
+              <Button onClick={() => { setShowDatasheetGen(false); toast.success('Datenblatt wird beim Drucken des Angebots beigefügt'); }} className="gap-2">
+                <CheckCircle className="h-4 w-4" /> Übernehmen
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Audit-Log-Dialog ───────────────────────────────────────────────────────── */}     <Dialog open={showAudit !== null} onOpenChange={() => setShowAudit(null)}>
         <DialogContent className="max-w-lg max-h-[70vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Änderungsprotokoll (GoBD)</DialogTitle>

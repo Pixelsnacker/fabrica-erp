@@ -15,8 +15,9 @@ import {
   ArrowLeft, Plus, Trash2, Package, Truck, FileCode2, MessageSquare,
   ExternalLink, Bell, StickyNote, Clock, Paperclip, CheckCircle2, Circle,
   AlertCircle, Zap, Upload, FileText, Image, X, Edit2, Save, AlertTriangle,
-  ShieldAlert, Receipt,
+  ShieldAlert, Receipt, BookOpen, Loader2, Printer, ChevronDown, ChevronUp,
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -147,6 +148,27 @@ export default function ProjectDetail() {
   const [showAddComplaint, setShowAddComplaint] = useState(false);
   const [showEditComplaint, setShowEditComplaint] = useState<number | null>(null);
   const [showOfferUpload, setShowOfferUpload] = useState<number | null>(null);
+
+  // Datenblatt-Generator State
+  const [dsForm, setDsForm] = useState({
+    topic: '',
+    audience: 'customer' as 'customer' | 'internal' | 'supplier',
+    language: 'de' as 'de' | 'en',
+    detail: 'standard' as 'brief' | 'standard' | 'detailed',
+    customerName: '',
+    projectName: '',
+    selectedEntryIds: [] as number[],
+  });
+  const [generatedDatasheet, setGeneratedDatasheet] = useState('');
+  const [showDsEntrySelector, setShowDsEntrySelector] = useState(false);
+  const { data: knowledgeEntries = [] } = trpc.knowledge.list.useQuery({});
+  const generateDsMut = trpc.knowledge.generateDatasheet.useMutation({
+    onSuccess: (data) => {
+      setGeneratedDatasheet(data.text);
+      toast.success(`Datenblatt generiert — ${data.usedEntries.length} Wissenseinträge verwendet`);
+    },
+    onError: () => toast.error('Fehler bei der Datenblatt-Generierung'),
+  });
 
   const [itemForm, setItemForm] = useState({ name: "", quantity: 1, material: "", technique: "3d_print", productionType: "external", unitEk: "0.00", unitVk: "0.00" });
   const [shipmentForm, setShipmentForm] = useState({ carrier: "", trackingNumber: "", notes: "" });
@@ -288,6 +310,7 @@ export default function ProjectDetail() {
           <TabsTrigger value="shipment" className="gap-1.5 text-xs md:text-sm"><Truck className="h-3.5 w-3.5" /><span className="hidden sm:inline">Versand</span> ({shipments.length})</TabsTrigger>
           <TabsTrigger value="cad" className="gap-1.5 text-xs md:text-sm"><FileCode2 className="h-3.5 w-3.5" /><span className="hidden sm:inline">CAD</span> ({cadFiles.length})</TabsTrigger>
           <TabsTrigger value="consultation" className="gap-1.5 text-xs md:text-sm"><MessageSquare className="h-3.5 w-3.5" /><span className="hidden sm:inline">Beratung</span> ({consultations.length})</TabsTrigger>
+          <TabsTrigger value="datasheet" className="gap-1.5 text-xs md:text-sm"><BookOpen className="h-3.5 w-3.5" /><span className="hidden sm:inline">Datenblatt</span></TabsTrigger>
         </TabsList>
 
         {/* ── Positionen (editierbar) ── */}
@@ -590,6 +613,172 @@ export default function ProjectDetail() {
               ))}
             </div>
           )}
+        </TabsContent>
+
+        {/* ── Datenblatt-Generator ── */}
+        <TabsContent value="datasheet" className="mt-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Links: Konfiguration */}
+            <div className="space-y-3">
+              <div>
+                <h3 className="font-semibold text-sm mb-1">KI-Datenblatt aus Wissensdatenbank</h3>
+                <p className="text-xs text-muted-foreground">Generieren Sie ein professionelles technisches Datenblatt für dieses Projekt. Die KI nutzt Ihre Wissensdatenbank als Grundlage.</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Thema / Titel *</Label>
+                <Input
+                  placeholder={project?.title ?? 'z.B. FDM-Druck in PETG'}
+                  value={dsForm.topic}
+                  onChange={e => setDsForm(f => ({ ...f, topic: e.target.value }))}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Zielgruppe</Label>
+                  <Select value={dsForm.audience} onValueChange={v => setDsForm(f => ({ ...f, audience: v as any }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="customer">Kunde (B2B)</SelectItem>
+                      <SelectItem value="internal">Intern</SelectItem>
+                      <SelectItem value="supplier">Lieferant</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Sprache</Label>
+                  <Select value={dsForm.language} onValueChange={v => setDsForm(f => ({ ...f, language: v as any }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="de">Deutsch</SelectItem>
+                      <SelectItem value="en">English</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Detailtiefe</Label>
+                <Select value={dsForm.detail} onValueChange={v => setDsForm(f => ({ ...f, detail: v as any }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="brief">Kurz (max. 300 Wörter)</SelectItem>
+                    <SelectItem value="standard">Standard (400–700 Wörter)</SelectItem>
+                    <SelectItem value="detailed">Detailliert (700–1200 Wörter)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {(knowledgeEntries as any[]).length > 0 && (
+                <div className="space-y-1.5">
+                  <button
+                    type="button"
+                    className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                    onClick={() => setShowDsEntrySelector(s => !s)}
+                  >
+                    {showDsEntrySelector ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    Wissenseinträge auswählen
+                    {dsForm.selectedEntryIds.length > 0 && (
+                      <Badge variant="secondary" className="text-xs">{dsForm.selectedEntryIds.length} ausgewählt</Badge>
+                    )}
+                  </button>
+                  {showDsEntrySelector && (
+                    <div className="border border-border rounded-lg p-3 space-y-2 max-h-40 overflow-y-auto">
+                      <p className="text-xs text-muted-foreground">Leer lassen = KI wählt automatisch passende Einträge</p>
+                      {(knowledgeEntries as any[]).map((e: any) => (
+                        <div key={e.id} className="flex items-center gap-2">
+                          <Checkbox
+                            id={`proj-ds-entry-${e.id}`}
+                            checked={dsForm.selectedEntryIds.includes(e.id)}
+                            onCheckedChange={() => setDsForm(f => ({
+                              ...f,
+                              selectedEntryIds: f.selectedEntryIds.includes(e.id)
+                                ? f.selectedEntryIds.filter(x => x !== e.id)
+                                : [...f.selectedEntryIds, e.id],
+                            }))}
+                          />
+                          <label htmlFor={`proj-ds-entry-${e.id}`} className="text-sm cursor-pointer">{e.title}</label>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              {(knowledgeEntries as any[]).length === 0 && (
+                <p className="text-xs text-amber-400 bg-amber-400/10 rounded p-2">
+                  Noch keine Wissenseinträge vorhanden. Das Datenblatt wird auf Basis allgemeinen 3D-Druck-Fachwissens erstellt.
+                </p>
+              )}
+              <Button
+                onClick={() => {
+                  const topic = dsForm.topic.trim() || (project?.title ?? '');
+                  if (!topic) { toast.error('Bitte ein Thema eingeben'); return; }
+                  setGeneratedDatasheet('');
+                  generateDsMut.mutate({
+                    ...dsForm,
+                    topic,
+                    projectName: project?.title ?? '',
+                  });
+                }}
+                disabled={generateDsMut.isPending}
+                className="w-full gap-2"
+              >
+                {generateDsMut.isPending ? (
+                  <><Loader2 className="h-4 w-4 animate-spin" />Generiere Datenblatt...</>
+                ) : (
+                  <><BookOpen className="h-4 w-4" />Datenblatt generieren</>
+                )}
+              </Button>
+            </div>
+
+            {/* Rechts: Vorschau */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Vorschau</Label>
+                {generatedDatasheet && (
+                  <Button variant="outline" size="sm" onClick={() => {
+                    const w = window.open('', '_blank');
+                    if (!w) return;
+                    w.document.write(`<html><head><title>Datenblatt – ${dsForm.topic || project?.title}</title>
+                    <style>body{font-family:Arial,sans-serif;font-size:12pt;line-height:1.6;margin:2cm;color:#000;}
+                    h1{font-size:18pt;border-bottom:2px solid #333;padding-bottom:6px;}
+                    h2{font-size:14pt;color:#333;margin-top:20px;}h3{font-size:12pt;}
+                    table{width:100%;border-collapse:collapse;margin:10px 0;}
+                    td,th{border:1px solid #ccc;padding:6px 10px;text-align:left;}
+                    th{background:#f0f0f0;font-weight:bold;}li{margin-bottom:4px;}
+                    @media print{body{margin:1.5cm;}}</style></head><body>
+                    <div id='c'></div>
+                    <script>document.getElementById('c').innerHTML=${JSON.stringify(
+                      generatedDatasheet
+                        .replace(/^# (.+)$/gm,'<h1>$1</h1>')
+                        .replace(/^## (.+)$/gm,'<h2>$1</h2>')
+                        .replace(/^### (.+)$/gm,'<h3>$1</h3>')
+                        .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+                        .replace(/^- (.+)$/gm,'<li>$1</li>')
+                        .replace(/\n\n/g,'</p><p>')
+                    )};window.print();</script></body></html>`);
+                    w.document.close();
+                  }} className="gap-1.5">
+                    <Printer className="h-3.5 w-3.5" /> Als PDF drucken
+                  </Button>
+                )}
+              </div>
+              <div className="border border-border rounded-lg p-4 min-h-64 max-h-[50vh] overflow-y-auto bg-muted/20 text-sm">
+                {generateDsMut.isPending ? (
+                  <div className="flex flex-col items-center justify-center h-48 gap-3 text-muted-foreground">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <p className="text-sm">KI erstellt Datenblatt aus Ihrer Wissensdatenbank...</p>
+                    <p className="text-xs">Dies kann 10–20 Sekunden dauern</p>
+                  </div>
+                ) : generatedDatasheet ? (
+                  <div className="whitespace-pre-wrap text-xs leading-relaxed">{generatedDatasheet}</div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-48 gap-2 text-muted-foreground">
+                    <BookOpen className="h-10 w-10 opacity-20" />
+                    <p className="text-sm">Hier erscheint das generierte Datenblatt</p>
+                    <p className="text-xs text-center max-w-xs">Thema eingeben und auf "Datenblatt generieren" klicken</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
 

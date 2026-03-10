@@ -393,6 +393,66 @@ export const appRouter = router({
       isActive: z.boolean().optional(),
     })).mutation(async ({ input }) => { const { id, ...data } = input; await updateKnowledgeEntry(id, data as any); return { success: true }; }),
     delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => { await deleteKnowledgeEntry(input.id); return { success: true }; }),
+    generateDatasheet: protectedProcedure
+      .input(z.object({
+        topic: z.string().min(1),
+        audience: z.enum(["customer", "internal", "supplier"]).default("customer"),
+        language: z.enum(["de", "en"]).default("de"),
+        detail: z.enum(["brief", "standard", "detailed"]).default("standard"),
+        customerName: z.string().optional(),
+        projectName: z.string().optional(),
+        selectedEntryIds: z.array(z.number()).optional(),
+      }))
+      .mutation(async ({ input }) => {
+        // Fetch relevant knowledge entries
+        const allEntries = await getKnowledgeEntries(input.topic);
+        let entries = allEntries;
+        if (input.selectedEntryIds && input.selectedEntryIds.length > 0) {
+          const selected = await Promise.all(
+            input.selectedEntryIds.map(id => getKnowledgeEntries().then(all => all.find(e => e.id === id)))
+          );
+          entries = selected.filter(Boolean) as typeof allEntries;
+        }
+        const context = entries.slice(0, 10).map(e =>
+          `### ${e.title} (${e.category})\n${e.content}`
+        ).join("\n\n");
+
+        const audienceMap: Record<string, string> = {
+          customer: "einem Kunden (B2B, technisch versiert)",
+          internal: "internen Mitarbeitern",
+          supplier: "einem Lieferanten",
+        };
+        const detailMap: Record<string, string> = {
+          brief: "kurz und prägnant (max. 300 Wörter)",
+          standard: "ausführlich mit allen wichtigen Details (400–700 Wörter)",
+          detailed: "sehr detailliert mit technischen Spezifikationen (700–1200 Wörter)",
+        };
+        const langInstruction = input.language === "en"
+          ? "Write the datasheet entirely in English."
+          : "Schreibe das Datenblatt vollständig auf Deutsch.";
+
+        const systemPrompt = `Du bist ein technischer Redakteur für eine 3D-Druck-Firma (FDM, SLA, CNC-Fräsen). ${langInstruction} Erstelle professionelle, präzise technische Datenblätter.`;
+
+        const userPrompt = `Erstelle ein technisches Datenblatt zum Thema "${input.topic}" für ${audienceMap[input.audience]}. Detailgrad: ${detailMap[input.detail]}.
+${input.customerName ? `Kundenname: ${input.customerName}` : ""}
+${input.projectName ? `Projektname: ${input.projectName}` : ""}
+
+Nutze folgende Wissensdatenbank-Einträge als Grundlage:
+
+${context || "Kein spezifischer Kontext verfügbar — nutze allgemeines 3D-Druck-Fachwissen."}
+
+Strukturiere das Datenblatt mit: Überschrift, kurze Einleitung, technische Spezifikationen (Tabelle wenn sinnvoll), Anwendungsgebiete, Hinweise/Einschränkungen, Kontaktinformationen-Platzhalter. Verwende Markdown-Formatierung.`;
+
+        const response = await invokeLLM({
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+        });
+        const rawContent = response.choices?.[0]?.message?.content;
+        const text = typeof rawContent === "string" ? rawContent : "";
+        return { text, usedEntries: entries.slice(0, 10).map(e => ({ id: e.id, title: e.title, category: e.category })) };
+      }),
   }),
 
   // ─── Image Library ───────────────────────────────────────────────────────────

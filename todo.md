@@ -194,3 +194,15 @@
 - [x] Angebot aus Projekt: Positionen aus project_items übernehmen (Bezeichnung, Menge, VK)
 - [x] Angebot aus Projekt: Kundendaten als Empfänger vorausgefüllt
 - [x] 48 Tests grün, 0 TypeScript-Fehler
+
+## Phase 18: KI-Datenblatt-Generator
+- [x] tRPC: knowledge.generateDatasheet – LLM-Aufruf mit Wissensdatenbank-Kontext
+- [x] tRPC: knowledge.list – alle Einträge für Kontext-Auswahl
+- [x] Frontend: Datenblatt-Generator-Dialog in der Wissensdatenbank
+- [x] Frontend: Konfiguration (Thema, Zielgruppe, Sprache, Detailtiefe, Kundenname)
+- [x] Frontend: Vorschau des generierten Datenblatts (Markdown-Rendering)
+- [x] Frontend: PDF-Export des Datenblatts (Browser-Print)
+- [x] Frontend: Datenblatt-Button im Angebots-Formular (Datenblatt direkt aus Angebot generieren)
+- [x] Frontend: Datenblatt-Tab im Projekt-Detail (Schnellzugriff auf Generator)
+- [x] Vitest: 22 neue Tests für Datenblatt-Generator (Prompt-Aufbau, Kontext-Selektion, Konfiguration)
+- [x] 70 Tests gesamt grün, 0 TypeScript-Fehler
