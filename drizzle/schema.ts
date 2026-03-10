@@ -439,6 +439,16 @@ export const companySettings = mysqlTable("company_settings", {
   logoKey: text("logo_key"),
   invoiceFooter: text("invoice_footer"),
   kleinunternehmer: tinyint("kleinunternehmer").default(0),
+  // Nummernkreis-Konfiguration
+  offerPrefix: varchar("offer_prefix", { length: 20 }).default("AN"),
+  invoicePrefix: varchar("invoice_prefix", { length: 20 }).default("RE"),
+  creditNotePrefix: varchar("credit_note_prefix", { length: 20 }).default("GS"),
+  numberSeparator: varchar("number_separator", { length: 5 }).default("-"),
+  numberPadding: int("number_padding").default(4),
+  includeYear: tinyint("include_year").default(1),
+  offerStartNumber: int("offer_start_number").default(1),
+  invoiceStartNumber: int("invoice_start_number").default(1),
+  creditNoteStartNumber: int("credit_note_start_number").default(1),
   createdAt: bigint("created_at", { mode: "number" }),
   updatedAt: bigint("updated_at", { mode: "number" }),
 });

@@ -583,17 +583,17 @@ export default function Invoices() {
 
       {/* ─── Formular-Dialog ─────────────────────────────────────────────────── */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editId ? 'Bearbeiten' : 'Neu'}: {TYPE_LABELS[form.type]}</DialogTitle>
           </DialogHeader>
           <div className="space-y-5">
             {/* Typ + Kunde + Projekt */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
+            <div className="grid grid-cols-1 md:grid-cols-[160px_1fr_1fr] gap-3">
+              <div className="min-w-0">
                 <Label>Typ</Label>
                 <Select value={form.type} onValueChange={v => setForm(f => ({ ...f, type: v as InvoiceType }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="offer">Angebot</SelectItem>
                     <SelectItem value="invoice">Rechnung</SelectItem>
@@ -601,23 +601,23 @@ export default function Invoices() {
                   </SelectContent>
                 </Select>
               </div>
-              <div>
+              <div className="min-w-0">
                 <Label>Kunde</Label>
                 <Select value={form.customerId ? String(form.customerId) : 'none'} onValueChange={v => v !== 'none' ? onCustomerSelect(v) : setForm(f => ({ ...f, customerId: undefined }))}>
-                  <SelectTrigger><SelectValue placeholder="Kunde wählen" /></SelectTrigger>
+                  <SelectTrigger className="w-full"><SelectValue placeholder="Kunde wählen" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Kein Kunde</SelectItem>
                     {customers.map((c: any) => <SelectItem key={c.id} value={String(c.id)}>{c.company || c.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
-              <div>
+              <div className="min-w-0">
                 <Label>Projekt</Label>
                 <Select value={form.projectId ? String(form.projectId) : 'none'} onValueChange={v => setForm(f => ({ ...f, projectId: v !== 'none' ? parseInt(v) : undefined }))}>
-                  <SelectTrigger><SelectValue placeholder="Projekt wählen" /></SelectTrigger>
+                  <SelectTrigger className="w-full"><SelectValue placeholder="Projekt wählen" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Kein Projekt</SelectItem>
-                    {projects.map((p: any) => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}
+                    {projects.map((p: any) => <SelectItem key={p.id} value={String(p.id)}>{p.title}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -626,7 +626,7 @@ export default function Invoices() {
             {/* Absender */}
             <div className="border border-border rounded-lg p-4 space-y-3">
               <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Absender (Ihr Unternehmen)</h3>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div><Label>Name</Label><Input value={form.senderName} onChange={e => setForm(f => ({ ...f, senderName: e.target.value }))} /></div>
                 <div><Label>Straße</Label><Input value={form.senderStreet} onChange={e => setForm(f => ({ ...f, senderStreet: e.target.value }))} /></div>
                 <div><Label>PLZ</Label><Input value={form.senderZip} onChange={e => setForm(f => ({ ...f, senderZip: e.target.value }))} /></div>
@@ -643,7 +643,7 @@ export default function Invoices() {
             {/* Empfänger */}
             <div className="border border-border rounded-lg p-4 space-y-3">
               <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Empfänger (Kunde)</h3>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div><Label>Firma</Label><Input value={form.recipientCompany} onChange={e => setForm(f => ({ ...f, recipientCompany: e.target.value }))} /></div>
                 <div><Label>Ansprechpartner</Label><Input value={form.recipientName} onChange={e => setForm(f => ({ ...f, recipientName: e.target.value }))} /></div>
                 <div><Label>Straße</Label><Input value={form.recipientStreet} onChange={e => setForm(f => ({ ...f, recipientStreet: e.target.value }))} /></div>
@@ -654,7 +654,7 @@ export default function Invoices() {
             </div>
 
             {/* Daten + Steuer */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <div><Label>Ausstellungsdatum *</Label><Input type="date" value={form.issueDate} onChange={e => setForm(f => ({ ...f, issueDate: e.target.value }))} /></div>
               <div><Label>Fälligkeitsdatum</Label><Input type="date" value={form.dueDate} onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))} /></div>
               <div><Label>Lieferdatum</Label><Input type="date" value={form.deliveryDate} onChange={e => setForm(f => ({ ...f, deliveryDate: e.target.value }))} /></div>

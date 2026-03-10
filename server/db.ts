@@ -747,11 +747,23 @@ export async function getAllComplaints() {
 
 // ─── Invoice Module ───────────────────────────────────────────────────────────
 
-/** Atomare Nummernvergabe – sicher gegen Race Conditions */
+/** Atomare Nummernvergabe – sicher gegen Race Conditions, Präfix aus Firmeneinstellungen */
 export async function getNextInvoiceNumber(type: 'invoice' | 'offer' | 'credit_note'): Promise<string> {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
   const year = new Date().getFullYear();
+
+  // Firmeneinstellungen für Präfix und Format laden
+  const settings = await getCompanySettings();
+  const sep = settings?.numberSeparator ?? '-';
+  const padding = settings?.numberPadding ?? 4;
+  const includeYear = (settings?.includeYear ?? 1) === 1;
+  const prefix = type === 'invoice'
+    ? (settings?.invoicePrefix ?? 'RE')
+    : type === 'offer'
+      ? (settings?.offerPrefix ?? 'AN')
+      : (settings?.creditNotePrefix ?? 'GS');
+
   // Upsert + Increment
   await db.execute(
     sql`INSERT INTO invoice_sequences (year, type, last_number) VALUES (${year}, ${type}, 1)
@@ -760,8 +772,12 @@ export async function getNextInvoiceNumber(type: 'invoice' | 'offer' | 'credit_n
   const rows = await db.select().from(invoiceSequences)
     .where(and(eq(invoiceSequences.year, year), eq(invoiceSequences.type, type)));
   const num = rows[0]?.lastNumber ?? 1;
-  const prefix = type === 'invoice' ? 'RE' : type === 'offer' ? 'AN' : 'GS';
-  return `${prefix}-${year}-${String(num).padStart(4, '0')}`;
+  const paddedNum = String(num).padStart(padding, '0');
+
+  if (includeYear) {
+    return `${prefix}${sep}${year}${sep}${paddedNum}`;
+  }
+  return `${prefix}${sep}${paddedNum}`;
 }
 
 export async function getInvoices(filters?: { type?: string; status?: string }) {

@@ -206,3 +206,19 @@
 - [x] Frontend: Datenblatt-Tab im Projekt-Detail (Schnellzugriff auf Generator)
 - [x] Vitest: 22 neue Tests für Datenblatt-Generator (Prompt-Aufbau, Kontext-Selektion, Konfiguration)
 - [x] 70 Tests gesamt grün, 0 TypeScript-Fehler
+
+## Phase 19: Konfigurierbarer Nummernkreis
+- [x] Schema: companySettings um Präfix- und Format-Felder erweitern
+- [x] DB-Migration: ALTER TABLE direkt ausgeführt
+- [x] Backend: Nummernvergabe-Logik liest Präfix aus companySettings
+- [x] Backend: tRPC companySettings.update mit neuen Feldern + numberPreview-Prozedur
+- [x] Frontend: Nummernkreis-Karte in den Firmeneinstellungen
+- [x] Frontend: Präfix, Trennzeichen, Nullstellen, Jahreszahl konfigurierbar
+- [x] Frontend: Live-Vorschau der generierten Nummer (client-seitig)
+- [x] Vitest: 19 neue Tests für konfigurierbare Nummernvergabe (89 Tests gesamt)
+
+## Phase 20: Responsive Layout Fixes
+- [x] Invoices-Formular: Typ/Kunde/Projekt-Zeile — grid-cols-[160px_1fr_1fr] mit min-w-0
+- [x] Invoices-Formular: Absender/Empfänger-Raster auf sm:grid-cols-2 gesetzt
+- [x] Invoices-Formular: Datum/Steuer-Zeile auf sm:grid-cols-2 lg:grid-cols-4
+- [x] Invoices-Formular: Dialog-Breite auf w-[95vw] max-w-4xl gesetzt

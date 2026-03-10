@@ -1,0 +1,9 @@
+{
+  "query": "\nALTER TABLE company_settings\n  ADD COLUMN IF NOT EXISTS offer_prefix VARCHAR(20) DEFAULT 'AN',\n  ADD COLUMN IF NOT EXISTS invoice_prefix VARCHAR(20) DEFAULT 'RE',\n  ADD COLUMN IF NOT EXISTS credit_note_prefix VARCHAR(20) DEFAULT 'GS',\n  ADD COLUMN IF NOT EXISTS number_separator VARCHAR(5) DEFAULT '-',\n  ADD COLUMN IF NOT EXISTS number_padding INT DEFAULT 4,\n  ADD COLUMN IF NOT EXISTS include_year TINYINT DEFAULT 1,\n  ADD COLUMN IF NOT EXISTS offer_start_number INT DEFAULT 1,\n  ADD COLUMN IF NOT EXISTS invoice_start_number INT DEFAULT 1,\n  ADD COLUMN IF NOT EXISTS credit_note_start_number INT DEFAULT 1;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 9NNjvn7NV7enobv.7ea640e70a8c --database YMZow7uQxpBVyBGbmbpvvd --execute \nALTER TABLE company_settings\n  ADD COLUMN IF NOT EXISTS offer_prefix VARCHAR(20) DEFAULT 'AN',\n  ADD COLUMN IF NOT EXISTS invoice_prefix VARCHAR(20) DEFAULT 'RE',\n  ADD COLUMN IF NOT EXISTS credit_note_prefix VARCHAR(20) DEFAULT 'GS',\n  ADD COLUMN IF NOT EXISTS number_separator VARCHAR(5) DEFAULT '-',\n  ADD COLUMN IF NOT EXISTS number_padding INT DEFAULT 4,\n  ADD COLUMN IF NOT EXISTS include_year TINYINT DEFAULT 1,\n  ADD COLUMN IF NOT EXISTS offer_start_number INT DEFAULT 1,\n  ADD COLUMN IF NOT EXISTS invoice_start_number INT DEFAULT 1,\n  ADD COLUMN IF NOT EXISTS credit_note_start_number INT DEFAULT 1;\n",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 3848
+}

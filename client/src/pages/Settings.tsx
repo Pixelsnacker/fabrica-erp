@@ -64,6 +64,13 @@ export default function Settings() {
     bankName: "",
     invoiceFooter: "",
     kleinunternehmer: false,
+    // Nummernkreis
+    offerPrefix: "AN",
+    invoicePrefix: "RE",
+    creditNotePrefix: "GS",
+    numberSeparator: "-",
+    numberPadding: 4,
+    includeYear: true,
   });
 
   const { data: companyData, isLoading: isLoadingCompany } = trpc.companySettings.get.useQuery();
@@ -119,6 +126,12 @@ export default function Settings() {
         bankName: companyData.bankName ?? "",
         invoiceFooter: companyData.invoiceFooter ?? "",
         kleinunternehmer: Boolean(companyData.kleinunternehmer),
+        offerPrefix: companyData.offerPrefix ?? "AN",
+        invoicePrefix: companyData.invoicePrefix ?? "RE",
+        creditNotePrefix: companyData.creditNotePrefix ?? "GS",
+        numberSeparator: companyData.numberSeparator ?? "-",
+        numberPadding: companyData.numberPadding ?? 4,
+        includeYear: (companyData.includeYear ?? 1) === 1,
       });
       if (companyData.logoUrl) setLogoPreview(companyData.logoUrl);
     }
@@ -126,8 +139,34 @@ export default function Settings() {
 
   const handleSaveCompany = () => {
     setIsSaving(true);
-    updateCompany.mutate(form);
+    updateCompany.mutate({
+      ...form,
+      numberPadding: Number(form.numberPadding),
+    });
   };
+
+  // Live-Vorschau der Nummern
+  const previewOffer = (() => {
+    const sep = form.numberSeparator || '-';
+    const pad = Math.max(1, Math.min(8, Number(form.numberPadding) || 4));
+    const year = new Date().getFullYear();
+    const num = '1'.padStart(pad, '0');
+    return form.includeYear ? `${form.offerPrefix}${sep}${year}${sep}${num}` : `${form.offerPrefix}${sep}${num}`;
+  })();
+  const previewInvoice = (() => {
+    const sep = form.numberSeparator || '-';
+    const pad = Math.max(1, Math.min(8, Number(form.numberPadding) || 4));
+    const year = new Date().getFullYear();
+    const num = '1'.padStart(pad, '0');
+    return form.includeYear ? `${form.invoicePrefix}${sep}${year}${sep}${num}` : `${form.invoicePrefix}${sep}${num}`;
+  })();
+  const previewCredit = (() => {
+    const sep = form.numberSeparator || '-';
+    const pad = Math.max(1, Math.min(8, Number(form.numberPadding) || 4));
+    const year = new Date().getFullYear();
+    const num = '1'.padStart(pad, '0');
+    return form.includeYear ? `${form.creditNotePrefix}${sep}${year}${sep}${num}` : `${form.creditNotePrefix}${sep}${num}`;
+  })();
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -329,6 +368,67 @@ export default function Settings() {
                       <div className="space-y-1.5">
                         <Label>BIC</Label>
                         <Input value={form.bic} onChange={e => setForm(f => ({ ...f, bic: e.target.value }))} placeholder="COBADEFFXXX" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Nummernkreis */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Nummernkreis</CardTitle>
+                    <CardDescription>Präfix, Trennzeichen und Format für Angebots-, Rechnungs- und Gutschriftnummern</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-5">
+                    {/* Präfixe */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="space-y-1.5">
+                        <Label>Angebots-Präfix</Label>
+                        <Input value={form.offerPrefix} onChange={e => setForm(f => ({ ...f, offerPrefix: e.target.value }))} placeholder="AN" maxLength={20} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Rechnungs-Präfix</Label>
+                        <Input value={form.invoicePrefix} onChange={e => setForm(f => ({ ...f, invoicePrefix: e.target.value }))} placeholder="RE" maxLength={20} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Gutschrift-Präfix</Label>
+                        <Input value={form.creditNotePrefix} onChange={e => setForm(f => ({ ...f, creditNotePrefix: e.target.value }))} placeholder="GS" maxLength={20} />
+                      </div>
+                    </div>
+                    {/* Format */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="space-y-1.5">
+                        <Label>Trennzeichen</Label>
+                        <Input value={form.numberSeparator} onChange={e => setForm(f => ({ ...f, numberSeparator: e.target.value }))} placeholder="-" maxLength={5} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Stellen (Nullen)</Label>
+                        <Input type="number" min={1} max={8} value={form.numberPadding} onChange={e => setForm(f => ({ ...f, numberPadding: parseInt(e.target.value) || 4 }))} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="block mb-2">Jahreszahl einbeziehen</Label>
+                        <div className="flex items-center gap-2 pt-1">
+                          <Switch checked={form.includeYear} onCheckedChange={v => setForm(f => ({ ...f, includeYear: v }))} />
+                          <span className="text-sm text-muted-foreground">{form.includeYear ? 'Ja' : 'Nein'}</span>
+                        </div>
+                      </div>
+                    </div>
+                    {/* Vorschau */}
+                    <div className="rounded-lg border bg-muted/20 p-4 space-y-2">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Vorschau nächste Nummern</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="text-center">
+                          <p className="text-xs text-muted-foreground mb-1">Angebot</p>
+                          <Badge variant="outline" className="font-mono text-sm px-3 py-1">{previewOffer}</Badge>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-xs text-muted-foreground mb-1">Rechnung</p>
+                          <Badge variant="outline" className="font-mono text-sm px-3 py-1">{previewInvoice}</Badge>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-xs text-muted-foreground mb-1">Gutschrift</p>
+                          <Badge variant="outline" className="font-mono text-sm px-3 py-1">{previewCredit}</Badge>
+                        </div>
                       </div>
                     </div>
                   </CardContent>

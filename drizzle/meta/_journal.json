@@ -22,6 +22,13 @@
       "when": 1773089415973,
       "tag": "0002_new_scarecrow",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1773147254809,
+      "tag": "0003_curly_xavin",
+      "breakpoints": true
     }
   ]
 }

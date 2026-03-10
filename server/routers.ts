@@ -924,12 +924,46 @@ Erstelle eine professionelle Beratungsantwort oder E-Mail basierend auf der Anfr
         bankName: z.string().optional(),
         invoiceFooter: z.string().optional(),
         kleinunternehmer: z.boolean().optional(),
+        // Nummernkreis
+        offerPrefix: z.string().max(20).optional(),
+        invoicePrefix: z.string().max(20).optional(),
+        creditNotePrefix: z.string().max(20).optional(),
+        numberSeparator: z.string().max(5).optional(),
+        numberPadding: z.number().int().min(1).max(8).optional(),
+        includeYear: z.boolean().optional(),
       }))
       .mutation(async ({ input }) => {
         return upsertCompanySettings({
           ...input,
-          kleinunternehmer: input.kleinunternehmer ? 1 : 0,
+          kleinunternehmer: input.kleinunternehmer !== undefined ? (input.kleinunternehmer ? 1 : 0) : undefined,
+          includeYear: input.includeYear !== undefined ? (input.includeYear ? 1 : 0) : undefined,
         } as any);
+      }),
+    numberPreview: protectedProcedure
+      .input(z.object({
+        type: z.enum(['offer', 'invoice', 'credit_note']),
+        offerPrefix: z.string().optional(),
+        invoicePrefix: z.string().optional(),
+        creditNotePrefix: z.string().optional(),
+        numberSeparator: z.string().optional(),
+        numberPadding: z.number().int().min(1).max(8).optional(),
+        includeYear: z.boolean().optional(),
+      }))
+      .query(async ({ input }) => {
+        const year = new Date().getFullYear();
+        const sep = input.numberSeparator ?? '-';
+        const padding = input.numberPadding ?? 4;
+        const includeYear = input.includeYear ?? true;
+        const prefix = input.type === 'invoice'
+          ? (input.invoicePrefix ?? 'RE')
+          : input.type === 'offer'
+            ? (input.offerPrefix ?? 'AN')
+            : (input.creditNotePrefix ?? 'GS');
+        const paddedNum = '1'.padStart(padding, '0');
+        const preview = includeYear
+          ? `${prefix}${sep}${year}${sep}${paddedNum}`
+          : `${prefix}${sep}${paddedNum}`;
+        return { preview };
       }),
     uploadLogo: protectedProcedure
       .input(z.object({ base64: z.string(), mimeType: z.string(), filename: z.string() }))
