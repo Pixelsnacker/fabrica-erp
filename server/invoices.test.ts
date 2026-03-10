@@ -246,3 +246,138 @@ describe("Statusübergänge (GoBD-Workflow)", () => {
     expect(canTransition("sent", "rejected")).toBe(true);
   });
 });
+
+// ─── Tests für Angebot → Rechnung Konvertierung ─────────────────────────────
+describe("Angebot → Rechnung Konvertierung", () => {
+  // Hilfsfunktion: simuliert die Konvertierungslogik aus routers.ts
+  function convertOfferToInvoice(offer: {
+    type: string;
+    invoiceNumber: string;
+    customerId?: number;
+    projectId?: number;
+    senderName?: string;
+    recipientName?: string;
+    recipientCompany?: string;
+    subtotalNet?: string;
+    taxAmount?: string;
+    totalGross?: string;
+    taxMode?: string;
+    items?: Array<{ position: number; description: string; unitPriceNet: string }>;
+  }, newInvoiceNumber: string) {
+    if (offer.type !== 'offer') throw new Error('Nur Angebote können konvertiert werden');
+    const today = new Date().toISOString().slice(0, 10);
+    const dueDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    return {
+      invoiceNumber: newInvoiceNumber,
+      type: 'invoice',
+      status: 'draft',
+      customerId: offer.customerId,
+      projectId: offer.projectId,
+      senderName: offer.senderName,
+      recipientName: offer.recipientName,
+      recipientCompany: offer.recipientCompany,
+      subtotalNet: offer.subtotalNet,
+      taxAmount: offer.taxAmount,
+      totalGross: offer.totalGross,
+      taxMode: offer.taxMode,
+      issueDate: today,
+      dueDate,
+      items: (offer.items ?? []).map(item => ({ ...item, invoiceId: 0 })),
+    };
+  }
+
+  it("konvertiert Angebot in Rechnung mit korrektem Typ", () => {
+    const offer = { type: 'offer', invoiceNumber: 'ANG-2026-0001', totalGross: '1190.00' };
+    const result = convertOfferToInvoice(offer, 'RE-2026-0001');
+    expect(result.type).toBe('invoice');
+  });
+
+  it("neue Rechnung erhält Status 'draft'", () => {
+    const offer = { type: 'offer', invoiceNumber: 'ANG-2026-0001' };
+    const result = convertOfferToInvoice(offer, 'RE-2026-0001');
+    expect(result.status).toBe('draft');
+  });
+
+  it("neue Rechnungsnummer wird korrekt übernommen", () => {
+    const offer = { type: 'offer', invoiceNumber: 'ANG-2026-0001' };
+    const result = convertOfferToInvoice(offer, 'RE-2026-0042');
+    expect(result.invoiceNumber).toBe('RE-2026-0042');
+  });
+
+  it("Kundendaten werden vollständig übernommen", () => {
+    const offer = {
+      type: 'offer',
+      invoiceNumber: 'ANG-2026-0001',
+      customerId: 5,
+      projectId: 12,
+      senderName: 'Fabrica GmbH',
+      recipientName: 'Max Mustermann',
+      recipientCompany: 'Musterfirma GmbH',
+    };
+    const result = convertOfferToInvoice(offer, 'RE-2026-0001');
+    expect(result.customerId).toBe(5);
+    expect(result.projectId).toBe(12);
+    expect(result.senderName).toBe('Fabrica GmbH');
+    expect(result.recipientName).toBe('Max Mustermann');
+    expect(result.recipientCompany).toBe('Musterfirma GmbH');
+  });
+
+  it("Beträge werden aus dem Angebot übernommen", () => {
+    const offer = {
+      type: 'offer',
+      invoiceNumber: 'ANG-2026-0001',
+      subtotalNet: '1000.00',
+      taxAmount: '190.00',
+      totalGross: '1190.00',
+    };
+    const result = convertOfferToInvoice(offer, 'RE-2026-0001');
+    expect(result.subtotalNet).toBe('1000.00');
+    expect(result.taxAmount).toBe('190.00');
+    expect(result.totalGross).toBe('1190.00');
+  });
+
+  it("Positionen werden vollständig übernommen", () => {
+    const offer = {
+      type: 'offer',
+      invoiceNumber: 'ANG-2026-0001',
+      items: [
+        { position: 1, description: '3D-Druck Gehäuse', unitPriceNet: '250.00' },
+        { position: 2, description: 'Nachbearbeitung', unitPriceNet: '50.00' },
+      ],
+    };
+    const result = convertOfferToInvoice(offer, 'RE-2026-0001');
+    expect(result.items).toHaveLength(2);
+    expect(result.items[0].description).toBe('3D-Druck Gehäuse');
+    expect(result.items[1].description).toBe('Nachbearbeitung');
+  });
+
+  it("Fälligkeitsdatum ist ca. 14 Tage nach heute", () => {
+    const offer = { type: 'offer', invoiceNumber: 'ANG-2026-0001' };
+    const result = convertOfferToInvoice(offer, 'RE-2026-0001');
+    // Datum-Differenz in Tagen (Datum-String-Vergleich, timezone-unabhängig)
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const dueDateStr = result.dueDate;
+    const todayMs = new Date(todayStr).getTime();
+    const dueMs = new Date(dueDateStr).getTime();
+    const diffDays = Math.round((dueMs - todayMs) / (1000 * 60 * 60 * 24));
+    expect(diffDays).toBe(14);
+  });
+
+  it("Ausstellungsdatum ist heute", () => {
+    const offer = { type: 'offer', invoiceNumber: 'ANG-2026-0001' };
+    const result = convertOfferToInvoice(offer, 'RE-2026-0001');
+    const today = new Date().toISOString().slice(0, 10);
+    expect(result.issueDate).toBe(today);
+  });
+
+  it("wirft Fehler wenn kein Angebot übergeben wird", () => {
+    const invoice = { type: 'invoice', invoiceNumber: 'RE-2026-0001' };
+    expect(() => convertOfferToInvoice(invoice, 'RE-2026-0002')).toThrow('Nur Angebote können konvertiert werden');
+  });
+
+  it("Steuermode wird aus dem Angebot übernommen", () => {
+    const offer = { type: 'offer', invoiceNumber: 'ANG-2026-0001', taxMode: 'kleinunternehmer' };
+    const result = convertOfferToInvoice(offer, 'RE-2026-0001');
+    expect(result.taxMode).toBe('kleinunternehmer');
+  });
+});

@@ -16,7 +16,7 @@ import { toast } from "sonner";
 import {
   Plus, FileText, Receipt, Search, Download, Lock, XCircle,
   ChevronDown, ChevronUp, Trash2, Eye, History, AlertTriangle,
-  CheckCircle, Clock, Send, Euro, Loader2, Printer, BookOpen
+  CheckCircle, Clock, Send, Euro, Loader2, Printer, BookOpen, ArrowRight
 } from "lucide-react";
 
 // ─── Typen ───────────────────────────────────────────────────────────────────
@@ -168,6 +168,14 @@ export default function Invoices() {
   const lockMut = trpc.invoices.lock.useMutation({ onSuccess: () => { utils.invoices.list.invalidate(); toast.success('Rechnung finalisiert — GoBD-konform gesperrt.'); } });
   const cancelMut = trpc.invoices.cancel.useMutation({ onSuccess: () => { utils.invoices.list.invalidate(); toast.success('Storniert'); } });
   const deleteMut = trpc.invoices.delete.useMutation({ onSuccess: () => { utils.invoices.list.invalidate(); toast.success('Gelöscht'); } });
+  const convertMut = trpc.invoices.convertToInvoice.useMutation({
+    onSuccess: (data) => {
+      utils.invoices.list.invalidate();
+      toast.success(`✅ Rechnung ${data.invoiceNumber} wurde erstellt`);
+      setTab('invoice');
+    },
+    onError: (e) => toast.error('Fehler: ' + e.message),
+  });
   const { data: csvData } = trpc.invoices.exportCsv.useQuery(undefined);
   const { data: datevData } = trpc.invoices.exportDatev.useQuery(undefined);
   const { data: knowledgeEntries = [] } = trpc.knowledge.list.useQuery({});
@@ -559,6 +567,22 @@ export default function Invoices() {
                 {inv.status !== 'cancelled' && inv.status !== 'draft' && (
                   <Button size="sm" variant="outline" className="text-red-400 border-red-400/30" onClick={() => { if (confirm('Stornieren? Eine Gutschrift wird erstellt.')) cancelMut.mutate({ id: inv.id }); }}>
                     <XCircle className="w-3 h-3 mr-1" /> Stornieren
+                  </Button>
+                )}
+                {/* In Rechnung umwandeln — nur für Angebote, die nicht storniert/bereits umgewandelt sind */}
+                {inv.type === 'offer' && inv.status !== 'cancelled' && inv.status !== 'invoiced' && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-green-400 border-green-400/30 hover:bg-green-400/10"
+                    disabled={convertMut.isPending}
+                    onClick={() => {
+                      if (confirm(`Angebot ${inv.invoiceNumber} in eine Rechnung umwandeln?\n\nAlle Positionen und Kundendaten werden übernommen.`))
+                        convertMut.mutate({ offerId: inv.id });
+                    }}
+                  >
+                    {convertMut.isPending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <ArrowRight className="w-3 h-3 mr-1" />}
+                    In Rechnung umwandeln
                   </Button>
                 )}
                 {inv.status === 'draft' && (

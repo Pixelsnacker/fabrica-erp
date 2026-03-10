@@ -936,6 +936,71 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
       ].join(';'));
       return { csv: [header, ...rows].join('\n'), filename: `DATEV-${year}.csv` };
     }),
+    convertToInvoice: protectedProcedure
+      .input(z.object({ offerId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        // Angebot laden
+        const offer = await getInvoiceById(input.offerId);
+        if (!offer) throw new Error('Angebot nicht gefunden');
+        if (offer.type !== 'offer') throw new Error('Nur Angebote können in Rechnungen umgewandelt werden');
+        // Neue Rechnungsnummer vergeben
+        const invoiceNumber = await getNextInvoiceNumber('invoice');
+        const today = new Date().toISOString().slice(0, 10);
+        // Fälligkeitsdatum: heute + 14 Tage
+        const dueDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+        // Neue Rechnung aus Angebotsdaten erstellen
+        const invoiceData: any = {
+          invoiceNumber,
+          type: 'invoice' as const,
+          status: 'draft' as const,
+          customerId: offer.customerId,
+          projectId: offer.projectId,
+          senderName: offer.senderName,
+          senderStreet: offer.senderStreet,
+          senderZip: offer.senderZip,
+          senderCity: offer.senderCity,
+          senderTaxId: offer.senderTaxId,
+          senderVatId: offer.senderVatId,
+          senderEmail: offer.senderEmail,
+          senderPhone: offer.senderPhone,
+          senderIban: offer.senderIban,
+          senderBic: offer.senderBic,
+          recipientName: offer.recipientName,
+          recipientCompany: offer.recipientCompany,
+          recipientStreet: offer.recipientStreet,
+          recipientZip: offer.recipientZip,
+          recipientCity: offer.recipientCity,
+          recipientEmail: offer.recipientEmail,
+          issueDate: today,
+          dueDate,
+          deliveryDate: offer.deliveryDate,
+          paymentTerms: offer.paymentTerms,
+          taxMode: offer.taxMode,
+          subtotalNet: offer.subtotalNet,
+          taxAmount: offer.taxAmount,
+          totalGross: offer.totalGross,
+          currency: offer.currency,
+          introText: offer.introText,
+          notes: offer.notes,
+          footerText: offer.footerText,
+        };
+        const items = (offer.items ?? []).map((item: any) => ({
+          invoiceId: 0, // wird in createInvoice überschrieben
+          position: item.position,
+          description: item.description,
+          quantity: item.quantity,
+          unit: item.unit,
+          unitPriceNet: item.unitPriceNet,
+          taxRate: item.taxRate,
+          lineTotalNet: item.lineTotalNet,
+          lineTax: item.lineTax,
+          lineTotalGross: item.lineTotalGross,
+        }));
+        const newId = await createInvoice(invoiceData, items, ctx.user.email ?? 'system');
+        // Angebot auf 'invoiced' setzen
+        await changeInvoiceStatus(input.offerId, 'invoiced', ctx.user.email ?? 'system');
+        return { id: newId, invoiceNumber };
+      }),
   }),
   // ─── Company Settings ─────────────────────────────────────────────────────────────────────────────────
   companySettings: router({

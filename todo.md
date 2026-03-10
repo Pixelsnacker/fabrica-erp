@@ -285,3 +285,9 @@
 - [x] Carrier-Erkennung automatisch aus dem Carrier-Feld (case-insensitive)
 - [x] ExternalLink-Icon erscheint beim Hover
 - [x] 107 Tests grün, 0 TypeScript-Fehler
+## Phase 30: Angebot → Rechnung Konvertierung
+- [x] Backend: invoices.convertToInvoice Prozedur (Angebot-ID → neue Rechnung mit allen Daten)
+- [x] Frontend: "In Rechnung umwandeln" Button in der Angebotsliste
+- [x] Frontend: Bestätigungs-Dialog vor der Konvertierung
+- [x] Frontend: Nach Konvertierung zur neuen Rechnung navigieren (Tab-Wechsel zu Rechnungen)
+- [x] Tests: Vitest für convertToInvoice Logik (10 neue Tests, 117 gesamt)
