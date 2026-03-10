@@ -241,3 +241,11 @@
 - [x] Layout: Dialog auf max-w-6xl w-[98vw] vergrößert
 - [x] Layout: Absender und Empfänger jetzt nebeneinander (lg:grid-cols-2)
 - [x] Layout: Interne Felder in 2-Spalten-Grid angeordnet
+
+## Phase 23: Vollbild-Formular Invoices
+- [ ] Dialog als Vollbild-Overlay (fixed inset-0 z-50) über Sidebar und alles andere
+- [ ] Formular dreispaltig: Absender | Empfänger | Positionen+Summe
+
+## Phase 24: DB-Fehler Invoices Create
+- [x] Bug: taxMode-Spaltenname-Konflikt — Schema auf tax_mode korrigiert, DB-Spalte umbenannt
+- [x] Layout: Formular als Sheet (von rechts, volle Höhe, Breite = 100vw minus Sidebar)

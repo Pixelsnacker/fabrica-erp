@@ -1,0 +1,136 @@
+{
+  "query": "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'invoices' AND TABLE_SCHEMA = DATABASE();",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 9NNjvn7NV7enobv.7ea640e70a8c --database YMZow7uQxpBVyBGbmbpvvd --execute SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'invoices' AND TABLE_SCHEMA = DATABASE();",
+  "rows": [
+    {
+      "COLUMN_NAME": "id"
+    },
+    {
+      "COLUMN_NAME": "invoice_number"
+    },
+    {
+      "COLUMN_NAME": "type"
+    },
+    {
+      "COLUMN_NAME": "status"
+    },
+    {
+      "COLUMN_NAME": "customer_id"
+    },
+    {
+      "COLUMN_NAME": "project_id"
+    },
+    {
+      "COLUMN_NAME": "sender_name"
+    },
+    {
+      "COLUMN_NAME": "sender_street"
+    },
+    {
+      "COLUMN_NAME": "sender_zip"
+    },
+    {
+      "COLUMN_NAME": "sender_city"
+    },
+    {
+      "COLUMN_NAME": "sender_tax_id"
+    },
+    {
+      "COLUMN_NAME": "sender_vat_id"
+    },
+    {
+      "COLUMN_NAME": "sender_email"
+    },
+    {
+      "COLUMN_NAME": "sender_phone"
+    },
+    {
+      "COLUMN_NAME": "sender_iban"
+    },
+    {
+      "COLUMN_NAME": "sender_bic"
+    },
+    {
+      "COLUMN_NAME": "recipient_name"
+    },
+    {
+      "COLUMN_NAME": "recipient_company"
+    },
+    {
+      "COLUMN_NAME": "recipient_street"
+    },
+    {
+      "COLUMN_NAME": "recipient_zip"
+    },
+    {
+      "COLUMN_NAME": "recipient_city"
+    },
+    {
+      "COLUMN_NAME": "recipient_email"
+    },
+    {
+      "COLUMN_NAME": "issue_date"
+    },
+    {
+      "COLUMN_NAME": "due_date"
+    },
+    {
+      "COLUMN_NAME": "delivery_date"
+    },
+    {
+      "COLUMN_NAME": "payment_terms"
+    },
+    {
+      "COLUMN_NAME": "tax_mode"
+    },
+    {
+      "COLUMN_NAME": "subtotal_net"
+    },
+    {
+      "COLUMN_NAME": "tax_amount"
+    },
+    {
+      "COLUMN_NAME": "total_gross"
+    },
+    {
+      "COLUMN_NAME": "currency"
+    },
+    {
+      "COLUMN_NAME": "intro_text"
+    },
+    {
+      "COLUMN_NAME": "notes"
+    },
+    {
+      "COLUMN_NAME": "footer_text"
+    },
+    {
+      "COLUMN_NAME": "pdf_url"
+    },
+    {
+      "COLUMN_NAME": "pdf_key"
+    },
+    {
+      "COLUMN_NAME": "content_hash"
+    },
+    {
+      "COLUMN_NAME": "is_locked"
+    },
+    {
+      "COLUMN_NAME": "cancelled_by"
+    },
+    {
+      "COLUMN_NAME": "cancels_invoice"
+    },
+    {
+      "COLUMN_NAME": "created_at"
+    },
+    {
+      "COLUMN_NAME": "updated_at"
+    }
+  ],
+  "messages": [],
+  "stdout": "COLUMN_NAME\nid\ninvoice_number\ntype\nstatus\ncustomer_id\nproject_id\nsender_name\nsender_street\nsender_zip\nsender_city\nsender_tax_id\nsender_vat_id\nsender_email\nsender_phone\nsender_iban\nsender_bic\nrecipient_name\nrecipient_company\nrecipient_street\nrecipient_zip\nrecipient_city\nrecipient_email\nissue_date\ndue_date\ndelivery_date\npayment_terms\ntax_mode\nsubtotal_net\ntax_amount\ntotal_gross\ncurrency\nintro_text\nnotes\nfooter_text\npdf_url\npdf_key\ncontent_hash\nis_locked\ncancelled_by\ncancels_invoice\ncreated_at\nupdated_at\n",
+  "stderr": "",
+  "execution_time_ms": 55
+}

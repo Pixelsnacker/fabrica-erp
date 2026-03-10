@@ -365,7 +365,7 @@ export const invoices = mysqlTable("invoices", {
   deliveryDate: varchar("delivery_date", { length: 20 }),
   paymentTerms: varchar("payment_terms", { length: 255 }).default('Zahlbar innerhalb von 14 Tagen ohne Abzug.'),
   // Steuer
-  taxMode: mysqlEnum(['standard','reduced','mixed','tax_free','kleinunternehmer']).default('standard'),
+  taxMode: mysqlEnum("tax_mode", ['standard','reduced','mixed','tax_free','kleinunternehmer']).default('standard'),
   // Beträge
   subtotalNet: decimal("subtotal_net", { precision: 12, scale: 2 }).default('0.00'),
   taxAmount: decimal("tax_amount", { precision: 12, scale: 2 }).default('0.00'),

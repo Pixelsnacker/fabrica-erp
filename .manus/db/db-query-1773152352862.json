@@ -1,0 +1,346 @@
+{
+  "query": "SHOW COLUMNS FROM invoices;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 9NNjvn7NV7enobv.7ea640e70a8c --database YMZow7uQxpBVyBGbmbpvvd --execute SHOW COLUMNS FROM invoices;",
+  "rows": [
+    {
+      "Field": "id",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "PRI",
+      "Default": "NULL",
+      "Extra": "auto_increment"
+    },
+    {
+      "Field": "invoice_number",
+      "Type": "varchar(32)",
+      "Null": "NO",
+      "Key": "UNI",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "type",
+      "Type": "enum('offer','invoice','credit_note')",
+      "Null": "NO",
+      "Key": "",
+      "Default": "offer",
+      "Extra": ""
+    },
+    {
+      "Field": "status",
+      "Type": "enum('draft','sent','accepted','invoiced','paid','cancelled','overdue')",
+      "Null": "NO",
+      "Key": "",
+      "Default": "draft",
+      "Extra": ""
+    },
+    {
+      "Field": "customer_id",
+      "Type": "int",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "project_id",
+      "Type": "int",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "sender_name",
+      "Type": "varchar(255)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "sender_street",
+      "Type": "varchar(255)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "sender_zip",
+      "Type": "varchar(20)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "sender_city",
+      "Type": "varchar(100)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "sender_tax_id",
+      "Type": "varchar(50)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "sender_vat_id",
+      "Type": "varchar(50)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "sender_email",
+      "Type": "varchar(255)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "sender_phone",
+      "Type": "varchar(50)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "sender_iban",
+      "Type": "varchar(50)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "sender_bic",
+      "Type": "varchar(20)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "recipient_name",
+      "Type": "varchar(255)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "recipient_company",
+      "Type": "varchar(255)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "recipient_street",
+      "Type": "varchar(255)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "recipient_zip",
+      "Type": "varchar(20)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "recipient_city",
+      "Type": "varchar(100)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "recipient_email",
+      "Type": "varchar(255)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "issue_date",
+      "Type": "varchar(20)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "due_date",
+      "Type": "varchar(20)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "delivery_date",
+      "Type": "varchar(20)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "payment_terms",
+      "Type": "varchar(255)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "Zahlbar innerhalb von 14 Tagen ohne Abzug.",
+      "Extra": ""
+    },
+    {
+      "Field": "tax_mode",
+      "Type": "enum('standard','reduced','mixed','tax_free','kleinunternehmer')",
+      "Null": "YES",
+      "Key": "",
+      "Default": "standard",
+      "Extra": ""
+    },
+    {
+      "Field": "subtotal_net",
+      "Type": "decimal(12,2)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "0.00",
+      "Extra": ""
+    },
+    {
+      "Field": "tax_amount",
+      "Type": "decimal(12,2)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "0.00",
+      "Extra": ""
+    },
+    {
+      "Field": "total_gross",
+      "Type": "decimal(12,2)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "0.00",
+      "Extra": ""
+    },
+    {
+      "Field": "currency",
+      "Type": "varchar(3)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "EUR",
+      "Extra": ""
+    },
+    {
+      "Field": "intro_text",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "notes",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "footer_text",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "pdf_url",
+      "Type": "varchar(1024)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "pdf_key",
+      "Type": "varchar(512)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "content_hash",
+      "Type": "varchar(64)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "is_locked",
+      "Type": "tinyint(1)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "cancelled_by",
+      "Type": "int",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "cancels_invoice",
+      "Type": "int",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "created_at",
+      "Type": "bigint",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "updated_at",
+      "Type": "bigint",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    }
+  ],
+  "messages": [],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\nid\tint\tNO\tPRI\tNULL\tauto_increment\ninvoice_number\tvarchar(32)\tNO\tUNI\tNULL\t\ntype\tenum('offer','invoice','credit_note')\tNO\t\toffer\t\nstatus\tenum('draft','sent','accepted','invoiced','paid','cancelled','overdue')\tNO\t\tdraft\t\ncustomer_id\tint\tYES\t\tNULL\t\nproject_id\tint\tYES\t\tNULL\t\nsender_name\tvarchar(255)\tYES\t\tNULL\t\nsender_street\tvarchar(255)\tYES\t\tNULL\t\nsender_zip\tvarchar(20)\tYES\t\tNULL\t\nsender_city\tvarchar(100)\tYES\t\tNULL\t\nsender_tax_id\tvarchar(50)\tYES\t\tNULL\t\nsender_vat_id\tvarchar(50)\tYES\t\tNULL\t\nsender_email\tvarchar(255)\tYES\t\tNULL\t\nsender_phone\tvarchar(50)\tYES\t\tNULL\t\nsender_iban\tvarchar(50)\tYES\t\tNULL\t\nsender_bic\tvarchar(20)\tYES\t\tNULL\t\nrecipient_name\tvarchar(255)\tYES\t\tNULL\t\nrecipient_company\tvarchar(255)\tYES\t\tNULL\t\nrecipient_street\tvarchar(255)\tYES\t\tNULL\t\nrecipient_zip\tvarchar(20)\tYES\t\tNULL\t\nrecipient_city\tvarchar(100)\tYES\t\tNULL\t\nrecipient_email\tvarchar(255)\tYES\t\tNULL\t\nissue_date\tvarchar(20)\tYES\t\tNULL\t\ndue_date\tvarchar(20)\tYES\t\tNULL\t\ndelivery_date\tvarchar(20)\tYES\t\tNULL\t\npayment_terms\tvarchar(255)\tYES\t\tZahlbar innerhalb von 14 Tagen ohne Abzug.\t\ntax_mode\tenum('standard','reduced','mixed','tax_free','kleinunternehmer')\tYES\t\tstandard\t\nsubtotal_net\tdecimal(12,2)\tYES\t\t0.00\t\ntax_amount\tdecimal(12,2)\tYES\t\t0.00\t\ntotal_gross\tdecimal(12,2)\tYES\t\t0.00\t\ncurrency\tvarchar(3)\tYES\t\tEUR\t\nintro_text\ttext\tYES\t\tNULL\t\nnotes\ttext\tYES\t\tNULL\t\nfooter_text\ttext\tYES\t\tNULL\t\npdf_url\tvarchar(1024)\tYES\t\tNULL\t\npdf_key\tvarchar(512)\tYES\t\tNULL\t\ncontent_hash\tvarchar(64)\tYES\t\tNULL\t\nis_locked\ttinyint(1)\tYES\t\t0\t\ncancelled_by\tint\tYES\t\tNULL\t\ncancels_invoice\tint\tYES\t\tNULL\t\ncreated_at\tbigint\tYES\t\tNULL\t\nupdated_at\tbigint\tYES\t\tNULL\t\n",
+  "stderr": "",
+  "execution_time_ms": 54
+}

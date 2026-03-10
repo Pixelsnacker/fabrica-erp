@@ -1,0 +1,19 @@
+{
+  "query": "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'invoices' AND TABLE_SCHEMA = DATABASE() AND COLUMN_NAME LIKE '%tax%';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 9NNjvn7NV7enobv.7ea640e70a8c --database YMZow7uQxpBVyBGbmbpvvd --execute SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'invoices' AND TABLE_SCHEMA = DATABASE() AND COLUMN_NAME LIKE '%tax%';",
+  "rows": [
+    {
+      "COLUMN_NAME": "sender_tax_id"
+    },
+    {
+      "COLUMN_NAME": "tax_mode"
+    },
+    {
+      "COLUMN_NAME": "tax_amount"
+    }
+  ],
+  "messages": [],
+  "stdout": "COLUMN_NAME\nsender_tax_id\ntax_mode\ntax_amount\n",
+  "stderr": "",
+  "execution_time_ms": 55
+}

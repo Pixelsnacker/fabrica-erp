@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import {
@@ -586,14 +587,14 @@ export default function Invoices() {
           ))}
         </div>
       </div>
-
-      {/* ─── Formular-Dialog ─────────────────────────────────────────────────── */}
-      <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent className="max-w-6xl w-[98vw] max-h-[92vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editId ? 'Bearbeiten' : 'Neu'}: {TYPE_LABELS[form.type]}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-5">
+      {/* ─── Formular-Sheet (Vollbild) ──────────────────────────────────────────────────────────────────────── */}
+      <Sheet open={showForm} onOpenChange={setShowForm}>
+        <SheetContent side="right" className="w-full sm:max-w-none sm:w-[calc(100vw-16rem)] overflow-y-auto flex flex-col p-0">
+          <SheetHeader className="px-6 py-4 border-b border-border">
+            <SheetTitle>{editId ? 'Bearbeiten' : 'Neu'}: {TYPE_LABELS[form.type]}</SheetTitle>
+          </SheetHeader>
+          <div className="flex-1 overflow-y-auto px-6 py-4">
+            <div className="space-y-5">
             {/* Typ + Kunde + Projekt */}
             <div className="grid grid-cols-1 md:grid-cols-[160px_1fr_1fr] gap-3">
               <div className="min-w-0">
@@ -781,14 +782,16 @@ export default function Invoices() {
               <div><Label>Fußzeile</Label><Input value={form.footerText} onChange={e => setForm(f => ({ ...f, footerText: e.target.value }))} placeholder="z.B. Handelsregister, Geschäftsführer..." /></div>
             </div>
           </div>
-          <DialogFooter className="mt-4">
+          </div>
+          <SheetFooter className="px-6 py-4 border-t border-border">
             <Button variant="outline" onClick={() => setShowForm(false)}>Abbrechen</Button>
             <Button onClick={handleSave} disabled={createMut.isPending || updateMut.isPending}>
+              {createMut.isPending || updateMut.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
               {editId ? 'Speichern' : 'Erstellen'}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
 
       {/* ─── Detail-Dialog ────────────────────────────────────────────────────── */}
       <Dialog open={showDetail !== null} onOpenChange={() => setShowDetail(null)}>
