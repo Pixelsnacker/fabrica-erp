@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { eq, desc, and, like, sql } from "drizzle-orm";
+import { eq, desc, and, like, sql, gte, lte } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser, users,
@@ -994,4 +994,42 @@ export async function upsertCompanySettings(data: Partial<InsertCompanySettings>
     await db.insert(companySettings).values({ id: 1, ...data, createdAt: now, updatedAt: now } as any);
   }
   return getCompanySettings();
+}
+
+// ─── Kalender ─────────────────────────────────────────────────────────────────
+import { calendarEvents, InsertCalendarEvent } from "../drizzle/schema";
+
+export async function listCalendarEvents(from: number, to: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(calendarEvents)
+    .where(and(gte(calendarEvents.startAt, from), lte(calendarEvents.endAt, to)))
+    .orderBy(calendarEvents.startAt);
+}
+
+export async function createCalendarEvent(data: InsertCalendarEvent) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const now = Date.now();
+  const [result] = await db.insert(calendarEvents).values({ ...data, createdAt: now, updatedAt: now });
+  return result.insertId as number;
+}
+
+export async function updateCalendarEvent(id: number, data: Partial<InsertCalendarEvent>) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.update(calendarEvents).set({ ...data, updatedAt: Date.now() }).where(eq(calendarEvents.id, id));
+}
+
+export async function deleteCalendarEvent(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.delete(calendarEvents).where(eq(calendarEvents.id, id));
+}
+
+export async function getCalendarEvent(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(calendarEvents).where(eq(calendarEvents.id, id));
+  return rows[0] ?? null;
 }

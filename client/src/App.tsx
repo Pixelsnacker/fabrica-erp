@@ -20,6 +20,7 @@ import Settings from "@/pages/Settings";
 import Notes from "@/pages/Notes";
 import Complaints from "@/pages/Complaints";
 import Invoices from "@/pages/Invoices";
+import Calendar from "@/pages/Calendar";
 
 function Router() {
   return (
@@ -40,6 +41,7 @@ function Router() {
         <Route path="/notes" component={Notes} />
         <Route path="/complaints" component={Complaints} />
         <Route path="/invoices" component={Invoices} />
+        <Route path="/calendar" component={Calendar} />
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />
       </Switch>

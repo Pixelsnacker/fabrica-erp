@@ -781,7 +781,7 @@ export default function Invoices() {
               <div><Label>Interne Notiz</Label><Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} /></div>
               <div><Label>Fußzeile</Label><Input value={form.footerText} onChange={e => setForm(f => ({ ...f, footerText: e.target.value }))} placeholder="z.B. Handelsregister, Geschäftsführer..." /></div>
             </div>
-          </div>
+            </div>
           </div>
           <SheetFooter className="px-6 py-4 border-t border-border">
             <Button variant="outline" onClick={() => setShowForm(false)}>Abbrechen</Button>

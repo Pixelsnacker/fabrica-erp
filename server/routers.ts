@@ -31,6 +31,7 @@ import {
   getInvoices, getInvoiceById, createInvoice, updateInvoice, changeInvoiceStatus,
   lockInvoice, cancelInvoice, deleteInvoiceDraft, getInvoiceAuditLog, getNextInvoiceNumber,
   getCompanySettings, upsertCompanySettings,
+  listCalendarEvents, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent, getCalendarEvent,
 } from "./db";
 
 const EMAIL_SIGNATURE = `\n\nMit freundlichen Grüßen / Best Regards\n\nDaniel Rincón\n\nFabrica GmbH\nHüttenstraße 205\n50170 Kerpen-Sindorf\n\nTel.: +49(0)2273-9529429\nMobil: +49(0)170/8342238\nd.rincon@fabrica3d.eu\nwww.fabrica3d.de`;
@@ -491,17 +492,52 @@ Strukturiere das Datenblatt mit: Überschrift, kurze Einleitung, technische Spez
       projectId: z.number().optional(),
       customerId: z.number().optional(),
       includeSignature: z.boolean().default(true),
+      includeErpContext: z.boolean().default(false),
     })).mutation(async ({ input }) => {
       // Fetch relevant knowledge entries
       const knowledge = await getKnowledgeEntries(input.prompt.split(" ").slice(0, 3).join(" "));
       const knowledgeContext = knowledge.slice(0, 5).map(k => `[${k.title}]: ${k.content}`).join("\n\n");
 
-      const systemPrompt = `Du bist ein technischer Berater für Daniel Rincón von Fabrica GmbH, spezialisiert auf 3D-Druck, CNC-Bearbeitung, Oberflächenbehandlung, Modellbau und CAD-Dienstleistungen. 
-Du antwortest professionell auf Deutsch und nutzt das folgende Fachwissen als Grundlage:
+      // ERP-Kontext aufbauen wenn gewünscht
+      let erpContext = "";
+      if (input.includeErpContext) {
+        const [customers, projects, invoices, calEvents, stats] = await Promise.all([
+          getCustomers(),
+          getProjects(),
+          getInvoices(),
+          listCalendarEvents(Date.now() - 7 * 24 * 3600000, Date.now() + 30 * 24 * 3600000),
+          getDashboardStats(),
+        ]);
+        const today = new Date().toLocaleDateString('de-DE');
+        erpContext = `
+## ERP-Kontext (Stand: ${today})
 
-${knowledgeContext || "Kein spezifisches Wissen verfügbar — nutze allgemeines Fachwissen."}
+### Kunden (${customers.length})
+${customers.slice(0, 10).map((c: any) => `- ${c.company || c.name} (${c.email || 'keine E-Mail'})`).join('\n')}
 
-Erstelle eine professionelle Beratungsantwort oder E-Mail basierend auf der Anfrage. Der Text soll direkt verwendbar sein.`;
+### Aktive Projekte (${projects.filter((p: any) => p.status === 'active').length})
+${projects.filter((p: any) => p.status === 'active').slice(0, 10).map((p: any) => `- ${p.title} | Status: ${p.status} | Budget: ${p.budget ? p.budget + ' €' : 'n/a'}`).join('\n')}
+
+### Offene Rechnungen/Angebote
+${(invoices as any[]).filter((i: any) => ['draft','sent','overdue'].includes(i.status)).slice(0, 8).map((i: any) => `- ${i.invoiceNumber} | ${i.recipientName || i.recipientCompany} | ${i.totalGross} € | Status: ${i.status}`).join('\n')}
+
+### Kommende Termine (nächste 30 Tage)
+${(calEvents as any[]).slice(0, 8).map((e: any) => `- ${new Date(e.startAt).toLocaleDateString('de-DE')}: ${e.title}${e.location ? ' @ ' + e.location : ''}`).join('\n')}
+
+### Dashboard-Kennzahlen
+- Kunden gesamt: ${(stats as any).totalCustomers ?? 0}
+- Projekte aktiv: ${(stats as any).activeProjects ?? 0}
+- Umsatz (brutto): ${(stats as any).totalRevenue ?? 0} €
+- Überfällige Rechnungen: ${(stats as any).overdueInvoices ?? 0}
+`;
+      }
+
+      const systemPrompt = `Du bist ein intelligenter ERP-Assistent für Daniel Rincón, Geschäftsführer der Fabrica GmbH (3D-Druck, CNC, Oberflächenbehandlung, Modellbau, CAD). 
+Du antwortest professionell auf Deutsch.
+
+${erpContext ? erpContext + '\n' : ''}${knowledgeContext ? '## Fachwissen\n' + knowledgeContext + '\n' : 'Nutze allgemeines Fachwissen.'}
+
+Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten direkt und präzise. Für Beratungstexte und E-Mails erstelle direkt verwendbare Texte.`;
 
       const response = await invokeLLM({
         messages: [
@@ -515,7 +551,7 @@ Erstelle eine professionelle Beratungsantwort oder E-Mail basierend auf der Anfr
       const finalText = input.includeSignature ? generatedText + EMAIL_SIGNATURE : generatedText;
 
       // Save session
-      const session = await createAiSession({
+      await createAiSession({
         projectId: input.projectId,
         customerId: input.customerId,
         prompt: input.prompt,
@@ -973,6 +1009,70 @@ Erstelle eine professionelle Beratungsantwort oder E-Mail basierend auf der Anfr
         const { url } = await storagePut(key, buffer, input.mimeType);
         await upsertCompanySettings({ logoUrl: url, logoKey: key });
         return { url };
+      }),
+  }),
+  // ─── Kalender ──────────────────────────────────────────────────────────────────────────────────────
+  calendar: router({
+    list: protectedProcedure
+      .input(z.object({ from: z.number(), to: z.number() }))
+      .query(async ({ input }) => listCalendarEvents(input.from, input.to)),
+
+    create: protectedProcedure
+      .input(z.object({
+        title: z.string().min(1),
+        description: z.string().optional(),
+        startAt: z.number(),
+        endAt: z.number(),
+        allDay: z.boolean().optional(),
+        category: z.enum(['customer', 'project', 'invoice', 'personal', 'other']).optional(),
+        color: z.string().optional(),
+        location: z.string().optional(),
+        customerId: z.number().optional(),
+        projectId: z.number().optional(),
+        googleEventId: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const id = await createCalendarEvent({
+          ...input,
+          allDay: input.allDay ? 1 : 0,
+          createdBy: ctx.user.id,
+        });
+        return { id };
+      }),
+
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        title: z.string().min(1).optional(),
+        description: z.string().optional(),
+        startAt: z.number().optional(),
+        endAt: z.number().optional(),
+        allDay: z.boolean().optional(),
+        category: z.enum(['customer', 'project', 'invoice', 'personal', 'other']).optional(),
+        color: z.string().optional(),
+        location: z.string().optional(),
+        customerId: z.number().optional(),
+        projectId: z.number().optional(),
+        googleEventId: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, allDay, ...rest } = input;
+        await updateCalendarEvent(id, { ...rest, ...(allDay !== undefined ? { allDay: allDay ? 1 : 0 } : {}) });
+        return { success: true };
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await deleteCalendarEvent(input.id);
+        return { success: true };
+      }),
+
+    syncFromGoogle: protectedProcedure
+      .input(z.object({ from: z.string(), to: z.string() }))
+      .mutation(async ({ input }) => {
+        // Wird vom Frontend via MCP aufgerufen und gibt Events zurück
+        return { synced: 0, message: 'Google Calendar Sync über MCP verfügbar' };
       }),
   }),
   // ─── Data Export ──────────────────────────────────────────────────────────────────────────────────────

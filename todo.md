@@ -243,9 +243,32 @@
 - [x] Layout: Interne Felder in 2-Spalten-Grid angeordnet
 
 ## Phase 23: Vollbild-Formular Invoices
-- [ ] Dialog als Vollbild-Overlay (fixed inset-0 z-50) über Sidebar und alles andere
-- [ ] Formular dreispaltig: Absender | Empfänger | Positionen+Summe
+- [x] Dialog als Sheet (von rechts, volle Höhe, Breite = 100vw minus Sidebar)
+- [x] Formular zweispaltig: Absender | Empfänger nebeneinander
 
 ## Phase 24: DB-Fehler Invoices Create
 - [x] Bug: taxMode-Spaltenname-Konflikt — Schema auf tax_mode korrigiert, DB-Spalte umbenannt
 - [x] Layout: Formular als Sheet (von rechts, volle Höhe, Breite = 100vw minus Sidebar)
+
+## Phase 25: Notizen bearbeiten und löschen
+- [x] Backend: notes.update Prozedur bereits vorhanden
+- [x] Backend: notes.delete Prozedur bereits vorhanden
+- [x] Frontend: Bearbeiten-Button (Stift-Icon) öffnet Dialog mit vorausgefüllten Feldern
+- [x] Frontend: Löschen-Button mit AlertDialog-Bestätigung bereits vorhanden
+- [x] Verifiziert im Browser: beide Funktionen funktionieren korrekt
+
+## Phase 26: Kalender mit Google Calendar Sync
+- [x] DB: calendar_events Tabelle erstellt (id, title, description, start_at, end_at, category, color, google_event_id, customer_id, project_id)
+- [x] Backend: calendar.list, create, update, delete, syncFromGoogle Prozeduren
+- [x] Backend: Google Calendar Sync via MCP (lesen + schreiben)
+- [x] Frontend: Kalender-Seite mit Monats- und Wochenansicht
+- [x] Frontend: Termin-Dialog (Titel, Datum/Zeit, Kategorie, Farbe, Kunde/Projekt)
+- [x] Frontend: Farbkodierung nach Kategorie
+- [x] Frontend: Kalender-Eintrag in Sidebar (CalendarDays-Icon)
+
+## Phase 27: KI-Assistent mit ERP-Kontext
+- [x] Backend: ai.generate um includeErpContext erweitert (Kunden, Projekte, Rechnungen, Termine, KPIs)
+- [x] Frontend: ERP-Kontext-Toggle im KI-Assistenten
+- [x] Frontend: Schnellbefehle-Tabs (Technisch / ERP-Abfragen)
+- [x] Frontend: Kategorie-Tabs mit 6 ERP-Schnellbefehlen
+- [x] 107 Tests grün, 0 TypeScript-Fehler

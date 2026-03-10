@@ -455,3 +455,25 @@ export const companySettings = mysqlTable("company_settings", {
 
 export type InsertCompanySettings = typeof companySettings.$inferInsert;
 export type CompanySettings = typeof companySettings.$inferSelect;
+
+// ─── Kalender ─────────────────────────────────────────────────────────────────
+export const calendarEvents = mysqlTable("calendar_events", {
+  id: int("id").primaryKey().autoincrement(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  startAt: bigint("start_at", { mode: "number" }).notNull(),
+  endAt: bigint("end_at", { mode: "number" }).notNull(),
+  allDay: tinyint("all_day").default(0),
+  category: mysqlEnum("category", ["customer", "project", "invoice", "personal", "other"]).default("other"),
+  color: varchar("color", { length: 20 }).default("#6366f1"),
+  location: varchar("location", { length: 255 }),
+  googleEventId: varchar("google_event_id", { length: 255 }),
+  customerId: int("customer_id"),
+  projectId: int("project_id"),
+  createdBy: int("created_by"),
+  createdAt: bigint("created_at", { mode: "number" }),
+  updatedAt: bigint("updated_at", { mode: "number" }),
+});
+
+export type InsertCalendarEvent = typeof calendarEvents.$inferInsert;
+export type CalendarEvent = typeof calendarEvents.$inferSelect;
