@@ -222,3 +222,15 @@
 - [x] Invoices-Formular: Absender/Empfänger-Raster auf sm:grid-cols-2 gesetzt
 - [x] Invoices-Formular: Datum/Steuer-Zeile auf sm:grid-cols-2 lg:grid-cols-4
 - [x] Invoices-Formular: Dialog-Breite auf w-[95vw] max-w-4xl gesetzt
+
+## Phase 21: Strukturierter ZIP-Export (Notion-Stil)
+- [x] Backend: /api/export/zip Endpunkt (Express-Route, nicht tRPC)
+- [x] Backend: Ordnerstruktur: Kunden/, Projekte/, Angebote-Rechnungen/, Wissensdatenbank/, Materialien/, Lieferanten/, Notizen/
+- [x] Backend: Jeder Datensatz als eigene .md Datei (Markdown)
+- [x] Backend: CSV-Übersicht pro Ordner (_übersicht.csv)
+- [x] Backend: README.md im ZIP-Root mit Exportdatum und Statistiken
+- [x] Backend: ZIP-Komprimierung mit archiver (Level 6)
+- [x] Frontend: Export-Dialog mit Format-Optionen (Markdown+CSV, nur CSV, nur JSON)
+- [x] Frontend: Bereichs-Auswahl mit Alle/Keine-Buttons
+- [x] Frontend: Download-Button mit Progress-Anzeige
+- [x] Vitest: 18 neue Tests für slugify, CSV, Formatierung (107 Tests gesamt)

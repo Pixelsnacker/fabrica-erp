@@ -11,7 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { trpc } from "@/lib/trpc";
 import {
   Download, Trash2, MessageCircle, Phone, UserCheck, Mail, MoreHorizontal,
-  Zap, Database, Shield, Building2, Upload, X, Loader2
+  Zap, Database, Shield, Building2, Upload, X, Loader2, FileText, Table2, Code2, CheckSquare, Square, FolderOpen, FileJson
 } from "lucide-react";
 import { toast } from "sonner";
 import { useState, useEffect, useRef } from "react";
@@ -42,6 +42,9 @@ const SOURCE_COLORS: Record<string, string> = {
 
 export default function Settings() {
   const [isExporting, setIsExporting] = useState(false);
+  const [exportFormat, setExportFormat] = useState<"markdown_csv" | "csv_only" | "json">("markdown_csv");
+  const [exportSections, setExportSections] = useState<string[]>(["kunden", "projekte", "rechnungen", "wissensdatenbank", "materialien", "lieferanten", "notizen"]);
+  const [exportProgress, setExportProgress] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -184,16 +187,26 @@ export default function Settings() {
   };
 
   const handleExport = async () => {
+    if (exportSections.length === 0) {
+      toast.error("Bitte mindestens einen Bereich auswählen");
+      return;
+    }
     setIsExporting(true);
+    setExportProgress("Daten werden zusammengestellt...");
     try {
-      const response = await fetch("/api/trpc/export.full", { credentials: "include" });
-      const json = await response.json();
-      const data = json?.result?.data ?? json;
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const params = new URLSearchParams({
+        format: exportFormat,
+        sections: exportSections.join(","),
+      });
+      setExportProgress("ZIP wird erstellt...");
+      const response = await fetch(`/api/export/zip?${params}`, { credentials: "include" });
+      if (!response.ok) throw new Error("Export fehlgeschlagen");
+      setExportProgress("Download startet...");
+      const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `fabrica-erp-export-${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = `fabrica-erp-export-${new Date().toISOString().slice(0, 10)}.zip`;
       a.click();
       URL.revokeObjectURL(url);
       toast.success("Export erfolgreich heruntergeladen");
@@ -201,7 +214,24 @@ export default function Settings() {
       toast.error("Fehler beim Export");
     } finally {
       setIsExporting(false);
+      setExportProgress(null);
     }
+  };
+
+  const ALL_SECTIONS = [
+    { key: "kunden", label: "Kunden", icon: "👥" },
+    { key: "projekte", label: "Projekte", icon: "📁" },
+    { key: "rechnungen", label: "Angebote & Rechnungen", icon: "📄" },
+    { key: "wissensdatenbank", label: "Wissensdatenbank", icon: "📚" },
+    { key: "materialien", label: "Materialien", icon: "🧱" },
+    { key: "lieferanten", label: "Lieferanten", icon: "🏭" },
+    { key: "notizen", label: "Notizen", icon: "📝" },
+  ];
+
+  const toggleSection = (key: string) => {
+    setExportSections(prev =>
+      prev.includes(key) ? prev.filter(s => s !== key) : [...prev, key]
+    );
   };
 
   return (
@@ -461,37 +491,138 @@ export default function Settings() {
           </TabsContent>
 
           {/* ─── Datensicherung Tab ─── */}
-          <TabsContent value="backup" className="mt-4">
+          <TabsContent value="backup" className="mt-4 space-y-4">
+            {/* Format-Auswahl */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Shield className="h-5 w-5 text-primary" />
-                  Datensicherung
-                </CardTitle>
-                <CardDescription>
-                  Exportieren Sie alle Ihre Daten als JSON-Datei zur lokalen Sicherung.
-                  Empfehlung: einmal pro Woche herunterladen und in Google Drive speichern.
-                </CardDescription>
+                <CardTitle className="text-base">Exportformat</CardTitle>
+                <CardDescription>Wähle das Format für die Datensicherung</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/30">
-                  <div className="flex items-center gap-3">
-                    <Database className="h-8 w-8 text-primary" />
+              <CardContent>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <button
+                    onClick={() => setExportFormat("markdown_csv")}
+                    className={`flex flex-col items-start gap-2 p-4 rounded-lg border-2 text-left transition-colors ${
+                      exportFormat === "markdown_csv"
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-primary/50 hover:bg-muted/30"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-5 w-5 text-primary" />
+                      <span className="font-medium text-sm">Markdown + CSV</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Jeder Datensatz als eigene .md Datei, plus CSV-Übersichten. Ideal für Notion-Import.</p>
+                  </button>
+                  <button
+                    onClick={() => setExportFormat("csv_only")}
+                    className={`flex flex-col items-start gap-2 p-4 rounded-lg border-2 text-left transition-colors ${
+                      exportFormat === "csv_only"
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-primary/50 hover:bg-muted/30"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Table2 className="h-5 w-5 text-green-400" />
+                      <span className="font-medium text-sm">Nur CSV</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Nur Übersichts-CSV pro Bereich. Ideal für Excel oder Google Sheets.</p>
+                  </button>
+                  <button
+                    onClick={() => setExportFormat("json")}
+                    className={`flex flex-col items-start gap-2 p-4 rounded-lg border-2 text-left transition-colors ${
+                      exportFormat === "json"
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-primary/50 hover:bg-muted/30"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <FileJson className="h-5 w-5 text-orange-400" />
+                      <span className="font-medium text-sm">JSON (Rohdaten)</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Vollständige Rohdaten als JSON. Ideal für technische Sicherung und Wiederherstellung.</p>
+                  </button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Bereiche-Auswahl */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-base">Bereiche einschließen</CardTitle>
+                    <CardDescription>Wähle welche Datenbereiche exportiert werden sollen</CardDescription>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="ghost" size="sm" className="text-xs" onClick={() => setExportSections(ALL_SECTIONS.map(s => s.key))}>Alle</Button>
+                    <Button variant="ghost" size="sm" className="text-xs" onClick={() => setExportSections([])}>Keine</Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {ALL_SECTIONS.map(section => {
+                    const isSelected = exportSections.includes(section.key);
+                    return (
+                      <button
+                        key={section.key}
+                        onClick={() => toggleSection(section.key)}
+                        className={`flex items-center gap-3 p-3 rounded-lg border text-left transition-colors ${
+                          isSelected
+                            ? "border-primary/50 bg-primary/5"
+                            : "border-border hover:bg-muted/30"
+                        }`}
+                      >
+                        {isSelected
+                          ? <CheckSquare className="h-4 w-4 text-primary shrink-0" />
+                          : <Square className="h-4 w-4 text-muted-foreground shrink-0" />
+                        }
+                        <span className="text-sm">{section.icon} {section.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Export-Button */}
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="flex items-start gap-3">
+                    <FolderOpen className="h-8 w-8 text-primary shrink-0 mt-0.5" />
                     <div>
-                      <p className="font-medium">Vollständiger Daten-Export</p>
+                      <p className="font-medium">ZIP-Datei herunterladen</p>
                       <p className="text-sm text-muted-foreground">
-                        Projekte, Kunden, Lieferanten, Beratungshistorie, Materialien, Wissensdatenbank
+                        {exportSections.length === 0
+                          ? "Keine Bereiche ausgewählt"
+                          : `${exportSections.length} Bereich${exportSections.length !== 1 ? "e" : ""} • Format: ${
+                              exportFormat === "markdown_csv" ? "Markdown + CSV" :
+                              exportFormat === "csv_only" ? "Nur CSV" : "JSON"
+                            }`
+                        }
                       </p>
+                      {isExporting && exportProgress && (
+                        <p className="text-xs text-primary mt-1 flex items-center gap-1">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          {exportProgress}
+                        </p>
+                      )}
                     </div>
                   </div>
-                  <Button onClick={handleExport} disabled={isExporting} className="gap-2">
-                    <Download className="h-4 w-4" />
+                  <Button
+                    onClick={handleExport}
+                    disabled={isExporting || exportSections.length === 0}
+                    className="gap-2 shrink-0"
+                  >
+                    {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                     {isExporting ? "Exportiere..." : "Jetzt exportieren"}
                   </Button>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Die exportierte JSON-Datei enthält alle Ihre Daten und kann bei Bedarf auf einem anderen System eingespielt werden.
-                  Ihr Code ist zusätzlich über den GitHub-Export in den Manus-Einstellungen sicherbar.
+                <p className="text-xs text-muted-foreground mt-4 border-t pt-3">
+                  Empfehlung: Einmal pro Woche exportieren und in Google Drive oder einem lokalen Ordner sichern.
+                  Der Code ist zusätzlich über den GitHub-Export in den Manus-Einstellungen sicherbar.
                 </p>
               </CardContent>
             </Card>
