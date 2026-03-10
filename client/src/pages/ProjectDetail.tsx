@@ -15,7 +15,7 @@ import {
   ArrowLeft, Plus, Trash2, Package, Truck, FileCode2, MessageSquare,
   ExternalLink, Bell, StickyNote, Clock, Paperclip, CheckCircle2, Circle,
   AlertCircle, Zap, Upload, FileText, Image, X, Edit2, Save, AlertTriangle,
-  ShieldAlert,
+  ShieldAlert, Receipt,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -221,13 +221,31 @@ export default function ProjectDetail() {
           </div>
           {project.notes && <p className="text-sm text-muted-foreground mt-1">{project.notes}</p>}
         </div>
-        {project.driveFolderUrl && (
-          <Button variant="outline" size="sm" asChild className="shrink-0">
-            <a href={project.driveFolderUrl} target="_blank" rel="noopener noreferrer" className="gap-2">
-              <ExternalLink className="h-4 w-4" /> Drive
-            </a>
+        <div className="flex items-center gap-2 shrink-0">
+          {project.driveFolderUrl && (
+            <Button variant="outline" size="sm" asChild>
+              <a href={project.driveFolderUrl} target="_blank" rel="noopener noreferrer" className="gap-2">
+                <ExternalLink className="h-4 w-4" /> Drive
+              </a>
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 text-primary border-primary/30 hover:bg-primary/10"
+            onClick={() => {
+              const params = new URLSearchParams({
+                projectId: String(id),
+                projectTitle: project.title ?? '',
+                customerId: String(project.customerId ?? ''),
+              });
+              setLocation(`/invoices/new?${params.toString()}`);
+            }}
+          >
+            <Receipt className="h-4 w-4" />
+            <span className="hidden sm:inline">Angebot</span>
           </Button>
-        )}
+        </div>
       </div>
 
       {/* Status Pipeline */}

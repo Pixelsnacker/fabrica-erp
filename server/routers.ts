@@ -30,6 +30,7 @@ import {
   addComplaintAttachment, deleteComplaintAttachment,
   getInvoices, getInvoiceById, createInvoice, updateInvoice, changeInvoiceStatus,
   lockInvoice, cancelInvoice, deleteInvoiceDraft, getInvoiceAuditLog, getNextInvoiceNumber,
+  getCompanySettings, upsertCompanySettings,
 } from "./db";
 
 const EMAIL_SIGNATURE = `\n\nMit freundlichen Grüßen / Best Regards\n\nDaniel Rincón\n\nFabrica GmbH\nHüttenstraße 205\n50170 Kerpen-Sindorf\n\nTel.: +49(0)2273-9529429\nMobil: +49(0)170/8342238\nd.rincon@fabrica3d.eu\nwww.fabrica3d.de`;
@@ -840,7 +841,47 @@ Erstelle eine professionelle Beratungsantwort oder E-Mail basierend auf der Anfr
       return { csv: [header, ...rows].join('\n'), filename: `DATEV-${year}.csv` };
     }),
   }),
-  // ─── Data Export ───────────────────────────────────────────────────────────────────────────────────
+  // ─── Company Settings ─────────────────────────────────────────────────────────────────────────────────
+  companySettings: router({
+    get: protectedProcedure.query(async () => {
+      return getCompanySettings();
+    }),
+    update: protectedProcedure
+      .input(z.object({
+        name: z.string().optional(),
+        legalForm: z.string().optional(),
+        street: z.string().optional(),
+        zip: z.string().optional(),
+        city: z.string().optional(),
+        country: z.string().optional(),
+        phone: z.string().optional(),
+        email: z.string().optional(),
+        website: z.string().optional(),
+        taxNumber: z.string().optional(),
+        vatId: z.string().optional(),
+        iban: z.string().optional(),
+        bic: z.string().optional(),
+        bankName: z.string().optional(),
+        invoiceFooter: z.string().optional(),
+        kleinunternehmer: z.boolean().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        return upsertCompanySettings({
+          ...input,
+          kleinunternehmer: input.kleinunternehmer ? 1 : 0,
+        } as any);
+      }),
+    uploadLogo: protectedProcedure
+      .input(z.object({ base64: z.string(), mimeType: z.string(), filename: z.string() }))
+      .mutation(async ({ input }) => {
+        const buffer = Buffer.from(input.base64, 'base64');
+        const key = `company/logo-${Date.now()}.${input.filename.split('.').pop()}`;
+        const { url } = await storagePut(key, buffer, input.mimeType);
+        await upsertCompanySettings({ logoUrl: url, logoKey: key });
+        return { url };
+      }),
+  }),
+  // ─── Data Export ──────────────────────────────────────────────────────────────────────────────────────
   dataExport: router({
     full: protectedProcedure.query(async () => getFullExport()),
   }),

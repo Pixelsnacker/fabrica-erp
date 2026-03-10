@@ -22,6 +22,7 @@ import {
   complaints, complaintAttachments, InsertComplaint, InsertComplaintAttachment,
   invoices, invoiceItems, invoiceAuditLog, invoiceSequences,
   InsertInvoice, InsertInvoiceItem, InsertInvoiceAuditLog,
+  companySettings, InsertCompanySettings,
 } from "../drizzle/schema";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -957,4 +958,24 @@ export async function getInvoiceAuditLog(invoiceId: number) {
   return db.select().from(invoiceAuditLog)
     .where(eq(invoiceAuditLog.invoiceId, invoiceId))
     .orderBy(invoiceAuditLog.changedAt);
+}
+
+// ─── Company Settings ─────────────────────────────────────────────────────────
+export async function getCompanySettings() {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(companySettings).limit(1);
+  return rows[0] ?? null;
+}
+export async function upsertCompanySettings(data: Partial<InsertCompanySettings>) {
+  const db = await getDb();
+  if (!db) throw new Error('DB not available');
+  const now = Date.now();
+  const existing = await db.select({ id: companySettings.id }).from(companySettings).limit(1);
+  if (existing.length > 0) {
+    await db.update(companySettings).set({ ...data, updatedAt: now }).where(eq(companySettings.id, 1));
+  } else {
+    await db.insert(companySettings).values({ id: 1, ...data, createdAt: now, updatedAt: now } as any);
+  }
+  return getCompanySettings();
 }

@@ -1,6 +1,7 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -102,14 +103,14 @@ function emptyItem(pos: number): InvoiceItem {
 
 // ─── Formular-Standardwerte ───────────────────────────────────────────────────
 const DEFAULT_SENDER = {
-  senderName: 'Daniel Rincón',
-  senderStreet: 'Hüttenstraße 205',
-  senderZip: '50170',
-  senderCity: 'Kerpen-Sindorf',
+  senderName: '',
+  senderStreet: '',
+  senderZip: '',
+  senderCity: '',
   senderTaxId: '',
   senderVatId: '',
-  senderEmail: 'd.rincon@fabrica3d.eu',
-  senderPhone: '+49 2273 9529429',
+  senderEmail: '',
+  senderPhone: '',
   senderIban: '',
   senderBic: '',
 };
@@ -117,6 +118,7 @@ const DEFAULT_SENDER = {
 // ─── Hauptkomponente ──────────────────────────────────────────────────────────
 export default function Invoices() {
   const utils = trpc.useUtils();
+  const [location, setLocation] = useLocation();
 
   const [tab, setTab] = useState<'all' | 'offer' | 'invoice' | 'credit_note'>('all');
   const [search, setSearch] = useState('');
@@ -129,6 +131,7 @@ export default function Invoices() {
   const { data: invoiceList = [], isLoading } = trpc.invoices.list.useQuery(undefined);
   const { data: customers = [] } = trpc.customers.list.useQuery();
   const { data: projects = [] } = trpc.projects.list.useQuery();
+  const { data: companySettings } = trpc.companySettings.get.useQuery();
   const { data: detailData } = trpc.invoices.getById.useQuery(
     { id: showDetail! }, { enabled: showDetail !== null }
   );
@@ -171,13 +174,98 @@ export default function Invoices() {
 
   const totals = useMemo(() => calcTotals(items), [items]);
 
+  // Firmendaten aus Einstellungen als Sender vorausfüllen
+  function buildSenderFromSettings() {
+    if (!companySettings) return DEFAULT_SENDER;
+    return {
+      senderName: [companySettings.name, companySettings.legalForm].filter(Boolean).join(' ') || '',
+      senderStreet: companySettings.street ?? '',
+      senderZip: companySettings.zip ?? '',
+      senderCity: companySettings.city ?? '',
+      senderTaxId: companySettings.taxNumber ?? '',
+      senderVatId: companySettings.vatId ?? '',
+      senderEmail: companySettings.email ?? '',
+      senderPhone: companySettings.phone ?? '',
+      senderIban: companySettings.iban ?? '',
+      senderBic: companySettings.bic ?? '',
+    };
+  }
+
   // Formular öffnen (neu oder bearbeiten)
-  function openNew(type: InvoiceType = 'offer') {
+  function openNew(type: InvoiceType = 'offer', prefill?: { projectId?: number; customerId?: number; projectItems?: any[] }) {
     setEditId(null);
-    setForm({ type, customerId: undefined, projectId: undefined, ...DEFAULT_SENDER, recipientName: '', recipientCompany: '', recipientStreet: '', recipientZip: '', recipientCity: '', recipientEmail: '', issueDate: new Date().toISOString().slice(0, 10), dueDate: '', deliveryDate: '', paymentTerms: 'Zahlbar innerhalb von 14 Tagen ohne Abzug.', taxMode: 'standard', introText: '', notes: '', footerText: '' });
-    setItems([emptyItem(1)]);
+    const sender = buildSenderFromSettings();
+    const footer = companySettings?.invoiceFooter ?? '';
+    setForm({ type, customerId: prefill?.customerId, projectId: prefill?.projectId, ...sender, recipientName: '', recipientCompany: '', recipientStreet: '', recipientZip: '', recipientCity: '', recipientEmail: '', issueDate: new Date().toISOString().slice(0, 10), dueDate: '', deliveryDate: '', paymentTerms: 'Zahlbar innerhalb von 14 Tagen ohne Abzug.', taxMode: companySettings?.kleinunternehmer ? 'kleinunternehmer' : 'standard', introText: '', notes: '', footerText: footer });
+    // Wenn Projekt-Positionen mitgegeben werden, vorausfüllen
+    if (prefill?.projectItems?.length) {
+      const mapped = prefill.projectItems.map((it: any, idx: number) => ({
+        position: idx + 1,
+        description: [it.name, it.material].filter(Boolean).join(' – '),
+        quantity: String(it.quantity ?? 1),
+        unit: 'Stk.',
+        unitPriceNet: parseFloat(it.unitVk ?? '0').toFixed(2),
+        taxRate: '19',
+        lineTotalNet: (parseFloat(it.unitVk ?? '0') * (it.quantity ?? 1)).toFixed(2),
+        lineTax: (parseFloat(it.unitVk ?? '0') * (it.quantity ?? 1) * 0.19).toFixed(2),
+        lineTotalGross: (parseFloat(it.unitVk ?? '0') * (it.quantity ?? 1) * 1.19).toFixed(2),
+      }));
+      setItems(mapped.length ? mapped : [emptyItem(1)]);
+    } else {
+      setItems([emptyItem(1)]);
+    }
+    // Wenn Kunde mitgegeben, Empfänger vorausfüllen
+    if (prefill?.customerId) {
+      const c = customers.find((x: any) => x.id === prefill.customerId);
+      if (c) {
+        setForm(f => ({
+          ...f,
+          recipientName: (c as any).name ?? '',
+          recipientCompany: (c as any).company ?? '',
+          recipientStreet: (c as any).street ?? '',
+          recipientZip: (c as any).zip ?? '',
+          recipientCity: (c as any).city ?? '',
+          recipientEmail: (c as any).email ?? '',
+        }));
+      }
+    }
     setShowForm(true);
   }
+
+  // URL-Parameter: projectId für Positionen-Vorausfüllung
+  const [pendingProjectId, setPendingProjectId] = useState<number | undefined>(undefined);
+  const [pendingCustomerId, setPendingCustomerId] = useState<number | undefined>(undefined);
+  const { data: pendingProjectItems } = trpc.projectItems.list.useQuery(
+    { projectId: pendingProjectId! },
+    { enabled: pendingProjectId !== undefined }
+  );
+
+  // URL-Parameter verarbeiten (/invoices/new?projectId=1&customerId=2)
+  useEffect(() => {
+    if (location.startsWith('/invoices/new')) {
+      const searchStr = window.location.search;
+      const params = new URLSearchParams(searchStr);
+      const projectId = params.get('projectId') ? parseInt(params.get('projectId')!) : undefined;
+      const customerId = params.get('customerId') ? parseInt(params.get('customerId')!) : undefined;
+      if (projectId) {
+        setPendingProjectId(projectId);
+        setPendingCustomerId(customerId);
+      } else {
+        openNew('offer', { customerId });
+        setLocation('/invoices');
+      }
+    }
+  }, [location]);
+
+  // Wenn Projekt-Positionen geladen sind, Formular öffnen
+  useEffect(() => {
+    if (pendingProjectId !== undefined && pendingProjectItems !== undefined) {
+      openNew('offer', { projectId: pendingProjectId, customerId: pendingCustomerId, projectItems: pendingProjectItems });
+      setPendingProjectId(undefined);
+      setPendingCustomerId(undefined);
+      setLocation('/invoices');
+    }
+  }, [pendingProjectItems]);
 
   function openEdit(inv: any) {
     setEditId(inv.id);

@@ -417,3 +417,31 @@ export type InsertInvoiceItem = typeof invoiceItems.$inferInsert;
 export type InsertInvoiceAuditLog = typeof invoiceAuditLog.$inferInsert;
 export type Invoice = typeof invoices.$inferSelect;
 export type InvoiceItem = typeof invoiceItems.$inferSelect;
+
+// ─── Company Settings ─────────────────────────────────────────────────────────
+export const companySettings = mysqlTable("company_settings", {
+  id: int("id").primaryKey().default(1),
+  name: varchar("name", { length: 255 }),
+  legalForm: varchar("legal_form", { length: 100 }),
+  street: varchar("street", { length: 255 }),
+  zip: varchar("zip", { length: 20 }),
+  city: varchar("city", { length: 100 }),
+  country: varchar("country", { length: 100 }).default("Deutschland"),
+  phone: varchar("phone", { length: 50 }),
+  email: varchar("email", { length: 255 }),
+  website: varchar("website", { length: 255 }),
+  taxNumber: varchar("tax_number", { length: 100 }),
+  vatId: varchar("vat_id", { length: 100 }),
+  iban: varchar("iban", { length: 50 }),
+  bic: varchar("bic", { length: 20 }),
+  bankName: varchar("bank_name", { length: 255 }),
+  logoUrl: text("logo_url"),
+  logoKey: text("logo_key"),
+  invoiceFooter: text("invoice_footer"),
+  kleinunternehmer: tinyint("kleinunternehmer").default(0),
+  createdAt: bigint("created_at", { mode: "number" }),
+  updatedAt: bigint("updated_at", { mode: "number" }),
+});
+
+export type InsertCompanySettings = typeof companySettings.$inferInsert;
+export type CompanySettings = typeof companySettings.$inferSelect;

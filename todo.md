@@ -182,3 +182,15 @@
 - [x] Sidebar-Menüpunkt 'Angebote & Rechnungen' (Receipt-Icon)
 - [x] 28 neue Vitest-Tests (Nummernvergabe, Steuer, Hash, DATEV, Status)
 - [x] 48 Tests gesamt grün, 0 TypeScript-Fehler
+
+## Phase 17: Firmendaten in Einstellungen + Angebot aus Projekt
+- [x] DB: company_settings Tabelle (name, legalForm, street, zip, city, country, phone, email, website, taxNumber, vatId, iban, bic, bankName, logoUrl, logoKey, invoiceFooter, kleinunternehmer)
+- [x] tRPC: companySettings.get, companySettings.update, companySettings.uploadLogo
+- [x] Einstellungen-Seite: Firmendaten-Tab mit Formular (alle Felder), Logo-Upload
+- [x] Rechnungsformular: Firmendaten automatisch als Absender vorausgefüllt
+- [x] Rechnungsformular: Kleinunternehmer-Modus automatisch aus Einstellungen
+- [x] Rechnungsformular: Rechnungsfußtext aus Einstellungen vorausgefüllt
+- [x] Projekt-Detail: Button 'Angebot erstellen' im Header (Receipt-Icon)
+- [x] Angebot aus Projekt: Positionen aus project_items übernehmen (Bezeichnung, Menge, VK)
+- [x] Angebot aus Projekt: Kundendaten als Empfänger vorausgefüllt
+- [x] 48 Tests grün, 0 TypeScript-Fehler
