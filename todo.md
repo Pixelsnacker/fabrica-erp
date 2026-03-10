@@ -272,3 +272,15 @@
 - [x] Frontend: Schnellbefehle-Tabs (Technisch / ERP-Abfragen)
 - [x] Frontend: Kategorie-Tabs mit 6 ERP-Schnellbefehlen
 - [x] 107 Tests grün, 0 TypeScript-Fehler
+
+## Phase 28: Bugfix Notizen im Projekt-Detail
+- [x] Bug: Bearbeiten-Button (Edit2-Icon) zu NoteCard hinzugefügt — öffnet NoteEditInlineDialog
+- [x] Bug: Schnellnotizen im Projekt-Detail haben jetzt Löschen-Button (Trash2-Icon)
+- [x] NoteEditInlineDialog-Komponente mit Titel/Inhalt/Priorität-Bearbeitung erstellt
+- [x] 107 Tests grün, 0 TypeScript-Fehler
+
+## Phase 29: Klickbare Trackingnummern
+- [ ] Tracking-URLs für DHL, UPS, FedEx, DPD, Hermes implementieren
+- [ ] Klick auf Trackingnummer öffnet Tracking-Seite im neuen Tab
+- [ ] Carrier-Erkennung automatisch (aus dem Carrier-Feld)
+- [ ] Tracking-Link überall wo Trackingnummern angezeigt werden (Projekt-Detail, Versand-Tab)

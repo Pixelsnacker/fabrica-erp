@@ -145,6 +145,7 @@ export default function ProjectDetail() {
   const [showAddConsultation, setShowAddConsultation] = useState(false);
   const [showAddNote, setShowAddNote] = useState(false);
   const [showNoteDetail, setShowNoteDetail] = useState<number | null>(null);
+  const [showEditNote, setShowEditNote] = useState<number | null>(null);
   const [showAddComplaint, setShowAddComplaint] = useState(false);
   const [showEditComplaint, setShowEditComplaint] = useState<number | null>(null);
   const [showOfferUpload, setShowOfferUpload] = useState<number | null>(null);
@@ -204,6 +205,9 @@ export default function ProjectDetail() {
   });
   const deleteNote = trpc.notes.delete.useMutation({
     onSuccess: () => { utils.notes.list.invalidate({ projectId: id }); toast.success("Notiz gelöscht"); },
+  });
+  const deleteQuickNote = trpc.quickNotes.delete.useMutation({
+    onSuccess: () => { utils.quickNotes.list.invalidate({ projectId: id }); toast.success("Schnellnotiz gelöscht"); },
   });
   const createComplaint = trpc.complaints.create.useMutation({
     onSuccess: () => { utils.complaints.list.invalidate({ projectId: id }); setShowAddComplaint(false); setComplaintForm({ title: "", description: "", status: "open", priority: "normal" }); toast.success("Reklamation angelegt"); },
@@ -448,6 +452,7 @@ export default function ProjectDetail() {
                   onToggle={() => toggleNoteStatus.mutate({ id: note.id, status: note.status === "offen" ? "erledigt" : "offen" })}
                   onDelete={() => deleteNote.mutate({ id: note.id })}
                   onOpen={() => setShowNoteDetail(note.id)}
+                  onEdit={() => setShowEditNote(note.id)}
                   onUpload={() => setShowNoteDetail(note.id)}
                 />
               ))}
@@ -471,6 +476,9 @@ export default function ProjectDetail() {
                         <span className="text-xs text-muted-foreground">{new Date(qn.createdAt).toLocaleDateString("de-DE")}</span>
                       </div>
                     </div>
+                    <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive h-7 w-7 p-0 shrink-0" title="Löschen" onClick={() => deleteQuickNote.mutate({ id: qn.id })}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -950,6 +958,23 @@ export default function ProjectDetail() {
         <NoteDetailDialog noteId={showNoteDetail} onClose={() => setShowNoteDetail(null)} onRefresh={() => utils.notes.list.invalidate({ projectId: id })} />
       )}
 
+      {/* Notiz bearbeiten Dialog */}
+      {showEditNote !== null && (() => {
+        const editNote = projectNotes.find((n: any) => n.id === showEditNote);
+        if (!editNote) return null;
+        return (
+          <NoteEditInlineDialog
+            note={editNote}
+            onClose={() => setShowEditNote(null)}
+            onSave={(data) => {
+              toggleNoteStatus.mutate({ id: editNote.id, ...data } as any);
+              utils.notes.list.invalidate({ projectId: id });
+              setShowEditNote(null);
+            }}
+          />
+        );
+      })()}
+
       {/* Lieferanten-Angebot Upload */}
       {showOfferUpload !== null && (
         <SupplierOfferDialog
@@ -963,9 +988,9 @@ export default function ProjectDetail() {
 }
 
 // ── NoteCard ──────────────────────────────────────────────────────────────────
-function NoteCard({ note, onToggle, onDelete, onOpen, onUpload }: {
+function NoteCard({ note, onToggle, onDelete, onOpen, onEdit, onUpload }: {
   note: { id: number; title: string; content?: string | null; status: string; priority: string; createdAt: Date | string };
-  onToggle: () => void; onDelete: () => void; onOpen: () => void; onUpload?: () => void;
+  onToggle: () => void; onDelete: () => void; onOpen: () => void; onEdit: () => void; onUpload?: () => void;
 }) {
   const prio = PRIORITY_CONFIG[note.priority] ?? PRIORITY_CONFIG.normal;
   const isDone = note.status === "erledigt";
@@ -984,10 +1009,13 @@ function NoteCard({ note, onToggle, onDelete, onOpen, onUpload }: {
           <span className="text-xs text-muted-foreground mt-1 block">{new Date(note.createdAt).toLocaleDateString("de-DE")}</span>
         </div>
         <div className="flex items-center gap-1 shrink-0">
-          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-primary" onClick={(e) => { e.stopPropagation(); onUpload ? onUpload() : onOpen(); }}>
+          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-primary" title="Bearbeiten" onClick={(e) => { e.stopPropagation(); onEdit(); }}>
+            <Edit2 className="h-3.5 w-3.5" />
+          </Button>
+          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-primary" title="Anhänge" onClick={(e) => { e.stopPropagation(); onUpload ? onUpload() : onOpen(); }}>
             <Paperclip className="h-3.5 w-3.5" />
           </Button>
-          <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive h-7 w-7 p-0" onClick={onDelete}>
+          <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive h-7 w-7 p-0" title="Löschen" onClick={onDelete}>
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
@@ -996,7 +1024,50 @@ function NoteCard({ note, onToggle, onDelete, onOpen, onUpload }: {
   );
 }
 
-// ── SupplierOfferDialog ───────────────────────────────────────────────────────
+// ── NoteEditInlineDialog─────────────────────────────────────────────────────────────
+function NoteEditInlineDialog({ note, onClose, onSave }: {
+  note: { id: number; title: string; content?: string | null; priority: string };
+  onClose: () => void;
+  onSave: (data: { title: string; content?: string; priority: string }) => void;
+}) {
+  const [title, setTitle] = useState(note.title);
+  const [content, setContent] = useState(note.content ?? "");
+  const [priority, setPriority] = useState(note.priority);
+  const utils = trpc.useUtils();
+  const updateNote = trpc.notes.update.useMutation({
+    onSuccess: () => { toast.success("Notiz gespeichert"); onClose(); },
+    onError: () => toast.error("Fehler beim Speichern"),
+  });
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle className="flex items-center gap-2"><Edit2 className="h-4 w-4" />Notiz bearbeiten</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1.5"><Label>Titel *</Label><Input value={title} onChange={e => setTitle(e.target.value)} /></div>
+          <div className="space-y-1.5"><Label>Inhalt</Label><Textarea value={content} onChange={e => setContent(e.target.value)} rows={4} /></div>
+          <div className="space-y-1.5"><Label>Priorität</Label>
+            <Select value={priority} onValueChange={setPriority}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="niedrig">Niedrig</SelectItem>
+                <SelectItem value="normal">Normal</SelectItem>
+                <SelectItem value="hoch">Hoch</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Abbrechen</Button>
+          <Button onClick={() => updateNote.mutate({ id: note.id, title, content: content || undefined, priority: priority as any })} disabled={!title || updateNote.isPending}>
+            {updateNote.isPending ? "Speichert..." : "Speichern"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ── SupplierOfferDialog ──────────────────────────────────────────────────────────────────
 function SupplierOfferDialog({ projectItemId, onClose, onSuccess }: { projectItemId: number; onClose: () => void; onSuccess: () => void }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
