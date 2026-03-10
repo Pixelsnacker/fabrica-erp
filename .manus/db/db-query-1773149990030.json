@@ -1,0 +1,25 @@
+{
+  "query": "SHOW TABLES LIKE 'invoices'; SHOW TABLES LIKE 'invoice_items'; SHOW TABLES LIKE 'invoice_audit_log';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 9NNjvn7NV7enobv.7ea640e70a8c --database YMZow7uQxpBVyBGbmbpvvd --execute SHOW TABLES LIKE 'invoices'; SHOW TABLES LIKE 'invoice_items'; SHOW TABLES LIKE 'invoice_audit_log';",
+  "rows": [
+    {
+      "Tables_in_YMZow7uQxpBVyBGbmbpvvd (invoices)": "invoices"
+    },
+    {
+      "Tables_in_YMZow7uQxpBVyBGbmbpvvd (invoices)": "Tables_in_YMZow7uQxpBVyBGbmbpvvd (invoice_items)"
+    },
+    {
+      "Tables_in_YMZow7uQxpBVyBGbmbpvvd (invoices)": "invoice_items"
+    },
+    {
+      "Tables_in_YMZow7uQxpBVyBGbmbpvvd (invoices)": "Tables_in_YMZow7uQxpBVyBGbmbpvvd (invoice_audit_log)"
+    },
+    {
+      "Tables_in_YMZow7uQxpBVyBGbmbpvvd (invoices)": "invoice_audit_log"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_YMZow7uQxpBVyBGbmbpvvd (invoices)\ninvoices\nTables_in_YMZow7uQxpBVyBGbmbpvvd (invoice_items)\ninvoice_items\nTables_in_YMZow7uQxpBVyBGbmbpvvd (invoice_audit_log)\ninvoice_audit_log\n",
+  "stderr": "",
+  "execution_time_ms": 67
+}

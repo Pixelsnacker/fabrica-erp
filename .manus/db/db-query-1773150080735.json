@@ -1,0 +1,19 @@
+{
+  "query": "SHOW TABLES LIKE 'invoices'; SELECT COUNT(*) as count FROM invoices;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 9NNjvn7NV7enobv.7ea640e70a8c --database YMZow7uQxpBVyBGbmbpvvd --execute SHOW TABLES LIKE 'invoices'; SELECT COUNT(*) as count FROM invoices;",
+  "rows": [
+    {
+      "Tables_in_YMZow7uQxpBVyBGbmbpvvd (invoices)": "invoices"
+    },
+    {
+      "Tables_in_YMZow7uQxpBVyBGbmbpvvd (invoices)": "count"
+    },
+    {
+      "Tables_in_YMZow7uQxpBVyBGbmbpvvd (invoices)": "0"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_YMZow7uQxpBVyBGbmbpvvd (invoices)\ninvoices\ncount\n0\n",
+  "stderr": "",
+  "execution_time_ms": 64
+}

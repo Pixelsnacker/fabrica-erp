@@ -155,8 +155,14 @@ export default function Invoices() {
   );
 
   // Mutationen
-  const createMut = trpc.invoices.create.useMutation({ onSuccess: () => { utils.invoices.list.invalidate(); setShowForm(false); toast.success('Erstellt'); } });
-  const updateMut = trpc.invoices.update.useMutation({ onSuccess: () => { utils.invoices.list.invalidate(); setShowForm(false); toast.success('Gespeichert'); } });
+  const createMut = trpc.invoices.create.useMutation({
+    onSuccess: () => { utils.invoices.list.invalidate(); setShowForm(false); toast.success('Erstellt'); },
+    onError: (err) => toast.error(`Fehler beim Erstellen: ${err.message}`),
+  });
+  const updateMut = trpc.invoices.update.useMutation({
+    onSuccess: () => { utils.invoices.list.invalidate(); setShowForm(false); toast.success('Gespeichert'); },
+    onError: (err) => toast.error(`Fehler beim Speichern: ${err.message}`),
+  });
   const statusMut = trpc.invoices.changeStatus.useMutation({ onSuccess: () => utils.invoices.list.invalidate() });
   const lockMut = trpc.invoices.lock.useMutation({ onSuccess: () => { utils.invoices.list.invalidate(); toast.success('Rechnung finalisiert — GoBD-konform gesperrt.'); } });
   const cancelMut = trpc.invoices.cancel.useMutation({ onSuccess: () => { utils.invoices.list.invalidate(); toast.success('Storniert'); } });
@@ -583,7 +589,7 @@ export default function Invoices() {
 
       {/* ─── Formular-Dialog ─────────────────────────────────────────────────── */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-6xl w-[98vw] max-h-[92vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editId ? 'Bearbeiten' : 'Neu'}: {TYPE_LABELS[form.type]}</DialogTitle>
           </DialogHeader>
@@ -623,33 +629,36 @@ export default function Invoices() {
               </div>
             </div>
 
-            {/* Absender */}
-            <div className="border border-border rounded-lg p-4 space-y-3">
-              <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Absender (Ihr Unternehmen)</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div><Label>Name</Label><Input value={form.senderName} onChange={e => setForm(f => ({ ...f, senderName: e.target.value }))} /></div>
-                <div><Label>Straße</Label><Input value={form.senderStreet} onChange={e => setForm(f => ({ ...f, senderStreet: e.target.value }))} /></div>
-                <div><Label>PLZ</Label><Input value={form.senderZip} onChange={e => setForm(f => ({ ...f, senderZip: e.target.value }))} /></div>
-                <div><Label>Ort</Label><Input value={form.senderCity} onChange={e => setForm(f => ({ ...f, senderCity: e.target.value }))} /></div>
-                <div><Label>Steuernummer</Label><Input value={form.senderTaxId} onChange={e => setForm(f => ({ ...f, senderTaxId: e.target.value }))} /></div>
-                <div><Label>USt-IdNr.</Label><Input value={form.senderVatId} onChange={e => setForm(f => ({ ...f, senderVatId: e.target.value }))} /></div>
-                <div><Label>E-Mail</Label><Input value={form.senderEmail} onChange={e => setForm(f => ({ ...f, senderEmail: e.target.value }))} /></div>
-                <div><Label>Telefon</Label><Input value={form.senderPhone} onChange={e => setForm(f => ({ ...f, senderPhone: e.target.value }))} /></div>
-                <div><Label>IBAN</Label><Input value={form.senderIban} onChange={e => setForm(f => ({ ...f, senderIban: e.target.value }))} /></div>
-                <div><Label>BIC</Label><Input value={form.senderBic} onChange={e => setForm(f => ({ ...f, senderBic: e.target.value }))} /></div>
+            {/* Absender + Empfänger nebeneinander */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Absender */}
+              <div className="border border-border rounded-lg p-4 space-y-3">
+                <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Absender (Ihr Unternehmen)</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="col-span-2"><Label>Name</Label><Input value={form.senderName} onChange={e => setForm(f => ({ ...f, senderName: e.target.value }))} /></div>
+                  <div className="col-span-2"><Label>Straße</Label><Input value={form.senderStreet} onChange={e => setForm(f => ({ ...f, senderStreet: e.target.value }))} /></div>
+                  <div><Label>PLZ</Label><Input value={form.senderZip} onChange={e => setForm(f => ({ ...f, senderZip: e.target.value }))} /></div>
+                  <div><Label>Ort</Label><Input value={form.senderCity} onChange={e => setForm(f => ({ ...f, senderCity: e.target.value }))} /></div>
+                  <div><Label>Steuernummer</Label><Input value={form.senderTaxId} onChange={e => setForm(f => ({ ...f, senderTaxId: e.target.value }))} /></div>
+                  <div><Label>USt-IdNr.</Label><Input value={form.senderVatId} onChange={e => setForm(f => ({ ...f, senderVatId: e.target.value }))} /></div>
+                  <div><Label>E-Mail</Label><Input value={form.senderEmail} onChange={e => setForm(f => ({ ...f, senderEmail: e.target.value }))} /></div>
+                  <div><Label>Telefon</Label><Input value={form.senderPhone} onChange={e => setForm(f => ({ ...f, senderPhone: e.target.value }))} /></div>
+                  <div><Label>IBAN</Label><Input value={form.senderIban} onChange={e => setForm(f => ({ ...f, senderIban: e.target.value }))} /></div>
+                  <div><Label>BIC</Label><Input value={form.senderBic} onChange={e => setForm(f => ({ ...f, senderBic: e.target.value }))} /></div>
+                </div>
               </div>
-            </div>
 
-            {/* Empfänger */}
-            <div className="border border-border rounded-lg p-4 space-y-3">
-              <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Empfänger (Kunde)</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div><Label>Firma</Label><Input value={form.recipientCompany} onChange={e => setForm(f => ({ ...f, recipientCompany: e.target.value }))} /></div>
-                <div><Label>Ansprechpartner</Label><Input value={form.recipientName} onChange={e => setForm(f => ({ ...f, recipientName: e.target.value }))} /></div>
-                <div><Label>Straße</Label><Input value={form.recipientStreet} onChange={e => setForm(f => ({ ...f, recipientStreet: e.target.value }))} /></div>
-                <div><Label>PLZ</Label><Input value={form.recipientZip} onChange={e => setForm(f => ({ ...f, recipientZip: e.target.value }))} /></div>
-                <div><Label>Ort</Label><Input value={form.recipientCity} onChange={e => setForm(f => ({ ...f, recipientCity: e.target.value }))} /></div>
-                <div><Label>E-Mail</Label><Input value={form.recipientEmail} onChange={e => setForm(f => ({ ...f, recipientEmail: e.target.value }))} /></div>
+              {/* Empfänger */}
+              <div className="border border-border rounded-lg p-4 space-y-3">
+                <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Empfänger (Kunde)</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>Firma</Label><Input value={form.recipientCompany} onChange={e => setForm(f => ({ ...f, recipientCompany: e.target.value }))} /></div>
+                  <div><Label>Ansprechpartner</Label><Input value={form.recipientName} onChange={e => setForm(f => ({ ...f, recipientName: e.target.value }))} /></div>
+                  <div className="col-span-2"><Label>Straße</Label><Input value={form.recipientStreet} onChange={e => setForm(f => ({ ...f, recipientStreet: e.target.value }))} /></div>
+                  <div><Label>PLZ</Label><Input value={form.recipientZip} onChange={e => setForm(f => ({ ...f, recipientZip: e.target.value }))} /></div>
+                  <div><Label>Ort</Label><Input value={form.recipientCity} onChange={e => setForm(f => ({ ...f, recipientCity: e.target.value }))} /></div>
+                  <div className="col-span-2"><Label>E-Mail</Label><Input value={form.recipientEmail} onChange={e => setForm(f => ({ ...f, recipientEmail: e.target.value }))} /></div>
+                </div>
               </div>
             </div>
 

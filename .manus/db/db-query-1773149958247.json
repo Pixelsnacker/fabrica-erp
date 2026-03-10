@@ -1,0 +1,250 @@
+{
+  "query": "DESCRIBE company_settings;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 9NNjvn7NV7enobv.7ea640e70a8c --database YMZow7uQxpBVyBGbmbpvvd --execute DESCRIBE company_settings;",
+  "rows": [
+    {
+      "Field": "id",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "PRI",
+      "Default": "1",
+      "Extra": ""
+    },
+    {
+      "Field": "name",
+      "Type": "varchar(255)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "legal_form",
+      "Type": "varchar(100)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "street",
+      "Type": "varchar(255)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "zip",
+      "Type": "varchar(20)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "city",
+      "Type": "varchar(100)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "country",
+      "Type": "varchar(100)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "Deutschland",
+      "Extra": ""
+    },
+    {
+      "Field": "phone",
+      "Type": "varchar(50)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "email",
+      "Type": "varchar(255)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "website",
+      "Type": "varchar(255)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "tax_number",
+      "Type": "varchar(100)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "vat_id",
+      "Type": "varchar(100)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "iban",
+      "Type": "varchar(50)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "bic",
+      "Type": "varchar(20)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "bank_name",
+      "Type": "varchar(255)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "logo_url",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "logo_key",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "invoice_footer",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "kleinunternehmer",
+      "Type": "tinyint(1)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "created_at",
+      "Type": "bigint",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "updated_at",
+      "Type": "bigint",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "offer_prefix",
+      "Type": "varchar(20)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "AN",
+      "Extra": ""
+    },
+    {
+      "Field": "invoice_prefix",
+      "Type": "varchar(20)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "RE",
+      "Extra": ""
+    },
+    {
+      "Field": "credit_note_prefix",
+      "Type": "varchar(20)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "GS",
+      "Extra": ""
+    },
+    {
+      "Field": "number_separator",
+      "Type": "varchar(5)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "-",
+      "Extra": ""
+    },
+    {
+      "Field": "number_padding",
+      "Type": "int",
+      "Null": "YES",
+      "Key": "",
+      "Default": "4",
+      "Extra": ""
+    },
+    {
+      "Field": "include_year",
+      "Type": "tinyint",
+      "Null": "YES",
+      "Key": "",
+      "Default": "1",
+      "Extra": ""
+    },
+    {
+      "Field": "offer_start_number",
+      "Type": "int",
+      "Null": "YES",
+      "Key": "",
+      "Default": "1",
+      "Extra": ""
+    },
+    {
+      "Field": "invoice_start_number",
+      "Type": "int",
+      "Null": "YES",
+      "Key": "",
+      "Default": "1",
+      "Extra": ""
+    },
+    {
+      "Field": "credit_note_start_number",
+      "Type": "int",
+      "Null": "YES",
+      "Key": "",
+      "Default": "1",
+      "Extra": ""
+    }
+  ],
+  "messages": [],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\nid\tint\tNO\tPRI\t1\t\nname\tvarchar(255)\tYES\t\tNULL\t\nlegal_form\tvarchar(100)\tYES\t\tNULL\t\nstreet\tvarchar(255)\tYES\t\tNULL\t\nzip\tvarchar(20)\tYES\t\tNULL\t\ncity\tvarchar(100)\tYES\t\tNULL\t\ncountry\tvarchar(100)\tYES\t\tDeutschland\t\nphone\tvarchar(50)\tYES\t\tNULL\t\nemail\tvarchar(255)\tYES\t\tNULL\t\nwebsite\tvarchar(255)\tYES\t\tNULL\t\ntax_number\tvarchar(100)\tYES\t\tNULL\t\nvat_id\tvarchar(100)\tYES\t\tNULL\t\niban\tvarchar(50)\tYES\t\tNULL\t\nbic\tvarchar(20)\tYES\t\tNULL\t\nbank_name\tvarchar(255)\tYES\t\tNULL\t\nlogo_url\ttext\tYES\t\tNULL\t\nlogo_key\ttext\tYES\t\tNULL\t\ninvoice_footer\ttext\tYES\t\tNULL\t\nkleinunternehmer\ttinyint(1)\tYES\t\t0\t\ncreated_at\tbigint\tYES\t\tNULL\t\nupdated_at\tbigint\tYES\t\tNULL\t\noffer_prefix\tvarchar(20)\tYES\t\tAN\t\ninvoice_prefix\tvarchar(20)\tYES\t\tRE\t\ncredit_note_prefix\tvarchar(20)\tYES\t\tGS\t\nnumber_separator\tvarchar(5)\tYES\t\t-\t\nnumber_padding\tint\tYES\t\t4\t\ninclude_year\ttinyint\tYES\t\t1\t\noffer_start_number\tint\tYES\t\t1\t\ninvoice_start_number\tint\tYES\t\t1\t\ncredit_note_start_number\tint\tYES\t\t1\t\n",
+  "stderr": "",
+  "execution_time_ms": 56
+}

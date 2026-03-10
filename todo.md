@@ -234,3 +234,10 @@
 - [x] Frontend: Bereichs-Auswahl mit Alle/Keine-Buttons
 - [x] Frontend: Download-Button mit Progress-Anzeige
 - [x] Vitest: 18 neue Tests für slugify, CSV, Formatierung (107 Tests gesamt)
+
+## Phase 22: Bugfixes Invoices
+- [x] Bug: Fehlende DB-Spalten (offer_prefix, invoice_prefix etc.) in company_settings nachträglich migriert
+- [x] Bug: onError-Handler zu createMut/updateMut hinzugefügt — Fehler jetzt sichtbar als Toast
+- [x] Layout: Dialog auf max-w-6xl w-[98vw] vergrößert
+- [x] Layout: Absender und Empfänger jetzt nebeneinander (lg:grid-cols-2)
+- [x] Layout: Interne Felder in 2-Spalten-Grid angeordnet

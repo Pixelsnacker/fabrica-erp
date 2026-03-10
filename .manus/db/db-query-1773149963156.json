@@ -1,0 +1,100 @@
+{
+  "query": "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'company_settings' ORDER BY ORDINAL_POSITION;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 9NNjvn7NV7enobv.7ea640e70a8c --database YMZow7uQxpBVyBGbmbpvvd --execute SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'company_settings' ORDER BY ORDINAL_POSITION;",
+  "rows": [
+    {
+      "COLUMN_NAME": "id"
+    },
+    {
+      "COLUMN_NAME": "name"
+    },
+    {
+      "COLUMN_NAME": "legal_form"
+    },
+    {
+      "COLUMN_NAME": "street"
+    },
+    {
+      "COLUMN_NAME": "zip"
+    },
+    {
+      "COLUMN_NAME": "city"
+    },
+    {
+      "COLUMN_NAME": "country"
+    },
+    {
+      "COLUMN_NAME": "phone"
+    },
+    {
+      "COLUMN_NAME": "email"
+    },
+    {
+      "COLUMN_NAME": "website"
+    },
+    {
+      "COLUMN_NAME": "tax_number"
+    },
+    {
+      "COLUMN_NAME": "vat_id"
+    },
+    {
+      "COLUMN_NAME": "iban"
+    },
+    {
+      "COLUMN_NAME": "bic"
+    },
+    {
+      "COLUMN_NAME": "bank_name"
+    },
+    {
+      "COLUMN_NAME": "logo_url"
+    },
+    {
+      "COLUMN_NAME": "logo_key"
+    },
+    {
+      "COLUMN_NAME": "invoice_footer"
+    },
+    {
+      "COLUMN_NAME": "kleinunternehmer"
+    },
+    {
+      "COLUMN_NAME": "created_at"
+    },
+    {
+      "COLUMN_NAME": "updated_at"
+    },
+    {
+      "COLUMN_NAME": "offer_prefix"
+    },
+    {
+      "COLUMN_NAME": "invoice_prefix"
+    },
+    {
+      "COLUMN_NAME": "credit_note_prefix"
+    },
+    {
+      "COLUMN_NAME": "number_separator"
+    },
+    {
+      "COLUMN_NAME": "number_padding"
+    },
+    {
+      "COLUMN_NAME": "include_year"
+    },
+    {
+      "COLUMN_NAME": "offer_start_number"
+    },
+    {
+      "COLUMN_NAME": "invoice_start_number"
+    },
+    {
+      "COLUMN_NAME": "credit_note_start_number"
+    }
+  ],
+  "messages": [],
+  "stdout": "COLUMN_NAME\nid\nname\nlegal_form\nstreet\nzip\ncity\ncountry\nphone\nemail\nwebsite\ntax_number\nvat_id\niban\nbic\nbank_name\nlogo_url\nlogo_key\ninvoice_footer\nkleinunternehmer\ncreated_at\nupdated_at\noffer_prefix\ninvoice_prefix\ncredit_note_prefix\nnumber_separator\nnumber_padding\ninclude_year\noffer_start_number\ninvoice_start_number\ncredit_note_start_number\n",
+  "stderr": "",
+  "execution_time_ms": 60
+}
