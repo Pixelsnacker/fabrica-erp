@@ -299,3 +299,11 @@
 - [x] Frontend: Spalten-Mapping (sevDesk-Spalten → ERP-Felder)
 - [x] Frontend: Import-Ergebnis (X neu, Y aktualisiert, Z übersprungen)
 - [x] Tests: Vitest für CSV-Parse und Duplikat-Logik (25 neue Tests, 142 gesamt)
+
+## Phase 32: Projekt-Dokumente Upload (Lieferantenangebote, NDA, Bestellungen)
+- [x] DB: Neue Tabelle project_documents (projectId, category, filename, fileKey, fileUrl, fileSize, mimeType, notes, uploadedBy, createdAt)
+- [x] Backend: projectDocs.list, upload, delete Procedures
+- [x] Frontend: Neuer "Dokumente"-Tab in ProjectDetail
+- [x] Frontend: Upload-Dialog mit Kategorie-Auswahl (Lieferantenangebot, NDA, Bestellung, Sonstiges)
+- [x] Frontend: Dokumentenliste mit Download-Link, Vorschau und Löschen
+- [x] Tests: Vitest für Dokument-Kategorien und Upload-Logik (19 neue Tests, 161 gesamt)

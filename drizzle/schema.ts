@@ -477,3 +477,29 @@ export const calendarEvents = mysqlTable("calendar_events", {
 
 export type InsertCalendarEvent = typeof calendarEvents.$inferInsert;
 export type CalendarEvent = typeof calendarEvents.$inferSelect;
+
+// ─── Projekt-Dokumente ────────────────────────────────────────────────────────
+export const projectDocuments = mysqlTable("project_documents", {
+  id: int("id").primaryKey().autoincrement(),
+  projectId: int("project_id").notNull(),
+  category: mysqlEnum("category", [
+    "supplier_offer",   // Lieferantenangebot
+    "nda",              // Geheimhaltungserklärung
+    "order",            // Bestellung
+    "delivery_note",    // Lieferschein
+    "invoice",          // Eingangsrechnung
+    "contract",         // Vertrag
+    "drawing",          // Zeichnung / Technische Unterlagen
+    "other",            // Sonstiges
+  ]).default("other").notNull(),
+  filename: varchar("filename", { length: 512 }).notNull(),
+  fileKey: varchar("file_key", { length: 512 }).notNull(),
+  fileUrl: text("file_url").notNull(),
+  fileSize: int("file_size"),
+  mimeType: varchar("mime_type", { length: 128 }),
+  notes: text("notes"),
+  uploadedBy: varchar("uploaded_by", { length: 255 }),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+});
+export type InsertProjectDocument = typeof projectDocuments.$inferInsert;
+export type ProjectDocument = typeof projectDocuments.$inferSelect;

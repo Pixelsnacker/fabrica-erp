@@ -148,6 +148,7 @@ export default function ProjectDetail() {
   const { data: items = [] } = trpc.projectItems.list.useQuery({ projectId: id });
   const { data: shipments = [] } = trpc.shipments.byProject.useQuery({ projectId: id });
   const { data: cadFiles = [] } = trpc.cadFiles.byProject.useQuery({ projectId: id });
+  const { data: projectDocs = [] } = trpc.projectDocs.list.useQuery({ projectId: id });
   const { data: consultations = [] } = trpc.consultation.list.useQuery({ projectId: id });
   const { data: projectNotes = [] } = trpc.notes.list.useQuery({ projectId: id });
   const { data: projectQuickNotes = [] } = trpc.quickNotes.list.useQuery({ projectId: id });
@@ -162,6 +163,7 @@ export default function ProjectDetail() {
   const [showAddComplaint, setShowAddComplaint] = useState(false);
   const [showEditComplaint, setShowEditComplaint] = useState<number | null>(null);
   const [showOfferUpload, setShowOfferUpload] = useState<number | null>(null);
+  const [showDocUpload, setShowDocUpload] = useState(false);
 
   // Datenblatt-Generator State
   const [dsForm, setDsForm] = useState({
@@ -232,6 +234,10 @@ export default function ProjectDetail() {
   });
   const deleteComplaint = trpc.complaints.delete.useMutation({
     onSuccess: () => { utils.complaints.list.invalidate({ projectId: id }); toast.success("Reklamation gelöscht"); },
+  });
+  const deleteDocMut = trpc.projectDocs.delete.useMutation({
+    onSuccess: () => { utils.projectDocs.list.invalidate({ projectId: id }); toast.success("Dokument gelöscht"); },
+    onError: () => toast.error("Fehler beim Löschen"),
   });
 
   const totalNotesCount = projectNotes.length + projectQuickNotes.length;
@@ -328,6 +334,7 @@ export default function ProjectDetail() {
           <TabsTrigger value="cad" className="gap-1.5 text-xs md:text-sm"><FileCode2 className="h-3.5 w-3.5" /><span className="hidden sm:inline">CAD</span> ({cadFiles.length})</TabsTrigger>
           <TabsTrigger value="consultation" className="gap-1.5 text-xs md:text-sm"><MessageSquare className="h-3.5 w-3.5" /><span className="hidden sm:inline">Beratung</span> ({consultations.length})</TabsTrigger>
           <TabsTrigger value="datasheet" className="gap-1.5 text-xs md:text-sm"><BookOpen className="h-3.5 w-3.5" /><span className="hidden sm:inline">Datenblatt</span></TabsTrigger>
+          <TabsTrigger value="docs" className="gap-1.5 text-xs md:text-sm"><Paperclip className="h-3.5 w-3.5" /><span className="hidden sm:inline">Dokumente</span>{projectDocs.length > 0 && <span className="ml-0.5">({projectDocs.length})</span>}</TabsTrigger>
         </TabsList>
 
         {/* ── Positionen (editierbar) ── */}
@@ -812,7 +819,45 @@ export default function ProjectDetail() {
             </div>
           </div>
         </TabsContent>
+
+        {/* ── Dokumente ── */}
+        <TabsContent value="docs" className="mt-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">Lieferantenangebote, Geheimhaltungserklärungen, Bestellungen und weitere Projektdokumente.</p>
+            <Button size="sm" onClick={() => setShowDocUpload(true)} className="gap-2">
+              <Upload className="h-4 w-4" />Dokument hochladen
+            </Button>
+          </div>
+          {(projectDocs as any[]).length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 gap-3 border-2 border-dashed border-border rounded-lg">
+              <Paperclip className="h-10 w-10 text-muted-foreground opacity-30" />
+              <p className="text-muted-foreground text-sm">Noch keine Dokumente hochgeladen</p>
+              <Button variant="outline" size="sm" onClick={() => setShowDocUpload(true)} className="gap-2">
+                <Upload className="h-4 w-4" />Erstes Dokument hochladen
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {(projectDocs as any[]).map((doc: any) => (
+                <ProjectDocCard
+                  key={doc.id}
+                  doc={doc}
+                  onDelete={() => { if (confirm(`Dokument "${doc.filename}" wirklich löschen?`)) deleteDocMut.mutate({ id: doc.id }); }}
+                />
+              ))}
+            </div>
+          )}
+        </TabsContent>
       </Tabs>
+
+      {/* Dokument-Upload-Dialog */}
+      {showDocUpload && (
+        <ProjectDocUploadDialog
+          projectId={id}
+          onClose={() => setShowDocUpload(false)}
+          onSuccess={() => { utils.projectDocs.list.invalidate({ projectId: id }); setShowDocUpload(false); }}
+        />
+      )}
 
       {/* ── Dialogs ── */}
       <Dialog open={showAddItem} onOpenChange={setShowAddItem}>
@@ -1415,6 +1460,217 @@ function NoteDetailDialog({ noteId, onClose, onRefresh }: { noteId: number; onCl
           </div>
         </div>
         <DialogFooter><Button variant="outline" onClick={onClose}>Schließen</Button></DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Dokument-Kategorie Labels ────────────────────────────────────────────────
+const DOC_CATEGORY_LABELS: Record<string, { label: string; color: string; icon: string }> = {
+  supplier_offer:  { label: "Lieferantenangebot",      color: "text-blue-400",   icon: "💼" },
+  nda:             { label: "Geheimhaltung (NDA)",      color: "text-purple-400", icon: "🔒" },
+  order:           { label: "Bestellung",               color: "text-green-400",  icon: "📦" },
+  delivery_note:   { label: "Lieferschein",             color: "text-cyan-400",   icon: "🚚" },
+  invoice:         { label: "Eingangsrechnung",         color: "text-yellow-400", icon: "🧾" },
+  contract:        { label: "Vertrag",                  color: "text-orange-400", icon: "📝" },
+  drawing:         { label: "Zeichnung / Techn. Unterl.", color: "text-pink-400", icon: "📐" },
+  other:           { label: "Sonstiges",                color: "text-muted-foreground", icon: "📎" },
+};
+
+// ─── Dokument-Karte ───────────────────────────────────────────────────────────
+function ProjectDocCard({ doc, onDelete }: { doc: any; onDelete: () => void }) {
+  const cat = DOC_CATEGORY_LABELS[doc.category] ?? DOC_CATEGORY_LABELS.other;
+  const isPdf = doc.mimeType === "application/pdf" || doc.filename?.toLowerCase().endsWith(".pdf");
+  const isImage = doc.mimeType?.startsWith("image/");
+  const sizeKb = doc.fileSize ? Math.round(doc.fileSize / 1024) : null;
+
+  return (
+    <div className="flex items-center gap-3 p-3 rounded-lg bg-card border border-border hover:border-primary/40 transition-all group">
+      {/* Icon */}
+      <div className="text-2xl w-8 text-center shrink-0">{cat.icon}</div>
+
+      {/* Info */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <a
+            href={doc.fileUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-sm hover:text-primary transition-colors truncate max-w-[280px]"
+            title={doc.filename}
+          >
+            {doc.filename}
+          </a>
+          <span className={`text-xs ${cat.color}`}>{cat.label}</span>
+        </div>
+        <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+          {sizeKb !== null && (
+            <span className="text-xs text-muted-foreground">{sizeKb < 1024 ? `${sizeKb} KB` : `${(sizeKb / 1024).toFixed(1)} MB`}</span>
+          )}
+          {doc.uploadedBy && (
+            <span className="text-xs text-muted-foreground">von {doc.uploadedBy}</span>
+          )}
+          <span className="text-xs text-muted-foreground">
+            {new Date(doc.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" })}
+          </span>
+        </div>
+        {doc.notes && <p className="text-xs text-muted-foreground mt-1 italic">{doc.notes}</p>}
+      </div>
+
+      {/* Aktionen */}
+      <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+        <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer">
+          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Öffnen / Herunterladen">
+            <ExternalLink className="h-3.5 w-3.5" />
+          </Button>
+        </a>
+        <Button
+          variant="ghost" size="sm"
+          className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+          onClick={onDelete}
+          title="Löschen"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Dokument-Upload-Dialog ───────────────────────────────────────────────────
+function ProjectDocUploadDialog({
+  projectId, onClose, onSuccess,
+}: { projectId: number; onClose: () => void; onSuccess: () => void }) {
+  const [dragOver, setDragOver] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [category, setCategory] = useState<string>("supplier_offer");
+  const [notes, setNotes] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const upload = trpc.projectDocs.upload.useMutation({
+    onSuccess: () => { setIsUploading(false); setProgress(0); toast.success("Dokument hochgeladen"); onSuccess(); },
+    onError: (e) => { setIsUploading(false); setProgress(0); toast.error("Upload fehlgeschlagen: " + e.message); },
+  });
+
+  const handleFile = (file: File) => {
+    if (file.size > 25 * 1024 * 1024) { toast.error("Max. 25 MB"); return; }
+    setSelectedFile(file);
+  };
+
+  const handleUpload = () => {
+    if (!selectedFile) return;
+    setIsUploading(true);
+    setProgress(20);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setProgress(60);
+      const base64 = (e.target?.result as string).split(",")[1];
+      upload.mutate({
+        projectId,
+        category: category as any,
+        filename: selectedFile.name,
+        fileBase64: base64,
+        mimeType: selectedFile.type || "application/octet-stream",
+        notes: notes || undefined,
+      });
+    };
+    reader.readAsDataURL(selectedFile);
+  };
+
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Paperclip className="h-4 w-4" />Dokument hochladen
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          {/* Kategorie */}
+          <div className="space-y-1.5">
+            <Label>Dokumenttyp *</Label>
+            <Select value={category} onValueChange={setCategory}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(DOC_CATEGORY_LABELS).map(([v, c]) => (
+                  <SelectItem key={v} value={v}>
+                    <span className="flex items-center gap-2">{c.icon} {c.label}</span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Upload-Zone */}
+          {!selectedFile ? (
+            <div
+              className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${dragOver ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={(e) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if (f) handleFile(f); }}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.webp,.zip,.rar"
+                className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }}
+              />
+              <div className="flex justify-center gap-2 mb-2">
+                <FileText className="h-5 w-5 text-muted-foreground" />
+                <Image className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <p className="text-sm text-muted-foreground">Datei hier ablegen oder <span className="text-primary">klicken</span></p>
+              <p className="text-xs text-muted-foreground/60 mt-1">PDF, Word, Excel, Bilder, ZIP · max. 25 MB</p>
+            </div>
+          ) : (
+            <div className="border border-border rounded-lg p-4 bg-muted/20">
+              <div className="flex items-center gap-3">
+                <FileText className="h-8 w-8 text-primary shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{selectedFile.name}</p>
+                  <p className="text-xs text-muted-foreground">{Math.round(selectedFile.size / 1024)} KB</p>
+                </div>
+                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setSelectedFile(null)}>
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+              {isUploading && <Progress value={progress} className="h-1 mt-2" />}
+            </div>
+          )}
+
+          {/* Notizen */}
+          <div className="space-y-1.5">
+            <Label>Notiz (optional)</Label>
+            <Textarea
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              rows={2}
+              placeholder="z.B. Angebot von Lieferant XY, gültig bis 31.03.2026..."
+            />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Abbrechen</Button>
+          <Button
+            onClick={handleUpload}
+            disabled={!selectedFile || isUploading}
+            className="gap-2"
+          >
+            {isUploading ? (
+              <><Loader2 className="h-4 w-4 animate-spin" />Wird hochgeladen...</>
+            ) : (
+              <><Upload className="h-4 w-4" />Hochladen</>
+            )}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

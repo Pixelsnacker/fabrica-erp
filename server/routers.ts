@@ -1218,9 +1218,66 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
         return { synced: 0, message: 'Google Calendar Sync über MCP verfügbar' };
       }),
   }),
-  // ─── Data Export ──────────────────────────────────────────────────────────────────────────────────────
+  // ─── Data Export ────────────────────────────────────────────────────────────────────────────────────
   dataExport: router({
     full: protectedProcedure.query(async () => getFullExport()),
+  }),
+
+  // ─── Projekt-Dokumente ────────────────────────────────────────────────────────────────
+  projectDocs: router({
+    list: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ input }) => {
+        const db = await (await import('./db')).getDb();
+        if (!db) return [];
+        const { projectDocuments } = await import('../drizzle/schema');
+        const { eq, desc } = await import('drizzle-orm');
+        return db.select().from(projectDocuments)
+          .where(eq(projectDocuments.projectId, input.projectId))
+          .orderBy(desc(projectDocuments.createdAt));
+      }),
+
+    upload: protectedProcedure
+      .input(z.object({
+        projectId: z.number(),
+        category: z.enum(['supplier_offer','nda','order','delivery_note','invoice','contract','drawing','other']).default('other'),
+        filename: z.string(),
+        fileBase64: z.string(),
+        mimeType: z.string().default('application/octet-stream'),
+        notes: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const db = await (await import('./db')).getDb();
+        if (!db) throw new Error('DB nicht verfügbar');
+        const { projectDocuments } = await import('../drizzle/schema');
+        const buffer = Buffer.from(input.fileBase64, 'base64');
+        const fileKey = `project-docs/${input.projectId}/${input.category}/${Date.now()}-${input.filename}`;
+        const { url } = await storagePut(fileKey, buffer, input.mimeType);
+        await db.insert(projectDocuments).values({
+          projectId: input.projectId,
+          category: input.category,
+          filename: input.filename,
+          fileKey,
+          fileUrl: url,
+          fileSize: buffer.length,
+          mimeType: input.mimeType,
+          notes: input.notes ?? null,
+          uploadedBy: ctx.user.name ?? 'Unknown',
+          createdAt: Date.now(),
+        });
+        return { success: true, url, fileKey };
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const db = await (await import('./db')).getDb();
+        if (!db) throw new Error('DB nicht verfügbar');
+        const { projectDocuments } = await import('../drizzle/schema');
+        const { eq } = await import('drizzle-orm');
+        await db.delete(projectDocuments).where(eq(projectDocuments.id, input.id));
+        return { success: true };
+      }),
   }),
 });
 export type AppRouter = typeof appRouter;
