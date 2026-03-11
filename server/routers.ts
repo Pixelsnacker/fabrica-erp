@@ -95,9 +95,87 @@ export const appRouter = router({
       notes: z.string().optional(),
       isActive: z.boolean().optional(),
     })).mutation(async ({ input }) => { const { id, ...data } = input; await updateCustomer(id, data as any); return { success: true }; }),
-    delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => { await deleteCustomer(input.id); return { success: true }; }),
-  }),
+     delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => { await deleteCustomer(input.id); return { success: true }; }),
 
+    // CSV-Import (sevDesk-kompatibel)
+    importCsv: protectedProcedure.input(z.object({
+      rows: z.array(z.object({
+        name: z.string(),
+        company: z.string().optional(),
+        type: z.enum(["b2b", "museum", "industry", "private", "other"]).optional(),
+        email: z.string().optional(),
+        phone: z.string().optional(),
+        street: z.string().optional(),
+        zip: z.string().optional(),
+        city: z.string().optional(),
+        country: z.string().optional(),
+        notes: z.string().optional(),
+        sevdeskId: z.string().optional(),
+      })),
+      onDuplicate: z.enum(["skip", "update"]).default("skip"),
+    })).mutation(async ({ input }) => {
+      const db = await (await import('./db')).getDb();
+      if (!db) throw new Error('DB nicht verfügbar');
+      const { customers: customersTable } = await import('../drizzle/schema');
+      const { eq, or } = await import('drizzle-orm');
+
+      let created = 0, updated = 0, skipped = 0;
+
+      for (const row of input.rows) {
+        if (!row.name && !row.company) { skipped++; continue; }
+        const displayName = row.name || row.company || '';
+
+        // Duplikat-Erkennung: gleiche E-Mail ODER gleiche Firma+Name
+        const existing = row.email
+          ? await db.select().from(customersTable)
+              .where(eq(customersTable.email, row.email))
+              .limit(1)
+          : await db.select().from(customersTable)
+              .where(eq(customersTable.name, displayName))
+              .limit(1);
+
+        if (existing.length > 0) {
+          if (input.onDuplicate === 'update') {
+            await db.update(customersTable)
+              .set({
+                company: row.company || existing[0].company,
+                phone: row.phone || existing[0].phone,
+                street: row.street || existing[0].street,
+                zip: row.zip || existing[0].zip,
+                city: row.city || existing[0].city,
+                country: row.country || existing[0].country,
+                notes: row.notes || existing[0].notes,
+                sevdeskId: row.sevdeskId || existing[0].sevdeskId,
+              })
+              .where(eq(customersTable.id, existing[0].id));
+            updated++;
+          } else {
+            skipped++;
+          }
+          continue;
+        }
+
+        // Neu anlegen
+        await db.insert(customersTable).values({
+          name: displayName,
+          company: row.company || null,
+          type: row.type ?? 'b2b',
+          email: row.email || null,
+          phone: row.phone || null,
+          street: row.street || null,
+          zip: row.zip || null,
+          city: row.city || null,
+          country: row.country || 'Deutschland',
+          notes: row.notes || null,
+          sevdeskId: row.sevdeskId || null,
+          isActive: 1,
+        });
+        created++;
+      }
+
+      return { created, updated, skipped, total: input.rows.length };
+    }),
+  }),
   // ─── Lead Sources ────────────────────────────────────────────────────────────
   leadSources: router({
     list: protectedProcedure.query(async () => getLeadSources()),

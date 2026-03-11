@@ -291,3 +291,11 @@
 - [x] Frontend: Bestätigungs-Dialog vor der Konvertierung
 - [x] Frontend: Nach Konvertierung zur neuen Rechnung navigieren (Tab-Wechsel zu Rechnungen)
 - [x] Tests: Vitest für convertToInvoice Logik (10 neue Tests, 117 gesamt)
+
+## Phase 31: sevDesk CSV-Import für Kunden
+- [x] Backend: importCustomers tRPC-Procedure (CSV-Zeilen, Duplikat-Erkennung per E-Mail/Firma)
+- [x] Frontend: Import-Button in Kunden-Header
+- [x] Frontend: CSV-Upload-Dialog mit Datei-Vorschau (erste 5 Zeilen)
+- [x] Frontend: Spalten-Mapping (sevDesk-Spalten → ERP-Felder)
+- [x] Frontend: Import-Ergebnis (X neu, Y aktualisiert, Z übersprungen)
+- [x] Tests: Vitest für CSV-Parse und Duplikat-Logik (25 neue Tests, 142 gesamt)
