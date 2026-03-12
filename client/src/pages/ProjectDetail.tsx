@@ -150,7 +150,7 @@ export default function ProjectDetail() {
   const { data: cadFiles = [] } = trpc.cadFiles.byProject.useQuery({ projectId: id });
   const { data: projectDocs = [] } = trpc.projectDocs.list.useQuery({ projectId: id });
   const { data: allSuppliers = [] } = trpc.suppliers.list.useQuery();
-  const [docSupplierFilter, setDocSupplierFilter] = useState<string>("");
+  const [docSupplierFilter, setDocSupplierFilter] = useState<string>("all");
   const { data: consultations = [] } = trpc.consultation.list.useQuery({ projectId: id });
   const { data: projectNotes = [] } = trpc.notes.list.useQuery({ projectId: id });
   const { data: projectQuickNotes = [] } = trpc.quickNotes.list.useQuery({ projectId: id });
@@ -833,7 +833,7 @@ export default function ProjectDetail() {
                     <SelectValue placeholder="Alle Lieferanten" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Alle Lieferanten</SelectItem>
+                    <SelectItem value="all">Alle Lieferanten</SelectItem>
                     {(allSuppliers as any[]).map((s: any) => (
                       <SelectItem key={s.id} value={String(s.id)}>
                         {s.company || s.name}
@@ -858,7 +858,7 @@ export default function ProjectDetail() {
           ) : (
             <div className="space-y-2">
               {(projectDocs as any[])
-                .filter((doc: any) => !docSupplierFilter || String(doc.supplierId) === docSupplierFilter)
+                .filter((doc: any) => docSupplierFilter === "all" || String(doc.supplierId) === docSupplierFilter)
                 .map((doc: any) => {
                   const sup = (allSuppliers as any[]).find((s: any) => s.id === doc.supplierId);
                   return (
@@ -1634,7 +1634,7 @@ function ProjectDocUploadDialog({
   const [category, setCategory] = useState<string>("supplier_offer");
   const [notes, setNotes] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [supplierId, setSupplierId] = useState<string>("");
+  const [supplierId, setSupplierId] = useState<string>("none");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { data: supplierList = [] } = trpc.suppliers.list.useQuery();
 
@@ -1658,7 +1658,7 @@ function ProjectDocUploadDialog({
       const base64 = (e.target?.result as string).split(",")[1];
       upload.mutate({
         projectId,
-        supplierId: supplierId ? parseInt(supplierId) : null,
+        supplierId: supplierId && supplierId !== "none" ? parseInt(supplierId) : null,
         category: category as any,
         filename: selectedFile.name,
         fileBase64: base64,
@@ -1743,7 +1743,7 @@ function ProjectDocUploadDialog({
                 <SelectValue placeholder="Lieferant auswählen..." />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Kein Lieferant</SelectItem>
+                <SelectItem value="none">Kein Lieferant</SelectItem>
                 {(supplierList as any[]).map((s: any) => (
                   <SelectItem key={s.id} value={String(s.id)}>
                     {s.company ? `${s.company} (${s.name})` : s.name}
