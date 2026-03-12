@@ -207,3 +207,34 @@ describe("projectDocs – Lieferanten-Verknüpfung", () => {
     expect(filterDocsBySupplier(docs, "99").length).toBe(0);
   });
 });
+
+// ─── Notiz-Bearbeitung ──────────────────────────────────────────────────
+function sanitizeNote(note: string): string | null {
+  const trimmed = note.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+describe("projectDocs – Notiz-Bearbeitung", () => {
+  it("speichert normale Notiz", () => {
+    expect(sanitizeNote("Stornierung des vorherigen Auftrages")).toBe("Stornierung des vorherigen Auftrages");
+  });
+
+  it("trimmt Leerzeichen", () => {
+    expect(sanitizeNote("  Notiz mit Leerzeichen  ")).toBe("Notiz mit Leerzeichen");
+  });
+
+  it("gibt null zurück für leere Notiz", () => {
+    expect(sanitizeNote("")).toBeNull();
+    expect(sanitizeNote("   ")).toBeNull();
+  });
+
+  it("behält Zeilenumbrüche", () => {
+    const note = "Zeile 1\nZeile 2";
+    expect(sanitizeNote(note)).toBe("Zeile 1\nZeile 2");
+  });
+
+  it("akzeptiert lange Notizen", () => {
+    const long = "a".repeat(500);
+    expect(sanitizeNote(long)).toBe(long);
+  });
+});

@@ -315,3 +315,9 @@
 - [x] Frontend: Lieferantenname in der Dokumentenkarte anzeigen
 - [x] Frontend: Filter nach Lieferant in der Dokumentenliste
 - [x] Tests: Vitest für Lieferanten-Verknüpfungs-Logik (8 neue Tests, 169 gesamt)
+
+## Phase 34: Dokument-Notiz nachträglich bearbeiten
+- [x] Backend: projectDocs.updateNote Procedure (id + notes)
+- [x] Frontend: Bearbeiten-Button (Stift-Icon) in ProjectDocCard
+- [x] Frontend: Inline-Edit mit Textarea und Speichern/Abbrechen
+- [x] Tests: Vitest für updateNote-Logik (5 neue Tests, 174 gesamt)

@@ -866,6 +866,7 @@ export default function ProjectDetail() {
                       key={doc.id}
                       doc={doc}
                       supplierName={sup ? (sup.company || sup.name) : undefined}
+                      onNoteUpdated={() => utils.projectDocs.list.invalidate({ projectId: id })}
                       onDelete={() => { if (confirm(`Dokument "${doc.filename}" wirklich löschen?`)) deleteDocMut.mutate({ id: doc.id }); }}
                     />
                   );
@@ -1503,16 +1504,26 @@ const DOC_CATEGORY_LABELS: Record<string, { label: string; color: string; icon: 
 };
 
 // ─── Dokument-Karte ───────────────────────────────────────────────────────────
-function ProjectDocCard({ doc, onDelete, supplierName }: { doc: any; onDelete: () => void; supplierName?: string }) {
+function ProjectDocCard({ doc, onDelete, supplierName, onNoteUpdated }: {
+  doc: any;
+  onDelete: () => void;
+  supplierName?: string;
+  onNoteUpdated: () => void;
+}) {
   const cat = DOC_CATEGORY_LABELS[doc.category] ?? DOC_CATEGORY_LABELS.other;
-  const isPdf = doc.mimeType === "application/pdf" || doc.filename?.toLowerCase().endsWith(".pdf");
-  const isImage = doc.mimeType?.startsWith("image/");
   const sizeKb = doc.fileSize ? Math.round(doc.fileSize / 1024) : null;
+  const [editingNote, setEditingNote] = useState(false);
+  const [noteValue, setNoteValue] = useState(doc.notes ?? "");
+
+  const updateNote = trpc.projectDocs.updateNote.useMutation({
+    onSuccess: () => { setEditingNote(false); onNoteUpdated(); },
+    onError: (e: any) => { import("sonner").then((m: any) => m.toast.error("Fehler: " + e.message)); },
+  });
 
   return (
-    <div className="flex items-center gap-3 p-3 rounded-lg bg-card border border-border hover:border-primary/40 transition-all group">
+    <div className="flex gap-3 p-3 rounded-lg bg-card border border-border hover:border-primary/40 transition-all group">
       {/* Icon */}
-      <div className="text-2xl w-8 text-center shrink-0">{cat.icon}</div>
+      <div className="text-2xl w-8 text-center shrink-0 mt-0.5">{cat.icon}</div>
 
       {/* Info */}
       <div className="flex-1 min-w-0">
@@ -1544,11 +1555,57 @@ function ProjectDocCard({ doc, onDelete, supplierName }: { doc: any; onDelete: (
             <span className="text-xs text-blue-400 font-medium">🏭 {supplierName}</span>
           </div>
         )}
-        {doc.notes && <p className="text-xs text-muted-foreground mt-1 italic">{doc.notes}</p>}
+
+        {/* Notiz – Anzeige oder Inline-Edit */}
+        {editingNote ? (
+          <div className="mt-2 space-y-1.5">
+            <Textarea
+              value={noteValue}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNoteValue(e.target.value)}
+              rows={2}
+              autoFocus
+              placeholder="Notiz eingeben..."
+              className="text-xs min-h-[56px] resize-none"
+            />
+            <div className="flex gap-1.5">
+              <Button
+                size="sm"
+                className="h-6 text-xs px-2 gap-1"
+                onClick={() => updateNote.mutate({ id: doc.id, notes: noteValue })}
+                disabled={updateNote.isPending}
+              >
+                {updateNote.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                Speichern
+              </Button>
+              <Button
+                size="sm" variant="ghost"
+                className="h-6 text-xs px-2"
+                onClick={() => { setNoteValue(doc.notes ?? ""); setEditingNote(false); }}
+              >
+                Abbrechen
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-start gap-1 mt-1 group/note">
+            {doc.notes
+              ? <p className="text-xs text-muted-foreground italic flex-1">{doc.notes}</p>
+              : <p className="text-xs text-muted-foreground/40 italic flex-1 hidden group-hover/note:block">Notiz hinzufügen...</p>
+            }
+            <Button
+              variant="ghost" size="sm"
+              className="h-5 w-5 p-0 opacity-0 group-hover/note:opacity-100 transition-opacity shrink-0 mt-0.5"
+              onClick={() => setEditingNote(true)}
+              title="Notiz bearbeiten"
+            >
+              <Edit2 className="h-3 w-3" />
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Aktionen */}
-      <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="flex flex-col items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
         <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer">
           <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Öffnen / Herunterladen">
             <ExternalLink className="h-3.5 w-3.5" />

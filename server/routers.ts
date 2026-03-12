@@ -1280,6 +1280,22 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
         await db.delete(projectDocuments).where(eq(projectDocuments.id, input.id));
         return { success: true };
       }),
+
+    updateNote: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        notes: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await (await import('./db')).getDb();
+        if (!db) throw new Error('DB nicht verfügbar');
+        const { projectDocuments } = await import('../drizzle/schema');
+        const { eq } = await import('drizzle-orm');
+        await db.update(projectDocuments)
+          .set({ notes: input.notes || null })
+          .where(eq(projectDocuments.id, input.id));
+        return { success: true };
+      }),
   }),
 });
 export type AppRouter = typeof appRouter;
