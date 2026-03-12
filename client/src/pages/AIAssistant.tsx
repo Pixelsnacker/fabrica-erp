@@ -1,46 +1,97 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Bot, Send, Copy, Mail, Loader2, Sparkles, Database, Clock, ChevronRight, LayoutDashboard } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Bot, Send, Copy, Loader2, Sparkles, Database, Trash2, Check,
+  ChevronDown, ChevronUp,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Streamdown } from "streamdown";
+import { cn } from "@/lib/utils";
 
-// ─── Schnellbefehle nach Kategorie ───────────────────────────────────────────
-const QUICK_PROMPTS_TECH = [
-  "Welches Material empfiehlst du für ein Außenmodell in einer Gedenkstätte?",
-  "Vergleiche Harteloxal vs. VeroMetal für Aluminium-Bauteile",
-  "Welche Oberflächen eignen sich für Museumsmodelle mit Berührungsschutz?",
-  "Erstelle einen Beratungstext für FDM vs. SLA Druck",
+type ChatMessage = {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  copied?: boolean;
+};
+
+const QUICK_PROMPTS = [
+  { label: "3D-Druck Materialvergleich", prompt: "Vergleiche PLA, PETG und ASA für Außenanwendungen in einer Tabelle" },
+  { label: "Angebots-E-Mail", prompt: "Formuliere eine professionelle Angebots-E-Mail für einen Neukunden im Bereich 3D-Druck" },
+  { label: "Offene Projekte", prompt: "Zeige mir alle offenen Projekte und deren aktuellen Status" },
+  { label: "Preiskalkulation", prompt: "Erkläre mir wie ich eine Preiskalkulation für einen 3D-Druck-Auftrag aufbaue (Material, Zeit, Overhead, Marge)" },
+  { label: "NDA-Vorlage", prompt: "Erstelle eine kurze Geheimhaltungsvereinbarung (NDA) für einen Lieferanten auf Deutsch" },
+  { label: "Reklamation beantworten", prompt: "Formuliere eine professionelle Antwort auf eine Kundenreklamation wegen Lieferverzug" },
+  { label: "Überfällige Rechnungen", prompt: "Welche Rechnungen sind aktuell offen oder überfällig?" },
+  { label: "Lieferanten vergleichen", prompt: "Zeige mir alle Lieferanten und ihre Fähigkeiten in einer Übersicht" },
 ];
 
-const QUICK_PROMPTS_ERP = [
-  "Zeige mir alle offenen Rechnungen und den Gesamtbetrag",
-  "Welche Projekte sind aktuell aktiv und was ist der Status?",
-  "Was steht diese Woche im Kalender an?",
-  "Erstelle eine Zusammenfassung meiner letzten 5 Kunden",
-  "Welche Rechnungen sind überfällig?",
-  "Wie ist mein aktueller Umsatz diesen Monat?",
-];
+function ChatBubble({ msg, onCopy }: { msg: ChatMessage; onCopy: (id: string, text: string) => void }) {
+  const isUser = msg.role === "user";
+  return (
+    <div className={cn("flex gap-3 mb-4", isUser ? "flex-row-reverse" : "flex-row")}>
+      <div className={cn(
+        "w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-1",
+        isUser ? "bg-primary/20 text-primary" : "bg-emerald-500/20 text-emerald-400"
+      )}>
+        {isUser ? <span className="text-xs font-bold">D</span> : <Bot className="w-4 h-4" />}
+      </div>
+      <div className={cn("flex-1 min-w-0 max-w-[85%]", isUser ? "items-end" : "items-start")}>
+        <div className={cn(
+          "rounded-2xl px-4 py-3 text-sm",
+          isUser
+            ? "bg-primary/15 text-foreground rounded-tr-sm"
+            : "bg-card border border-border rounded-tl-sm"
+        )}>
+          {isUser ? (
+            <p className="whitespace-pre-wrap">{msg.content}</p>
+          ) : (
+            <div className="prose prose-sm prose-invert max-w-none">
+              <Streamdown>{msg.content}</Streamdown>
+            </div>
+          )}
+        </div>
+        {!isUser && (
+          <button
+            onClick={() => onCopy(msg.id, msg.content)}
+            className={cn(
+              "mt-1.5 ml-1 flex items-center gap-1 text-xs transition-colors",
+              msg.copied ? "text-emerald-400" : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {msg.copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+            {msg.copied ? "Kopiert!" : "Kopieren"}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function AIAssistant() {
-  const [prompt, setPrompt] = useState("");
-  const [result, setResult] = useState<{ text: string } | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [includeErpContext, setIncludeErpContext] = useState(false);
-  const [includeSignature, setIncludeSignature] = useState(false);
-  const [activeTab, setActiveTab] = useState<'tech' | 'erp'>('tech');
+  const [showPrompts, setShowPrompts] = useState(true);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
-  const { data: sessions = [] } = trpc.ai.sessions.useQuery({ projectId: undefined });
-
-  const generateMutation = trpc.ai.generate.useMutation({
-    onSuccess: (data: { text: string }) => {
-      setResult({ text: data.text });
+  const chatMutation = trpc.ai.chat.useMutation({
+    onSuccess: (data) => {
+      const assistantMsg: ChatMessage = {
+        id: `ai-${Date.now()}`,
+        role: "assistant",
+        content: data.reply,
+      };
+      setMessages(prev => [...prev, assistantMsg]);
       setIsLoading(false);
+      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
     },
     onError: (e) => {
       toast.error(`Fehler: ${e.message}`);
@@ -48,204 +99,162 @@ export default function AIAssistant() {
     },
   });
 
-  const handleGenerate = () => {
-    if (!prompt.trim()) return;
+  const handleSend = (text?: string) => {
+    const content = (text ?? input).trim();
+    if (!content || isLoading) return;
+    const userMsg: ChatMessage = { id: `user-${Date.now()}`, role: "user", content };
+    const newMessages = [...messages, userMsg];
+    setMessages(newMessages);
+    setInput("");
     setIsLoading(true);
-    setResult(null);
-    generateMutation.mutate({ prompt, includeSignature, includeErpContext });
+    setShowPrompts(false);
+    setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+    chatMutation.mutate({
+      messages: newMessages.map(m => ({ role: m.role, content: m.content })),
+      includeErpContext,
+    });
   };
 
-  const handleCopy = () => {
-    if (result?.text) {
-      navigator.clipboard.writeText(result.text);
-      toast.success("Text kopiert");
-    }
+  const handleCopy = (id: string, text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setMessages(prev => prev.map(m => m.id === id ? { ...m, copied: true } : m));
+      setTimeout(() => setMessages(prev => prev.map(m => m.id === id ? { ...m, copied: false } : m)), 2000);
+      toast.success("In Zwischenablage kopiert");
+    });
   };
 
-  const handleCopyWithSignature = () => {
-    if (result?.text) {
-      const signature = `\n\nMit freundlichen Grüßen / Best Regards\n\nDaniel Rincón\nFabrica GmbH\nHüttenstraße 205, 50170 Kerpen-Sindorf\nTel.: +49(0)2273-9529429 | Mobil: +49(0)170/8342238\nd.rincon@fabrica3d.eu | www.fabrica3d.de`;
-      navigator.clipboard.writeText(result.text + signature);
-      toast.success("Text mit Signatur kopiert");
-    }
-  };
+  const handleClear = () => { setMessages([]); setShowPrompts(true); };
 
-  const quickPrompts = activeTab === 'erp' ? QUICK_PROMPTS_ERP : QUICK_PROMPTS_TECH;
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
+  };
 
   return (
-    <div className="space-y-5">
+    <div className="flex flex-col h-[calc(100vh-4rem)] max-h-[calc(100vh-4rem)]">
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <Bot className="h-6 w-6 text-primary" /> KI-Assistent
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Nutzt Wissensdatenbank, Materialien und ERP-Daten für präzise Antworten
-          </p>
-        </div>
-        {/* ERP-Kontext Toggle */}
-        <div className="flex items-center gap-3 bg-card border border-border rounded-lg px-4 py-2.5">
-          <Database className={`h-4 w-4 ${includeErpContext ? 'text-primary' : 'text-muted-foreground'}`} />
-          <div>
-            <Label htmlFor="erp-toggle" className="text-sm font-medium cursor-pointer">ERP-Kontext</Label>
-            <p className="text-xs text-muted-foreground">Kunden, Projekte, Rechnungen, Termine</p>
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center">
+            <Sparkles className="w-4 h-4 text-emerald-400" />
           </div>
-          <Switch
-            id="erp-toggle"
-            checked={includeErpContext}
-            onCheckedChange={(v) => {
-              setIncludeErpContext(v);
-              if (v) setActiveTab('erp');
-              else setActiveTab('tech');
-            }}
-          />
+          <div>
+            <h1 className="text-base font-semibold">KI-Assistent</h1>
+            <p className="text-xs text-muted-foreground">Fragen, Recherchen, Texte, ERP-Auswertungen</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Database className="w-3.5 h-3.5 text-muted-foreground" />
+            <Label htmlFor="erp-toggle" className="text-xs text-muted-foreground cursor-pointer">ERP-Daten</Label>
+            <Switch id="erp-toggle" checked={includeErpContext} onCheckedChange={setIncludeErpContext} className="scale-75" />
+          </div>
+          {messages.length > 0 && (
+            <Button variant="ghost" size="sm" onClick={handleClear} className="text-muted-foreground hover:text-foreground gap-1.5">
+              <Trash2 className="w-3.5 h-3.5" />
+              <span className="text-xs">Leeren</span>
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* ERP-Kontext Hinweis */}
-      {includeErpContext && (
-        <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary/10 border border-primary/20 text-sm">
-          <LayoutDashboard className="h-4 w-4 text-primary shrink-0" />
-          <span className="text-primary font-medium">ERP-Kontext aktiv</span>
-          <span className="text-muted-foreground">— Die KI kennt deine aktuellen Kunden, Projekte, Rechnungen und Kalendertermine.</span>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Chat */}
-        <div className="lg:col-span-2 space-y-4">
-
-          {/* Schnellbefehle Tabs */}
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <button
-                onClick={() => { setActiveTab('tech'); }}
-                className={`text-xs px-3 py-1 rounded-full border transition-all ${activeTab === 'tech' ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:border-primary/50'}`}
-              >
-                Technische Beratung
-              </button>
-              <button
-                onClick={() => { setActiveTab('erp'); setIncludeErpContext(true); }}
-                className={`text-xs px-3 py-1 rounded-full border transition-all ${activeTab === 'erp' ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:border-primary/50'}`}
-              >
-                ERP-Abfragen
-              </button>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {quickPrompts.map(p => (
-                <button
-                  key={p}
-                  onClick={() => { setPrompt(p); if (activeTab === 'erp') setIncludeErpContext(true); }}
-                  className="text-xs px-3 py-1.5 rounded-full border border-border hover:border-primary/50 hover:bg-primary/10 transition-all text-muted-foreground hover:text-foreground flex items-center gap-1"
-                >
-                  <ChevronRight className="w-3 h-3 shrink-0" />
-                  {p.length > 55 ? p.slice(0, 55) + "..." : p}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Input */}
-          <div className="space-y-2">
-            <Textarea
-              placeholder={includeErpContext
-                ? "Frage zu deinen ERP-Daten... z.B. 'Welche Rechnungen sind überfällig?' oder 'Was steht diese Woche an?'"
-                : "Beschreibe deine Anfrage... z.B. 'Kunde fragt nach Oberflächenbehandlung für Aluminium-Modell, Außenbereich, Museum'"
-              }
-              value={prompt}
-              onChange={e => setPrompt(e.target.value)}
-              rows={4}
-              className="resize-none"
-              onKeyDown={e => { if (e.key === "Enter" && e.ctrlKey) handleGenerate(); }}
-            />
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-4">
-                <span className="text-xs text-muted-foreground">Strg+Enter zum Senden</span>
-                <div className="flex items-center gap-2">
-                  <Switch id="sig-toggle" checked={includeSignature} onCheckedChange={setIncludeSignature} />
-                  <Label htmlFor="sig-toggle" className="text-xs cursor-pointer">Mit Signatur</Label>
-                </div>
+      {/* Chat */}
+      <ScrollArea className="flex-1 px-4 py-4">
+        {messages.length === 0 && (
+          <div className="flex flex-col items-center justify-center h-full min-h-[300px] gap-6">
+            <div className="text-center">
+              <div className="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-3">
+                <Bot className="w-8 h-8 text-emerald-400" />
               </div>
-              <Button onClick={handleGenerate} disabled={!prompt.trim() || isLoading} className="gap-2">
-                {isLoading
-                  ? <><Loader2 className="h-4 w-4 animate-spin" /> Analysiert...</>
-                  : <><Sparkles className="h-4 w-4" /> {includeErpContext ? 'ERP-Abfrage starten' : 'Beratung generieren'}</>
-                }
-              </Button>
+              <h2 className="text-lg font-semibold mb-1">Wie kann ich helfen?</h2>
+              <p className="text-sm text-muted-foreground max-w-sm">
+                Stelle mir Fragen, lass mich recherchieren, Texte formulieren oder deine ERP-Daten auswerten.
+                {includeErpContext && <span className="text-emerald-400"> ERP-Kontext ist aktiv.</span>}
+              </p>
+            </div>
+            <div className="w-full max-w-2xl">
+              <button onClick={() => setShowPrompts(!showPrompts)} className="flex items-center gap-1 text-xs text-muted-foreground mb-2 hover:text-foreground transition-colors">
+                {showPrompts ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                Vorschläge
+              </button>
+              {showPrompts && (
+                <div className="flex flex-wrap gap-2">
+                  {QUICK_PROMPTS.map((qp) => (
+                    <button key={qp.label} onClick={() => handleSend(qp.prompt)}
+                      className="px-3 py-1.5 rounded-full text-xs border border-border hover:border-primary/50 hover:text-primary transition-colors bg-card">
+                      {qp.label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
+        )}
 
-          {/* Loading */}
-          {isLoading && (
-            <Card className="bg-card border-border">
-              <CardContent className="p-6 flex items-center gap-3">
-                <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                <span className="text-muted-foreground text-sm">
-                  {includeErpContext ? 'KI liest ERP-Daten und analysiert...' : 'KI analysiert Wissensdatenbank...'}
-                </span>
-              </CardContent>
-            </Card>
-          )}
+        {messages.map((msg) => (
+          <ChatBubble key={msg.id} msg={msg} onCopy={handleCopy} />
+        ))}
 
-          {/* Result */}
-          {result && !isLoading && (
-            <Card className="bg-card border-border">
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-                  <div className="flex items-center gap-2">
-                    <Bot className="h-4 w-4 text-primary" />
-                    <span className="text-sm font-medium">KI-Antwort</span>
-                    {includeErpContext && (
-                      <Badge variant="outline" className="text-xs border-primary/30 text-primary">
-                        <Database className="w-3 h-3 mr-1" /> ERP-Kontext
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={handleCopy} className="gap-2 text-xs">
-                      <Copy className="h-3.5 w-3.5" /> Kopieren
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={handleCopyWithSignature} className="gap-2 text-xs">
-                      <Mail className="h-3.5 w-3.5" /> Mit Signatur
-                    </Button>
-                  </div>
-                </div>
-                <div className="prose prose-invert prose-sm max-w-none">
-                  <Streamdown>{result.text}</Streamdown>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-        {/* Session History */}
-        <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
-            <Clock className="w-4 h-4" /> Letzte Abfragen
-          </h3>
-          {sessions.length === 0 ? (
-            <div className="text-xs text-muted-foreground py-4 text-center border border-dashed border-border rounded-lg">
-              Noch keine Abfragen
+        {isLoading && (
+          <div className="flex gap-3 mb-4">
+            <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0 mt-1">
+              <Bot className="w-4 h-4 text-emerald-400" />
             </div>
-          ) : (
-            <div className="space-y-2">
-              {sessions.slice(0, 12).map((session: any) => (
-                <div
-                  key={session.id}
-                  className="p-3 rounded-lg bg-card border border-border hover:border-primary/50 cursor-pointer transition-all"
-                  onClick={() => setResult({ text: session.result ?? session.generatedText ?? "" })}
-                >
-                  <div className="text-xs font-medium line-clamp-2">{session.prompt}</div>
-                  <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
-                    {new Date(session.createdAt).toLocaleDateString("de-DE", { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                  </div>
-                </div>
-              ))}
+            <div className="bg-card border border-border rounded-2xl rounded-tl-sm px-4 py-3">
+              <div className="flex items-center gap-1.5">
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-400" />
+                <span className="text-xs text-muted-foreground">Denkt nach…</span>
+              </div>
             </div>
-          )}
+          </div>
+        )}
+
+        {messages.length > 0 && !isLoading && (
+          <div className="mt-2 mb-2">
+            <button onClick={() => setShowPrompts(!showPrompts)} className="flex items-center gap-1 text-xs text-muted-foreground mb-2 hover:text-foreground transition-colors">
+              {showPrompts ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              Weitere Vorschläge
+            </button>
+            {showPrompts && (
+              <div className="flex flex-wrap gap-1.5">
+                {QUICK_PROMPTS.slice(0, 4).map((qp) => (
+                  <button key={qp.label} onClick={() => handleSend(qp.prompt)}
+                    className="px-2.5 py-1 rounded-full text-xs border border-border hover:border-primary/50 hover:text-primary transition-colors bg-card">
+                    {qp.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+        <div ref={bottomRef} />
+      </ScrollArea>
+
+      {/* Eingabe */}
+      <div className="px-4 py-3 border-t border-border shrink-0">
+        {includeErpContext && (
+          <div className="flex items-center gap-1.5 mb-2">
+            <Badge variant="outline" className="text-xs text-emerald-400 border-emerald-400/30 gap-1">
+              <Database className="w-3 h-3" />
+              ERP-Kontext aktiv — KI kennt deine Projekte, Kunden & Rechnungen
+            </Badge>
+          </div>
+        )}
+        <div className="flex gap-2 items-end">
+          <Textarea
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Frage stellen… (Enter = Senden, Shift+Enter = neue Zeile)"
+            className="resize-none min-h-[44px] max-h-[140px] text-sm"
+            rows={1}
+            disabled={isLoading}
+          />
+          <Button onClick={() => handleSend()} disabled={!input.trim() || isLoading}
+            size="icon" className="shrink-0 h-11 w-11 bg-emerald-600 hover:bg-emerald-500">
+            {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+          </Button>
         </div>
+        <p className="text-xs text-muted-foreground mt-1.5">Enter = Senden · Shift+Enter = Neue Zeile · Copy-Button bei jeder Antwort</p>
       </div>
     </div>
   );

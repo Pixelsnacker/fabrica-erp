@@ -643,6 +643,36 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
       await updateAiSession(input.id, { sentAsEmail: 1 as any, sentAt: new Date().toISOString() as any });
       return { success: true };
     }),
+    // Vollwertiger Chat mit Gesprächsverlauf
+    chat: protectedProcedure.input(z.object({
+      messages: z.array(z.object({
+        role: z.enum(["user", "assistant"]),
+        content: z.string(),
+      })),
+      includeErpContext: z.boolean().default(false),
+    })).mutation(async ({ input }) => {
+      // ERP-Kontext aufbauen wenn gewünscht
+      let erpContext = "";
+      if (input.includeErpContext) {
+        const [customers, projects, invoices, suppliers] = await Promise.all([
+          getCustomers(),
+          getProjects(),
+          getInvoices(),
+          getSuppliers(),
+        ]);
+        const today = new Date().toLocaleDateString('de-DE');
+        erpContext = `\n## ERP-Kontext (Stand: ${today})\n### Kunden (${customers.length})\n${customers.slice(0, 15).map((c: any) => `- ${c.company || c.name}${c.email ? ' | ' + c.email : ''}${c.phone ? ' | ' + c.phone : ''}`).join('\n')}\n### Projekte\n${projects.slice(0, 15).map((p: any) => `- [${p.status}] ${p.title}${p.projectNumber ? ' #' + p.projectNumber : ''}`).join('\n')}\n### Lieferanten (${suppliers.length})\n${suppliers.slice(0, 10).map((s: any) => `- ${s.name}${s.capabilities ? ' | ' + s.capabilities : ''}`).join('\n')}\n### Offene Rechnungen/Angebote\n${(invoices as any[]).filter((i: any) => ['draft','sent','overdue'].includes(i.status)).slice(0, 8).map((i: any) => `- ${i.invoiceNumber} | ${i.recipientName || i.recipientCompany || ''} | ${i.totalGross} € | ${i.status}`).join('\n')}\n`;
+      }
+      const systemPrompt = `Du bist ein intelligenter Assistent für Daniel Rincón, Geschäftsführer der Fabrica GmbH (3D-Druck, CNC, Oberflächenbehandlung, Modellbau, CAD-Bearbeitung).\nDu antwortest immer auf Deutsch, präzise und direkt.\nDu kannst bei Recherchen helfen, Fragen beantworten, Texte formulieren, Kalkulationen erklären und ERP-Daten auswerten.\nBei Tabellen und Listen nutze Markdown-Formatierung.${erpContext}`;
+      const llmMessages = [
+        { role: "system" as const, content: systemPrompt },
+        ...input.messages.map(m => ({ role: m.role as "user" | "assistant", content: m.content })),
+      ];
+      const response = await invokeLLM({ messages: llmMessages });
+      const rawContent = response.choices[0]?.message?.content;
+      const reply = typeof rawContent === "string" ? rawContent : "Keine Antwort erhalten.";
+      return { reply };
+    }),
   }),
 
   // ─── Quick Notes ────────────────────────────────────────────────────────────
