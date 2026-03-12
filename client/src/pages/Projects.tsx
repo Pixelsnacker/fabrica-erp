@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Search, FolderKanban, Euro, Calendar, LayoutGrid, List } from "lucide-react";
+import { Plus, Search, FolderKanban, Euro, Calendar, LayoutGrid, List, ArchiveRestore } from "lucide-react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 
@@ -29,7 +29,31 @@ export default function Projects() {
   const [search, setSearch] = useState("");
   const [viewMode, setViewMode] = useState<"kanban" | "list">("list");
   const [showCreate, setShowCreate] = useState(false);
+  const [isBackingUp, setIsBackingUp] = useState(false);
   const [form, setForm] = useState({ title: "", projectNumber: "", type: "other", notes: "" });
+
+  const handleFullBackup = async () => {
+    setIsBackingUp(true);
+    try {
+      const res = await fetch("/api/export/backup-all");
+      if (!res.ok) throw new Error("Backup fehlgeschlagen");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const date = new Date().toISOString().slice(0, 10);
+      a.download = `fabrica-gesamt-backup_${date}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success("Gesamt-Backup heruntergeladen");
+    } catch {
+      toast.error("Backup fehlgeschlagen");
+    } finally {
+      setIsBackingUp(false);
+    }
+  };
 
   const utils = trpc.useUtils();
   const { data: projects = [], isLoading } = trpc.projects.list.useQuery({});
@@ -52,11 +76,24 @@ export default function Projects() {
           <h1 className="text-xl md:text-2xl font-bold tracking-tight">Projekte</h1>
           <p className="text-muted-foreground text-xs md:text-sm mt-0.5">{projects.length} Projekte gesamt</p>
         </div>
-        <Button onClick={() => setShowCreate(true)} size="sm" className="gap-1.5 text-xs md:text-sm">
-          <Plus className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">Neues Projekt</span>
-          <span className="sm:hidden">Neu</span>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={handleFullBackup}
+            disabled={isBackingUp}
+            size="sm"
+            variant="outline"
+            className="gap-1.5 text-xs md:text-sm"
+            title="Alle Projekte als ZIP herunterladen"
+          >
+            <ArchiveRestore className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">{isBackingUp ? "Erstelle..." : "Gesamt-Backup"}</span>
+          </Button>
+          <Button onClick={() => setShowCreate(true)} size="sm" className="gap-1.5 text-xs md:text-sm">
+            <Plus className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Neues Projekt</span>
+            <span className="sm:hidden">Neu</span>
+          </Button>
+        </div>
       </div>
 
       <div className="flex items-center gap-2">

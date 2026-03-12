@@ -636,4 +636,175 @@ export function registerExportRoutes(app: Express): void {
       }
     }
   });
+
+  // GET /api/export/backup-all  → ZIP mit ALLEN Projekten + Kunden/Lieferanten als CSV
+  app.get("/api/export/backup-all", async (_req: Request, res: Response) => {
+    try {
+      const { getDb } = await import("./db");
+      const {
+        projects: projectsTable,
+        notes: notesTable,
+        quickNotes: quickNotesTable,
+        projectDocuments: projectDocumentsTable,
+        cadFiles: cadFilesTable,
+        customers: customersTable,
+        suppliers: suppliersTable,
+      } = await import("../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+      const db = await getDb();
+      if (!db) { res.status(500).json({ error: "DB nicht verfügbar" }); return; }
+
+      const [allProjects, allCustomers, allSuppliers] = await Promise.all([
+        db.select().from(projectsTable),
+        db.select().from(customersTable),
+        db.select().from(suppliersTable),
+      ]);
+
+      const exportDate = new Date().toISOString().slice(0, 10);
+      const filename = `fabrica-gesamt-backup_${exportDate}.zip`;
+      res.setHeader("Content-Type", "application/zip");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+
+      const archive = archiver("zip", { zlib: { level: 6 } });
+      archive.on("error", (err) => { throw err; });
+      archive.pipe(res);
+
+      const statusMap: Record<string, string> = {
+        inquiry: "Anfrage", calculation: "Kalkulation", offer: "Angebot",
+        order: "Auftrag", production: "Produktion", shipping: "Versand",
+        completed: "Abgeschlossen", cancelled: "Storniert",
+      };
+      const categoryNames: Record<string, string> = {
+        supplier_offer: "Lieferantenangebote", nda: "Geheimhaltung",
+        order: "Bestellungen", delivery_note: "Lieferscheine",
+        invoice: "Eingangsrechnungen", contract: "Vertraege",
+        drawing: "Zeichnungen", other: "Sonstiges",
+      };
+
+      // ── Kunden als CSV
+      const customerCsvLines = ["Name;Firma;E-Mail;Telefon;Straße;PLZ;Ort;Land"];
+      for (const c of allCustomers) {
+        customerCsvLines.push([
+          c.name ?? "", c.company ?? "",
+          c.email ?? "", c.phone ?? "", c.street ?? "", c.zip ?? "", c.city ?? "",
+          c.country ?? "",
+        ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(";"));
+      }
+      archive.append(customerCsvLines.join("\n"), { name: "Kunden.csv" });
+
+      // ── Lieferanten als CSV
+      const supplierCsvLines = ["Name;E-Mail;Telefon;Straße;PLZ;Ort;Land;Bewertung;Fähigkeiten"];
+      for (const s of allSuppliers) {
+        supplierCsvLines.push([
+          s.name ?? "", s.email ?? "", s.phone ?? "",
+          s.street ?? "", s.zip ?? "", s.city ?? "", s.country ?? "",
+          s.rating ?? "", s.capabilities ?? "",
+        ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(";"));
+      }
+      archive.append(supplierCsvLines.join("\n"), { name: "Lieferanten.csv" });
+
+      // ── Projekte-Übersicht als CSV
+      const projectCsvLines = ["Projektnummer;Titel;Status;Fälligkeit;EK;VK;Marge"];
+      for (const p of allProjects) {
+        projectCsvLines.push([
+          p.projectNumber ?? "", p.title ?? "",
+          statusMap[p.status ?? ""] ?? p.status ?? "",
+          p.deadline ? formatDate(p.deadline) : "",
+          formatCurrency(p.totalEk), formatCurrency(p.totalVk), formatCurrency(p.totalMargin),
+        ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(";"));
+      }
+      archive.append(projectCsvLines.join("\n"), { name: "Projekte-Uebersicht.csv" });
+
+      // ── Jedes Projekt als eigener Ordner
+      for (const project of allProjects) {
+        const projectSlug = slugify(project.title ?? `projekt-${project.id}`);
+        const base = `Projekte/${projectSlug}`;
+
+        const infoLines = [
+          `Projekt: ${project.title ?? ""}`,
+          `Projektnummer: ${project.projectNumber ?? ""}`,
+          `Status: ${statusMap[project.status ?? ""] ?? project.status ?? ""}`,
+          `Fälligkeitsdatum: ${project.deadline ? formatDate(project.deadline) : ""}`,
+          `Erstellt: ${formatDate(project.createdAt)}`,
+          ``,
+          `Beschreibung:`,
+          project.notes ?? "(keine)",
+          ``,
+          `Interne Notizen:`,
+          project.internalNotes ?? "(keine)",
+          ``,
+          `EK gesamt: ${formatCurrency(project.totalEk)}`,
+          `VK gesamt: ${formatCurrency(project.totalVk)}`,
+          `Marge: ${formatCurrency(project.totalMargin)}`,
+          ``,
+          `Exportiert am: ${new Date().toLocaleString("de-DE")}`,
+          `Erstellt mit Fabrica ERP`,
+        ];
+        archive.append(infoLines.join("\n"), { name: `${base}/Projekt-Info.txt` });
+
+        const [projNotes, projQuickNotes, projDocs, projCad] = await Promise.all([
+          db.select().from(notesTable).where(eq(notesTable.projectId, project.id)),
+          db.select().from(quickNotesTable).where(eq(quickNotesTable.projectId, project.id)),
+          db.select().from(projectDocumentsTable).where(eq(projectDocumentsTable.projectId, project.id)),
+          db.select().from(cadFilesTable).where(eq(cadFilesTable.projectId, project.id)),
+        ]);
+
+        for (const note of projNotes) {
+          const noteSlug = slugify(note.title ?? "notiz");
+          archive.append(
+            [`Titel: ${note.title ?? ""}`, `Status: ${note.status ?? ""}`,
+             `Priorität: ${note.priority ?? ""}`, `Erstellt: ${formatDate(note.createdAt)}`,
+             ``, note.content ?? ""].join("\n"),
+            { name: `${base}/Notizen/${noteSlug}.txt` }
+          );
+        }
+        if (projQuickNotes.length > 0) {
+          const qnLines: string[] = [`Schnellnotizen für: ${project.title}`, ``];
+          for (const qn of projQuickNotes) {
+            qnLines.push(`[${formatDate(qn.createdAt)}] ${qn.source ?? ""}`);
+            qnLines.push(qn.text ?? "");
+            qnLines.push(``);
+          }
+          archive.append(qnLines.join("\n"), { name: `${base}/Notizen/schnellnotizen.txt` });
+        }
+
+        for (const doc of projDocs) {
+          try {
+            const supplier = doc.supplierId ? allSuppliers.find(s => s.id === doc.supplierId) : null;
+            const supplierPrefix = supplier ? `${slugify(supplier.name)}_` : "";
+            const catFolder = categoryNames[doc.category] ?? "Sonstiges";
+            const safeName = `${supplierPrefix}${doc.filename}`;
+            const resp = await axios.get(doc.fileUrl, { responseType: "arraybuffer", timeout: 30000 });
+            archive.append(Buffer.from(resp.data), { name: `${base}/Dokumente/${catFolder}/${safeName}` });
+          } catch {
+            archive.append(
+              `Datei konnte nicht heruntergeladen werden.\nURL: ${doc.fileUrl}`,
+              { name: `${base}/Dokumente/${doc.filename}.FEHLER.txt` }
+            );
+          }
+        }
+
+        for (const cad of projCad) {
+          try {
+            const resp = await axios.get(cad.fileUrl, { responseType: "arraybuffer", timeout: 30000 });
+            const versionSuffix = cad.version && cad.version > 1 ? `_v${cad.version}` : "";
+            const safeName = cad.filename.replace(/[\/\\]/g, "_");
+            archive.append(Buffer.from(resp.data), { name: `${base}/CAD-Daten/${safeName}${versionSuffix}` });
+          } catch {
+            archive.append(
+              `Datei konnte nicht heruntergeladen werden.\nURL: ${cad.fileUrl}`,
+              { name: `${base}/CAD-Daten/${cad.filename}.FEHLER.txt` }
+            );
+          }
+        }
+      }
+
+      await archive.finalize();
+    } catch (err) {
+      console.error("[export/backup-all] Fehler:", err);
+      if (!res.headersSent) {
+        res.status(500).json({ error: "Gesamt-Backup fehlgeschlagen" });
+      }
+    }
+  });
 }

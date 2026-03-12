@@ -328,3 +328,16 @@
 - [x] Frontend: Layout-Fix Kunde/Projekt (untereinander statt nebeneinander)
 - [x] Frontend: Erinnerungs-Stufen im Formular (1 Woche / 1 Tag / 1 Stunde / 30 Min)
 - [x] Tests: Vitest 186 gesamt, alle grün
+
+## Phase 40: Gesamt-Backup alle Projekte
+- [ ] Backend: /api/export/backup-all Route (alle Projekte + Kunden/Lieferanten als CSV)
+- [ ] Frontend: Gesamt-Backup-Button im Dashboard (Header)
+- [ ] Tests: Vitest für Gesamt-Backup-Logik
+
+## Phase 37: Gesamt-Backup aller Projekte
+- [x] Backend-Route GET /api/export/backup-all (exportZip.ts erweitert)
+- [x] ZIP enthält: Kunden.csv, Lieferanten.csv, Projekte-Uebersicht.csv
+- [x] ZIP enthält: Projekte/<slug>/Projekt-Info.txt, Notizen/, Dokumente/, CAD-Daten/
+- [x] Button "Gesamt-Backup" in Projektliste-Header (ArchiveRestore-Icon)
+- [x] Ladeindikator während ZIP-Erstellung, Toast bei Erfolg/Fehler
+- [x] 186 Tests grün, 0 TypeScript-Fehler
