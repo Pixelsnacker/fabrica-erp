@@ -48,36 +48,41 @@ const MONTHS = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
   'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
 
 // ─── Hilfsfunktionen ─────────────────────────────────────────────────────────
-function startOfMonth(year: number, month: number) {
-  return new Date(year, month, 1);
-}
-
 function getDaysInMonth(year: number, month: number) {
   return new Date(year, month + 1, 0).getDate();
 }
 
 function getMonthGrid(year: number, month: number) {
-  const firstDay = startOfMonth(year, month).getDay(); // 0=Sun
+  const firstDay = new Date(year, month, 1).getDay();
   const adjustedFirst = (firstDay + 6) % 7; // Mo=0
   const daysInMonth = getDaysInMonth(year, month);
   const daysInPrev = getDaysInMonth(year, month - 1);
 
   const cells: { date: Date; isCurrentMonth: boolean }[] = [];
-
-  // Vormonat auffüllen
   for (let i = adjustedFirst - 1; i >= 0; i--) {
     cells.push({ date: new Date(year, month - 1, daysInPrev - i), isCurrentMonth: false });
   }
-  // Aktueller Monat
   for (let d = 1; d <= daysInMonth; d++) {
     cells.push({ date: new Date(year, month, d), isCurrentMonth: true });
   }
-  // Nächsten Monat auffüllen bis 42 Zellen
   let nextDay = 1;
   while (cells.length < 42) {
     cells.push({ date: new Date(year, month + 1, nextDay++), isCurrentMonth: false });
   }
   return cells;
+}
+
+/** Gibt die 7 Tage der Woche zurück, die das Datum enthält (Mo–So) */
+function getWeekDays(date: Date): Date[] {
+  const day = date.getDay(); // 0=Sun
+  const monday = new Date(date);
+  monday.setDate(date.getDate() - ((day + 6) % 7));
+  monday.setHours(0, 0, 0, 0);
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    return d;
+  });
 }
 
 function isSameDay(a: Date, b: Date) {
@@ -90,10 +95,6 @@ function formatTime(ts: number) {
   return new Date(ts).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
 }
 
-function formatDateLocal(ts: number) {
-  return new Date(ts).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
-}
-
 function toDatetimeLocal(ts: number) {
   const d = new Date(ts);
   const pad = (n: number) => String(n).padStart(2, '0');
@@ -104,7 +105,6 @@ function fromDatetimeLocal(s: string) {
   return new Date(s).getTime();
 }
 
-// ─── Leeres Formular ─────────────────────────────────────────────────────────
 function emptyForm(startDate?: Date) {
   const now = startDate ?? new Date();
   const start = new Date(now);
@@ -136,6 +136,11 @@ export default function Calendar() {
   const [view, setView] = useState<'month' | 'week'>('month');
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
+  const [weekAnchor, setWeekAnchor] = useState<Date>(() => {
+    const d = new Date(today);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  });
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
@@ -144,12 +149,20 @@ export default function Calendar() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSync, setLastSync] = useState<string | null>(null);
 
-  // Zeitbereich für die Abfrage
+  // Zeitbereich für die Abfrage (immer 3 Monate für Monat, 2 Wochen für Woche)
   const { from, to } = useMemo(() => {
-    const f = new Date(currentYear, currentMonth - 1, 1).getTime();
-    const t = new Date(currentYear, currentMonth + 2, 0, 23, 59, 59).getTime();
-    return { from: f, to: t };
-  }, [currentYear, currentMonth]);
+    if (view === 'week') {
+      const days = getWeekDays(weekAnchor);
+      return {
+        from: days[0].getTime() - 7 * 24 * 3600000,
+        to: days[6].getTime() + 7 * 24 * 3600000,
+      };
+    }
+    return {
+      from: new Date(currentYear, currentMonth - 1, 1).getTime(),
+      to: new Date(currentYear, currentMonth + 2, 0, 23, 59, 59).getTime(),
+    };
+  }, [view, currentYear, currentMonth, weekAnchor]);
 
   const { data: events = [], isLoading } = trpc.calendar.list.useQuery({ from, to });
   const { data: customers = [] } = trpc.customers.list.useQuery();
@@ -170,21 +183,39 @@ export default function Calendar() {
   // Monats-Grid
   const grid = useMemo(() => getMonthGrid(currentYear, currentMonth), [currentYear, currentMonth]);
 
-  // Events pro Tag
+  // Wochentage
+  const weekDays = useMemo(() => getWeekDays(weekAnchor), [weekAnchor]);
+
   function eventsForDay(date: Date) {
-    return (events as any[]).filter(ev => {
-      const evDate = new Date(ev.startAt);
-      return isSameDay(evDate, date);
-    });
+    return (events as any[]).filter(ev => isSameDay(new Date(ev.startAt), date));
   }
 
-  function prevMonth() {
-    if (currentMonth === 0) { setCurrentMonth(11); setCurrentYear(y => y - 1); }
-    else setCurrentMonth(m => m - 1);
+  function prevPeriod() {
+    if (view === 'month') {
+      if (currentMonth === 0) { setCurrentMonth(11); setCurrentYear(y => y - 1); }
+      else setCurrentMonth(m => m - 1);
+    } else {
+      const d = new Date(weekAnchor);
+      d.setDate(d.getDate() - 7);
+      setWeekAnchor(d);
+    }
   }
-  function nextMonth() {
-    if (currentMonth === 11) { setCurrentMonth(0); setCurrentYear(y => y + 1); }
-    else setCurrentMonth(m => m + 1);
+  function nextPeriod() {
+    if (view === 'month') {
+      if (currentMonth === 11) { setCurrentMonth(0); setCurrentYear(y => y + 1); }
+      else setCurrentMonth(m => m + 1);
+    } else {
+      const d = new Date(weekAnchor);
+      d.setDate(d.getDate() + 7);
+      setWeekAnchor(d);
+    }
+  }
+  function goToday() {
+    setCurrentYear(today.getFullYear());
+    setCurrentMonth(today.getMonth());
+    const d = new Date(today);
+    d.setHours(0, 0, 0, 0);
+    setWeekAnchor(d);
   }
 
   function openNew(date?: Date) {
@@ -246,13 +277,24 @@ export default function Calendar() {
     },
   });
 
-  // Google Calendar Sync
   function syncGoogleCalendar() {
     setIsSyncing(true);
     syncMut.mutate({});
   }
 
   const isToday = (date: Date) => isSameDay(date, today);
+
+  // Perioden-Label
+  const periodLabel = view === 'month'
+    ? `${MONTHS[currentMonth]} ${currentYear}`
+    : (() => {
+        const first = weekDays[0];
+        const last = weekDays[6];
+        if (first.getMonth() === last.getMonth()) {
+          return `${first.getDate()}. – ${last.getDate()}. ${MONTHS[last.getMonth()]} ${last.getFullYear()}`;
+        }
+        return `${first.getDate()}. ${MONTHS[first.getMonth()]} – ${last.getDate()}. ${MONTHS[last.getMonth()]} ${last.getFullYear()}`;
+      })();
 
   return (
     <DashboardLayout>
@@ -262,9 +304,7 @@ export default function Calendar() {
           <div className="flex items-center gap-3">
             <CalendarIcon className="w-5 h-5 text-primary" />
             <h1 className="text-xl font-semibold">Kalender</h1>
-            <Badge variant="outline" className="text-xs">
-              {MONTHS[currentMonth]} {currentYear}
-            </Badge>
+            <Badge variant="outline" className="text-xs">{periodLabel}</Badge>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={syncGoogleCalendar} disabled={isSyncing}
@@ -294,75 +334,143 @@ export default function Calendar() {
 
         {/* Navigation */}
         <div className="flex items-center gap-2 px-6 py-2 border-b border-border">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={prevMonth}>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={prevPeriod}>
             <ChevronLeft className="w-4 h-4" />
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => { setCurrentYear(today.getFullYear()); setCurrentMonth(today.getMonth()); }}>
-            Heute
-          </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={nextMonth}>
+          <Button variant="ghost" size="sm" onClick={goToday}>Heute</Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={nextPeriod}>
             <ChevronRight className="w-4 h-4" />
           </Button>
-          <span className="font-semibold text-sm ml-2">{MONTHS[currentMonth]} {currentYear}</span>
+          <span className="font-semibold text-sm ml-2">{periodLabel}</span>
         </div>
 
-        {/* Monatsansicht */}
+        {/* Kalender-Inhalt */}
         <div className="flex-1 overflow-auto px-4 py-2">
-          {/* Wochentag-Header */}
-          <div className="grid grid-cols-7 mb-1">
-            {WEEKDAYS.map(d => (
-              <div key={d} className="text-center text-xs font-semibold text-muted-foreground py-1">{d}</div>
-            ))}
-          </div>
-
-          {/* Kalender-Grid */}
-          <div className="grid grid-cols-7 gap-px bg-border rounded-lg overflow-hidden">
-            {grid.map(({ date, isCurrentMonth }, idx) => {
-              const dayEvents = eventsForDay(date);
-              const isSelected = selectedDay && isSameDay(date, selectedDay);
-              return (
-                <div
-                  key={idx}
-                  className={`
-                    bg-card min-h-[100px] p-1.5 cursor-pointer transition-colors
-                    hover:bg-accent/30
-                    ${!isCurrentMonth ? 'opacity-40' : ''}
-                    ${isSelected ? 'ring-2 ring-primary ring-inset' : ''}
-                  `}
-                  onClick={() => { setSelectedDay(date); }}
-                  onDoubleClick={() => openNew(date)}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className={`
-                      text-xs font-semibold w-6 h-6 flex items-center justify-center rounded-full
+          {isLoading ? (
+            <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Lade Termine...
+            </div>
+          ) : view === 'month' ? (
+            /* ── MONATSANSICHT ── */
+            <>
+              <div className="grid grid-cols-7 mb-1">
+                {WEEKDAYS.map(d => (
+                  <div key={d} className="text-center text-xs font-semibold text-muted-foreground py-1">{d}</div>
+                ))}
+              </div>
+              <div className="grid grid-cols-7 gap-px bg-border rounded-lg overflow-hidden">
+                {grid.map(({ date, isCurrentMonth }, idx) => {
+                  const dayEvents = eventsForDay(date);
+                  const isSelected = selectedDay && isSameDay(date, selectedDay);
+                  return (
+                    <div
+                      key={idx}
+                      className={`
+                        bg-card min-h-[100px] p-1.5 cursor-pointer transition-colors
+                        hover:bg-accent/30
+                        ${!isCurrentMonth ? 'opacity-40' : ''}
+                        ${isSelected ? 'ring-2 ring-primary ring-inset' : ''}
+                      `}
+                      onClick={() => setSelectedDay(date)}
+                      onDoubleClick={() => openNew(date)}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className={`
+                          text-xs font-semibold w-6 h-6 flex items-center justify-center rounded-full
+                          ${isToday(date) ? 'bg-primary text-primary-foreground' : 'text-foreground'}
+                        `}>
+                          {date.getDate()}
+                        </span>
+                        {dayEvents.length > 0 && (
+                          <span className="text-[10px] text-muted-foreground">{dayEvents.length}</span>
+                        )}
+                      </div>
+                      <div className="space-y-0.5">
+                        {dayEvents.slice(0, 3).map((ev: any) => (
+                          <div
+                            key={ev.id}
+                            className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium cursor-pointer hover:opacity-80 truncate"
+                            style={{
+                              backgroundColor: (ev.color ?? CATEGORY_COLORS[ev.category as EventCategory] ?? '#6366f1') + '33',
+                              color: ev.color ?? CATEGORY_COLORS[ev.category as EventCategory] ?? '#6366f1',
+                              borderLeft: `2px solid ${ev.color ?? CATEGORY_COLORS[ev.category as EventCategory] ?? '#6366f1'}`
+                            }}
+                            onClick={(e) => { e.stopPropagation(); openEdit(ev); }}
+                          >
+                            {!ev.allDay && <span className="opacity-70 shrink-0">{formatTime(ev.startAt)}</span>}
+                            <span className="truncate">{ev.title}</span>
+                          </div>
+                        ))}
+                        {dayEvents.length > 3 && (
+                          <div className="text-[10px] text-muted-foreground px-1">+{dayEvents.length - 3} weitere</div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          ) : (
+            /* ── WOCHENANSICHT ── */
+            <>
+              {/* Wochentag-Header */}
+              <div className="grid grid-cols-7 gap-px mb-1">
+                {weekDays.map((date, i) => (
+                  <div key={i} className={`text-center py-2 rounded-t ${isToday(date) ? 'bg-primary/10' : ''}`}>
+                    <div className="text-xs font-semibold text-muted-foreground">{WEEKDAYS[i]}</div>
+                    <div className={`
+                      text-sm font-bold mt-0.5 w-7 h-7 flex items-center justify-center rounded-full mx-auto
                       ${isToday(date) ? 'bg-primary text-primary-foreground' : 'text-foreground'}
                     `}>
                       {date.getDate()}
-                    </span>
-                    {dayEvents.length > 0 && (
-                      <span className="text-[10px] text-muted-foreground">{dayEvents.length}</span>
-                    )}
+                    </div>
                   </div>
-                  <div className="space-y-0.5">
-                    {dayEvents.slice(0, 3).map((ev: any) => (
-                      <div
-                        key={ev.id}
-                        className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium cursor-pointer hover:opacity-80 truncate"
-                        style={{ backgroundColor: (ev.color ?? CATEGORY_COLORS[ev.category as EventCategory] ?? '#6366f1') + '33', color: ev.color ?? CATEGORY_COLORS[ev.category as EventCategory] ?? '#6366f1', borderLeft: `2px solid ${ev.color ?? CATEGORY_COLORS[ev.category as EventCategory] ?? '#6366f1'}` }}
-                        onClick={(e) => { e.stopPropagation(); openEdit(ev); }}
-                      >
-                        {!ev.allDay && <span className="opacity-70 shrink-0">{formatTime(ev.startAt)}</span>}
-                        <span className="truncate">{ev.title}</span>
+                ))}
+              </div>
+              {/* Wochentag-Spalten */}
+              <div className="grid grid-cols-7 gap-px bg-border rounded-lg overflow-hidden">
+                {weekDays.map((date, i) => {
+                  const dayEvents = eventsForDay(date);
+                  return (
+                    <div
+                      key={i}
+                      className={`bg-card min-h-[400px] p-2 cursor-pointer hover:bg-accent/20 transition-colors ${isToday(date) ? 'bg-primary/5' : ''}`}
+                      onDoubleClick={() => openNew(date)}
+                      onClick={() => setSelectedDay(date)}
+                    >
+                      {dayEvents.length === 0 && (
+                        <div className="text-[10px] text-muted-foreground/40 text-center mt-4">–</div>
+                      )}
+                      <div className="space-y-1">
+                        {dayEvents.map((ev: any) => (
+                          <div
+                            key={ev.id}
+                            className="px-2 py-1.5 rounded text-xs font-medium cursor-pointer hover:opacity-80"
+                            style={{
+                              backgroundColor: (ev.color ?? CATEGORY_COLORS[ev.category as EventCategory] ?? '#6366f1') + '25',
+                              color: ev.color ?? CATEGORY_COLORS[ev.category as EventCategory] ?? '#6366f1',
+                              borderLeft: `3px solid ${ev.color ?? CATEGORY_COLORS[ev.category as EventCategory] ?? '#6366f1'}`
+                            }}
+                            onClick={(e) => { e.stopPropagation(); openEdit(ev); }}
+                          >
+                            {!ev.allDay && (
+                              <div className="text-[10px] opacity-70 mb-0.5">{formatTime(ev.startAt)} – {formatTime(ev.endAt)}</div>
+                            )}
+                            <div className="truncate">{ev.title}</div>
+                            {ev.location && (
+                              <div className="flex items-center gap-1 text-[10px] opacity-60 mt-0.5 truncate">
+                                <MapPin className="w-2.5 h-2.5 shrink-0" />{ev.location}
+                              </div>
+                            )}
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                    {dayEvents.length > 3 && (
-                      <div className="text-[10px] text-muted-foreground px-1">+{dayEvents.length - 3} weitere</div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
         </div>
 
         {/* Tages-Detail Panel (wenn Tag ausgewählt) */}
@@ -548,15 +656,16 @@ export default function Calendar() {
                 </Select>
               </div>
             </div>
+
             {/* ─── Erinnerungen ─── */}
             <div>
               <Label className="mb-2 block">Erinnerungen</Label>
               <div className="flex flex-col gap-2">
                 {[
-                  { key: 'reminder1Min' as const, label: '1. Erinnerung', presets: [{ label: '1 Woche vorher', val: 10080 }, { label: '1 Tag vorher', val: 1440 }, { label: '1 Stunde vorher', val: 60 }, { label: '30 Min vorher', val: 30 }] },
-                  { key: 'reminder2Min' as const, label: '2. Erinnerung', presets: [{ label: '1 Woche vorher', val: 10080 }, { label: '1 Tag vorher', val: 1440 }, { label: '1 Stunde vorher', val: 60 }, { label: '30 Min vorher', val: 30 }] },
-                  { key: 'reminder3Min' as const, label: '3. Erinnerung', presets: [{ label: '1 Woche vorher', val: 10080 }, { label: '1 Tag vorher', val: 1440 }, { label: '1 Stunde vorher', val: 60 }, { label: '30 Min vorher', val: 30 }] },
-                ].map(({ key, label, presets }) => (
+                  { key: 'reminder1Min' as const, label: '1. Erinnerung' },
+                  { key: 'reminder2Min' as const, label: '2. Erinnerung' },
+                  { key: 'reminder3Min' as const, label: '3. Erinnerung' },
+                ].map(({ key, label }) => (
                   <div key={key} className="flex items-center gap-2">
                     <span className="text-xs text-muted-foreground w-28 shrink-0">{label}</span>
                     <Select
@@ -566,7 +675,10 @@ export default function Calendar() {
                       <SelectTrigger className="h-8 text-xs flex-1"><SelectValue placeholder="Keine" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">Keine</SelectItem>
-                        {presets.map(p => <SelectItem key={p.val} value={String(p.val)}>{p.label}</SelectItem>)}
+                        <SelectItem value="10080">1 Woche vorher</SelectItem>
+                        <SelectItem value="1440">1 Tag vorher</SelectItem>
+                        <SelectItem value="60">1 Stunde vorher</SelectItem>
+                        <SelectItem value="30">30 Min vorher</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

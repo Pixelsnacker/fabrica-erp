@@ -341,3 +341,7 @@
 - [x] Button "Gesamt-Backup" in Projektliste-Header (ArchiveRestore-Icon)
 - [x] Ladeindikator während ZIP-Erstellung, Toast bei Erfolg/Fehler
 - [x] 186 Tests grün, 0 TypeScript-Fehler
+
+## Phase 38: Kalender-Bugfixes
+- [x] Bug: Google Calendar Sync schlägt fehl — Fix: MCP-Ergebnis aus JSON-Datei lesen statt stdout
+- [x] Bug: Woche/Monat-Umschaltung — Fix: Wochenansicht vollständig implementiert (getWeekDays, weekAnchor, Wochenspalten-Grid)

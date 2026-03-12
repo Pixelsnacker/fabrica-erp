@@ -1286,28 +1286,26 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
       .input(z.object({ from: z.string().optional(), to: z.string().optional() }))
       .mutation(async ({ ctx }) => {
         const { execSync } = await import('child_process');
+        const { readFileSync } = await import('fs');
         const now = new Date();
         const timeMin = new Date(now.getTime() - 7 * 24 * 3600000).toISOString();
         const timeMax = new Date(now.getTime() + 60 * 24 * 3600000).toISOString();
         // MCP Google Calendar abfragen
         let googleEvents: any[] = [];
         try {
-          const result = execSync(
-            `manus-mcp-cli tool call google_calendar_search_events --server google-calendar --input '${JSON.stringify({ calendar_id: 'primary', time_min: timeMin, time_max: timeMax, max_results: 100 })}'`,
+          const mcpInput = JSON.stringify({ calendar_id: 'primary', time_min: timeMin, time_max: timeMax, max_results: 100 });
+          const stdout = execSync(
+            `manus-mcp-cli tool call google_calendar_search_events --server google-calendar --input '${mcpInput}'`,
             { encoding: 'utf8', timeout: 30000 }
           );
-          // Parse MCP result
-          const lines = result.split('\n');
-          for (const line of lines) {
-            const trimmed = line.trim();
-            if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
-              try { googleEvents = JSON.parse(trimmed); break; } catch {}
+          // manus-mcp-cli schreibt das Ergebnis in eine JSON-Datei unter /tmp/manus-mcp/
+          // Die Datei wird im stdout als Pfad ausgegeben
+          const fileMatch = stdout.match(/\/tmp\/manus-mcp\/[^\s]+\.json/);
+          if (fileMatch) {
+            const resultJson = JSON.parse(readFileSync(fileMatch[0], 'utf8'));
+            if (resultJson.result && Array.isArray(resultJson.result)) {
+              googleEvents = resultJson.result;
             }
-          }
-          // Try to find JSON array in output
-          const jsonMatch = result.match(/\[\s*\{[\s\S]*\}\s*\]/);
-          if (jsonMatch && googleEvents.length === 0) {
-            try { googleEvents = JSON.parse(jsonMatch[0]); } catch {}
           }
         } catch (e: any) {
           throw new Error('Google Calendar MCP Fehler: ' + e.message);
