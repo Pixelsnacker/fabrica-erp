@@ -307,3 +307,11 @@
 - [x] Frontend: Upload-Dialog mit Kategorie-Auswahl (Lieferantenangebot, NDA, Bestellung, Sonstiges)
 - [x] Frontend: Dokumentenliste mit Download-Link, Vorschau und Löschen
 - [x] Tests: Vitest für Dokument-Kategorien und Upload-Logik (19 neue Tests, 161 gesamt)
+
+## Phase 33: Dokumente mit Lieferanten verknüpfen
+- [x] DB: supplierId-Spalte zu project_documents hinzufügen
+- [x] Backend: upload-Procedure um supplierId erweitern, suppliers.list für Dropdown
+- [x] Frontend: Lieferanten-Dropdown im Upload-Dialog (optional, nur bei Lieferantenangebot vorausgewählt)
+- [x] Frontend: Lieferantenname in der Dokumentenkarte anzeigen
+- [x] Frontend: Filter nach Lieferant in der Dokumentenliste
+- [x] Tests: Vitest für Lieferanten-Verknüpfungs-Logik (8 neue Tests, 169 gesamt)

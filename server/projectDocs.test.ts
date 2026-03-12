@@ -140,3 +140,70 @@ describe("projectDocs – Datei-Größen-Limit", () => {
     expect(MAX_SIZE < MAX_SIZE).toBe(false);
   });
 });
+
+// ─── Lieferanten-Verknüpfung ──────────────────────────────────────────────────
+type Supplier = { id: number; name: string; company?: string | null };
+
+function getSupplierDisplayName(s: Supplier): string {
+  return s.company ? `${s.company} (${s.name})` : s.name;
+}
+
+function findSupplierById(suppliers: Supplier[], id: number | null | undefined): Supplier | undefined {
+  if (!id) return undefined;
+  return suppliers.find(s => s.id === id);
+}
+
+function filterDocsBySupplier(docs: { supplierId?: number | null }[], supplierId: string): typeof docs {
+  if (!supplierId) return docs;
+  return docs.filter(d => String(d.supplierId) === supplierId);
+}
+
+describe("projectDocs – Lieferanten-Verknüpfung", () => {
+  const suppliers: Supplier[] = [
+    { id: 1, name: "Max Müller", company: "3D Print GmbH" },
+    { id: 2, name: "Anna Schmidt", company: null },
+    { id: 3, name: "Klaus Weber", company: "Laser Tech AG" },
+  ];
+
+  it("zeigt Firmenname wenn vorhanden", () => {
+    expect(getSupplierDisplayName(suppliers[0])).toBe("3D Print GmbH (Max Müller)");
+  });
+
+  it("zeigt nur Namen wenn keine Firma", () => {
+    expect(getSupplierDisplayName(suppliers[1])).toBe("Anna Schmidt");
+  });
+
+  it("findet Lieferant per ID", () => {
+    expect(findSupplierById(suppliers, 2)?.name).toBe("Anna Schmidt");
+  });
+
+  it("gibt undefined zurück wenn ID null", () => {
+    expect(findSupplierById(suppliers, null)).toBeUndefined();
+  });
+
+  it("gibt undefined zurück wenn ID nicht gefunden", () => {
+    expect(findSupplierById(suppliers, 99)).toBeUndefined();
+  });
+
+  it("filtert Dokumente nach Lieferant", () => {
+    const docs = [
+      { supplierId: 1 },
+      { supplierId: 2 },
+      { supplierId: 1 },
+      { supplierId: null },
+    ];
+    const filtered = filterDocsBySupplier(docs, "1");
+    expect(filtered.length).toBe(2);
+    expect(filtered.every(d => d.supplierId === 1)).toBe(true);
+  });
+
+  it("gibt alle Dokumente zurück wenn kein Filter", () => {
+    const docs = [{ supplierId: 1 }, { supplierId: 2 }, { supplierId: null }];
+    expect(filterDocsBySupplier(docs, "").length).toBe(3);
+  });
+
+  it("gibt leeres Array zurück wenn kein Dokument passt", () => {
+    const docs = [{ supplierId: 1 }, { supplierId: 2 }];
+    expect(filterDocsBySupplier(docs, "99").length).toBe(0);
+  });
+});

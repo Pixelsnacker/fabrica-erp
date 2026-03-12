@@ -1240,6 +1240,7 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
     upload: protectedProcedure
       .input(z.object({
         projectId: z.number(),
+        supplierId: z.number().nullable().optional(),
         category: z.enum(['supplier_offer','nda','order','delivery_note','invoice','contract','drawing','other']).default('other'),
         filename: z.string(),
         fileBase64: z.string(),
@@ -1255,6 +1256,7 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
         const { url } = await storagePut(fileKey, buffer, input.mimeType);
         await db.insert(projectDocuments).values({
           projectId: input.projectId,
+          supplierId: input.supplierId ?? null,
           category: input.category,
           filename: input.filename,
           fileKey,

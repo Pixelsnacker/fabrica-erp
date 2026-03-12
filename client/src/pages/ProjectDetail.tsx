@@ -149,6 +149,8 @@ export default function ProjectDetail() {
   const { data: shipments = [] } = trpc.shipments.byProject.useQuery({ projectId: id });
   const { data: cadFiles = [] } = trpc.cadFiles.byProject.useQuery({ projectId: id });
   const { data: projectDocs = [] } = trpc.projectDocs.list.useQuery({ projectId: id });
+  const { data: allSuppliers = [] } = trpc.suppliers.list.useQuery();
+  const [docSupplierFilter, setDocSupplierFilter] = useState<string>("");
   const { data: consultations = [] } = trpc.consultation.list.useQuery({ projectId: id });
   const { data: projectNotes = [] } = trpc.notes.list.useQuery({ projectId: id });
   const { data: projectQuickNotes = [] } = trpc.quickNotes.list.useQuery({ projectId: id });
@@ -822,8 +824,25 @@ export default function ProjectDetail() {
 
         {/* ── Dokumente ── */}
         <TabsContent value="docs" className="mt-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">Lieferantenangebote, Geheimhaltungserklärungen, Bestellungen und weitere Projektdokumente.</p>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <p className="text-sm text-muted-foreground hidden sm:block">Projektdokumente</p>
+              {(allSuppliers as any[]).length > 0 && (
+                <Select value={docSupplierFilter} onValueChange={setDocSupplierFilter}>
+                  <SelectTrigger className="h-8 text-xs w-auto min-w-[160px]">
+                    <SelectValue placeholder="Alle Lieferanten" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Alle Lieferanten</SelectItem>
+                    {(allSuppliers as any[]).map((s: any) => (
+                      <SelectItem key={s.id} value={String(s.id)}>
+                        {s.company || s.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
             <Button size="sm" onClick={() => setShowDocUpload(true)} className="gap-2">
               <Upload className="h-4 w-4" />Dokument hochladen
             </Button>
@@ -838,13 +857,19 @@ export default function ProjectDetail() {
             </div>
           ) : (
             <div className="space-y-2">
-              {(projectDocs as any[]).map((doc: any) => (
-                <ProjectDocCard
-                  key={doc.id}
-                  doc={doc}
-                  onDelete={() => { if (confirm(`Dokument "${doc.filename}" wirklich löschen?`)) deleteDocMut.mutate({ id: doc.id }); }}
-                />
-              ))}
+              {(projectDocs as any[])
+                .filter((doc: any) => !docSupplierFilter || String(doc.supplierId) === docSupplierFilter)
+                .map((doc: any) => {
+                  const sup = (allSuppliers as any[]).find((s: any) => s.id === doc.supplierId);
+                  return (
+                    <ProjectDocCard
+                      key={doc.id}
+                      doc={doc}
+                      supplierName={sup ? (sup.company || sup.name) : undefined}
+                      onDelete={() => { if (confirm(`Dokument "${doc.filename}" wirklich löschen?`)) deleteDocMut.mutate({ id: doc.id }); }}
+                    />
+                  );
+                })}
             </div>
           )}
         </TabsContent>
@@ -1478,7 +1503,7 @@ const DOC_CATEGORY_LABELS: Record<string, { label: string; color: string; icon: 
 };
 
 // ─── Dokument-Karte ───────────────────────────────────────────────────────────
-function ProjectDocCard({ doc, onDelete }: { doc: any; onDelete: () => void }) {
+function ProjectDocCard({ doc, onDelete, supplierName }: { doc: any; onDelete: () => void; supplierName?: string }) {
   const cat = DOC_CATEGORY_LABELS[doc.category] ?? DOC_CATEGORY_LABELS.other;
   const isPdf = doc.mimeType === "application/pdf" || doc.filename?.toLowerCase().endsWith(".pdf");
   const isImage = doc.mimeType?.startsWith("image/");
@@ -1514,6 +1539,11 @@ function ProjectDocCard({ doc, onDelete }: { doc: any; onDelete: () => void }) {
             {new Date(doc.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" })}
           </span>
         </div>
+        {supplierName && (
+          <div className="flex items-center gap-1 mt-0.5">
+            <span className="text-xs text-blue-400 font-medium">🏭 {supplierName}</span>
+          </div>
+        )}
         {doc.notes && <p className="text-xs text-muted-foreground mt-1 italic">{doc.notes}</p>}
       </div>
 
@@ -1547,7 +1577,9 @@ function ProjectDocUploadDialog({
   const [category, setCategory] = useState<string>("supplier_offer");
   const [notes, setNotes] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [supplierId, setSupplierId] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { data: supplierList = [] } = trpc.suppliers.list.useQuery();
 
   const upload = trpc.projectDocs.upload.useMutation({
     onSuccess: () => { setIsUploading(false); setProgress(0); toast.success("Dokument hochgeladen"); onSuccess(); },
@@ -1569,6 +1601,7 @@ function ProjectDocUploadDialog({
       const base64 = (e.target?.result as string).split(",")[1];
       upload.mutate({
         projectId,
+        supplierId: supplierId ? parseInt(supplierId) : null,
         category: category as any,
         filename: selectedFile.name,
         fileBase64: base64,
@@ -1644,6 +1677,24 @@ function ProjectDocUploadDialog({
               {isUploading && <Progress value={progress} className="h-1 mt-2" />}
             </div>
           )}
+
+          {/* Lieferant */}
+          <div className="space-y-1.5">
+            <Label>Lieferant {category === 'supplier_offer' ? '*' : '(optional)'}</Label>
+            <Select value={supplierId} onValueChange={setSupplierId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Lieferant auswählen..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Kein Lieferant</SelectItem>
+                {(supplierList as any[]).map((s: any) => (
+                  <SelectItem key={s.id} value={String(s.id)}>
+                    {s.company ? `${s.company} (${s.name})` : s.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
           {/* Notizen */}
           <div className="space-y-1.5">
