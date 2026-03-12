@@ -369,3 +369,10 @@
 - [x] Backend: update, dueReminders, markReminderSent Procedures in routers.ts
 - [x] Frontend Settings.tsx: Bearbeiten-Button (Stift-Icon) + EditQuickNoteDialog mit Datum/Uhrzeit-Picker
 - [x] Frontend DashboardLayout.tsx: Erinnerungs-Polling alle 60s, Toast mit OK-Button
+
+## Phase 42: CAD-Upload + 3D-Viewer (STL/STP)
+- [x] Three.js + STLLoader installieren
+- [x] CAD-Viewer-Komponente: STL interaktiv (Orbit, Zoom, Pan, Reset), STP/STEP als Download
+- [x] Backend: CAD-Upload-Procedure (S3) für STL, STP, STEP, OBJ, 3MF, IGES
+- [x] Projekt-Detail: CAD-Tab mit Drag&Drop-Upload und 3D-Viewer-Dialog
+- [x] Dateiliste: Name, Größe, Datum, Download-Link, Löschen, Typ-Badge

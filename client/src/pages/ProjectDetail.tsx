@@ -1,4 +1,5 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
+import { CadViewer, CadFileThumbnail } from "@/components/CadViewer";
 import { trpc } from "@/lib/trpc";
 import { useParams, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -639,10 +640,7 @@ export default function ProjectDetail() {
 
         {/* ── CAD ── */}
         <TabsContent value="cad" className="mt-4">
-          <div className="text-center py-8 text-muted-foreground text-sm">
-            <FileCode2 className="h-8 w-8 mx-auto mb-2 opacity-30" />
-            CAD-Datei-Upload folgt in Phase 2
-          </div>
+          <CadTabContent projectId={id} cadFiles={cadFiles} onRefresh={() => utils.cadFiles.byProject.invalidate({ projectId: id })} />
         </TabsContent>
 
         {/* ── Beratung ── */}
@@ -1794,5 +1792,180 @@ function ProjectDocUploadDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ── CAD-Tab Komponente ─────────────────────────────────────────────────────────
+function CadTabContent({ projectId, cadFiles, onRefresh }: {
+  projectId: number;
+  cadFiles: Array<{ id: number; filename: string; fileUrl: string; fileSize?: number | null; version: number; versionNote?: string | null; uploadedBy?: string | null; createdAt: string; mimeType?: string | null }>;
+  onRefresh: () => void;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [viewerFile, setViewerFile] = useState<{ url: string; filename: string; fileSize?: number | null } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadMut = trpc.cadFiles.upload.useMutation({
+    onSuccess: () => { onRefresh(); setUploading(false); setUploadProgress(0); toast.success("CAD-Datei hochgeladen"); },
+    onError: () => { setUploading(false); setUploadProgress(0); toast.error("Upload fehlgeschlagen"); },
+  });
+  const deleteMut = trpc.cadFiles.delete.useMutation({
+    onSuccess: () => { onRefresh(); toast.success("Datei gelöscht"); },
+    onError: () => toast.error("Fehler beim Löschen"),
+  });
+
+  const ALLOWED_EXT = ["stl", "stp", "step", "obj", "3mf", "iges", "igs"];
+  const MAX_SIZE = 100 * 1024 * 1024; // 100 MB
+
+  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+    if (!ALLOWED_EXT.includes(ext)) {
+      toast.error(`Nicht unterstütztes Format. Erlaubt: ${ALLOWED_EXT.join(", ").toUpperCase()}`);
+      return;
+    }
+    if (file.size > MAX_SIZE) {
+      toast.error("Datei zu groß (max. 100 MB)");
+      return;
+    }
+    setUploading(true);
+    setUploadProgress(10);
+    const reader = new FileReader();
+    reader.onprogress = (ev) => { if (ev.lengthComputable) setUploadProgress(10 + Math.round((ev.loaded / ev.total) * 60)); };
+    reader.onload = async () => {
+      setUploadProgress(75);
+      const base64 = (reader.result as string).split(",")[1];
+      await uploadMut.mutateAsync({
+        projectId,
+        filename: file.name,
+        fileData: base64,
+        mimeType: file.type || "application/octet-stream",
+        version: 1,
+      });
+      setUploadProgress(100);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  }, [projectId, uploadMut]);
+
+  const formatBytes = (b: number) => b < 1024 ? `${b} B` : b < 1024 * 1024 ? `${(b / 1024).toFixed(1)} KB` : `${(b / (1024 * 1024)).toFixed(1)} MB`;
+  const getExt = (fn: string) => fn.split(".").pop()?.toLowerCase() ?? "";
+
+  return (
+    <div className="space-y-4">
+      {/* Upload-Bereich */}
+      <div
+        className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-colors"
+        onClick={() => !uploading && fileInputRef.current?.click()}
+        onDragOver={e => e.preventDefault()}
+        onDrop={e => {
+          e.preventDefault();
+          const file = e.dataTransfer.files[0];
+          if (file) handleFileChange({ target: { files: [file], value: "" } } as unknown as React.ChangeEvent<HTMLInputElement>);
+        }}
+      >
+        <input ref={fileInputRef} type="file" className="hidden" accept=".stl,.stp,.step,.obj,.3mf,.iges,.igs" onChange={handleFileChange} />
+        {uploading ? (
+          <div className="space-y-3">
+            <Loader2 className="h-8 w-8 mx-auto animate-spin text-primary" />
+            <p className="text-sm text-muted-foreground">Wird hochgeladen... {uploadProgress}%</p>
+            <div className="w-full max-w-xs mx-auto bg-secondary rounded-full h-2">
+              <div className="bg-primary h-2 rounded-full transition-all" style={{ width: `${uploadProgress}%` }} />
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <Upload className="h-8 w-8 mx-auto text-muted-foreground" />
+            <p className="text-sm font-medium">CAD-Datei hochladen</p>
+            <p className="text-xs text-muted-foreground">STL, STP, STEP, OBJ, 3MF, IGES · max. 100 MB</p>
+            <p className="text-xs text-muted-foreground">Klicken oder Datei hierher ziehen</p>
+          </div>
+        )}
+      </div>
+
+      {/* Dateiliste */}
+      {cadFiles.length > 0 && (
+        <div className="space-y-2">
+          {cadFiles.map(f => (
+            <div key={f.id} className="flex items-center gap-3 p-3 rounded-lg bg-card border border-border group">
+              <CadFileThumbnail filename={f.filename} ext={getExt(f.filename)} />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{f.filename}</p>
+                <p className="text-xs text-muted-foreground">
+                  {f.fileSize ? formatBytes(f.fileSize) : ""} · v{f.version} · {new Date(f.createdAt).toLocaleDateString("de-DE")}
+                  {f.uploadedBy ? ` · ${f.uploadedBy}` : ""}
+                </p>
+              </div>
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                {(getExt(f.filename) === "stl" || getExt(f.filename) === "obj") && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7 text-primary"
+                    title="3D-Vorschau"
+                    onClick={() => setViewerFile({ url: f.fileUrl, filename: f.filename, fileSize: f.fileSize })}
+                  >
+                    <FileCode2 className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+                <Button size="icon" variant="ghost" className="h-7 w-7" title="Herunterladen" asChild>
+                  <a href={f.fileUrl} download={f.filename} target="_blank" rel="noopener noreferrer">
+                    <Download className="h-3.5 w-3.5" />
+                  </a>
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-7 w-7 text-destructive"
+                  title="Löschen"
+                  onClick={() => { if (confirm(`"${f.filename}" wirklich löschen?`)) deleteMut.mutate({ id: f.id }); }}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+              {/* STP/STEP Download-Button immer sichtbar */}
+              {(getExt(f.filename) === "stp" || getExt(f.filename) === "step") && (
+                <Button size="sm" variant="outline" className="gap-1.5 text-xs" asChild>
+                  <a href={f.fileUrl} download={f.filename} target="_blank" rel="noopener noreferrer">
+                    <Download className="h-3 w-3" />Download
+                  </a>
+                </Button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {cadFiles.length === 0 && !uploading && (
+        <p className="text-center text-xs text-muted-foreground py-2">Noch keine CAD-Dateien hochgeladen</p>
+      )}
+
+      {/* 3D-Viewer Dialog */}
+      {viewerFile && (
+        <Dialog open={!!viewerFile} onOpenChange={() => setViewerFile(null)}>
+          <DialogContent className="max-w-4xl w-full p-0 overflow-hidden">
+            <DialogHeader className="px-4 pt-4 pb-2">
+              <DialogTitle className="flex items-center gap-2 text-sm">
+                <FileCode2 className="h-4 w-4 text-primary" />
+                {viewerFile.filename}
+                {viewerFile.fileSize && <span className="text-xs text-muted-foreground font-normal">({formatBytes(viewerFile.fileSize)})</span>}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="px-4 pb-4">
+              <CadViewer url={viewerFile.url} filename={viewerFile.filename} fileSize={viewerFile.fileSize} />
+            </div>
+            <div className="px-4 pb-4 flex justify-between items-center">
+              <p className="text-xs text-muted-foreground">Maus: Drehen · Scroll: Zoom · Shift+Maus: Verschieben</p>
+              <Button variant="outline" size="sm" asChild className="gap-1.5">
+                <a href={viewerFile.url} download={viewerFile.filename} target="_blank" rel="noopener noreferrer">
+                  <Download className="h-3.5 w-3.5" />Herunterladen
+                </a>
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+    </div>
   );
 }
