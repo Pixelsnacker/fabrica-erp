@@ -473,6 +473,10 @@ export const calendarEvents = mysqlTable("calendar_events", {
   createdBy: int("created_by"),
   createdAt: bigint("created_at", { mode: "number" }),
   updatedAt: bigint("updated_at", { mode: "number" }),
+  reminder1Min: int("reminder1_min"),
+  reminder2Min: int("reminder2_min"),
+  reminder3Min: int("reminder3_min"),
+  reminderSent: tinyint("reminder_sent").default(0),
 });
 
 export type InsertCalendarEvent = typeof calendarEvents.$inferInsert;

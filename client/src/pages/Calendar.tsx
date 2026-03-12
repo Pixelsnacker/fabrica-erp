@@ -122,6 +122,9 @@ function emptyForm(startDate?: Date) {
     location: '',
     customerId: undefined as number | undefined,
     projectId: undefined as number | undefined,
+    reminder1Min: null as number | null,
+    reminder2Min: null as number | null,
+    reminder3Min: null as number | null,
   };
 }
 
@@ -203,6 +206,9 @@ export default function Calendar() {
       location: ev.location ?? '',
       customerId: ev.customerId ?? undefined,
       projectId: ev.projectId ?? undefined,
+      reminder1Min: ev.reminder1Min ?? null,
+      reminder2Min: ev.reminder2Min ?? null,
+      reminder3Min: ev.reminder3Min ?? null,
     });
     setShowForm(true);
   }
@@ -219,6 +225,9 @@ export default function Calendar() {
       location: form.location || undefined,
       customerId: form.customerId,
       projectId: form.projectId,
+      reminder1Min: form.reminder1Min,
+      reminder2Min: form.reminder2Min,
+      reminder3Min: form.reminder3Min,
     };
     if (editId) updateMut.mutate({ id: editId, ...payload });
     else createMut.mutate(payload);
@@ -513,7 +522,7 @@ export default function Calendar() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-3">
               <div>
                 <Label>Kunde</Label>
                 <Select value={form.customerId ? String(form.customerId) : 'none'} onValueChange={v => setForm(f => ({ ...f, customerId: v !== 'none' ? parseInt(v) : undefined }))}>
@@ -537,6 +546,31 @@ export default function Calendar() {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+            </div>
+            {/* ─── Erinnerungen ─── */}
+            <div>
+              <Label className="mb-2 block">Erinnerungen</Label>
+              <div className="flex flex-col gap-2">
+                {[
+                  { key: 'reminder1Min' as const, label: '1. Erinnerung', presets: [{ label: '1 Woche vorher', val: 10080 }, { label: '1 Tag vorher', val: 1440 }, { label: '1 Stunde vorher', val: 60 }, { label: '30 Min vorher', val: 30 }] },
+                  { key: 'reminder2Min' as const, label: '2. Erinnerung', presets: [{ label: '1 Woche vorher', val: 10080 }, { label: '1 Tag vorher', val: 1440 }, { label: '1 Stunde vorher', val: 60 }, { label: '30 Min vorher', val: 30 }] },
+                  { key: 'reminder3Min' as const, label: '3. Erinnerung', presets: [{ label: '1 Woche vorher', val: 10080 }, { label: '1 Tag vorher', val: 1440 }, { label: '1 Stunde vorher', val: 60 }, { label: '30 Min vorher', val: 30 }] },
+                ].map(({ key, label, presets }) => (
+                  <div key={key} className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground w-28 shrink-0">{label}</span>
+                    <Select
+                      value={form[key] !== null ? String(form[key]) : 'none'}
+                      onValueChange={v => setForm(f => ({ ...f, [key]: v !== 'none' ? parseInt(v) : null }))}
+                    >
+                      <SelectTrigger className="h-8 text-xs flex-1"><SelectValue placeholder="Keine" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Keine</SelectItem>
+                        {presets.map(p => <SelectItem key={p.val} value={String(p.val)}>{p.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ))}
               </div>
             </div>
           </div>

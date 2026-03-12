@@ -1190,7 +1190,7 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
       .input(z.object({ from: z.number(), to: z.number() }))
       .query(async ({ input }) => listCalendarEvents(input.from, input.to)),
 
-    create: protectedProcedure
+     create: protectedProcedure
       .input(z.object({
         title: z.string().min(1),
         description: z.string().optional(),
@@ -1203,16 +1203,19 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
         customerId: z.number().optional(),
         projectId: z.number().optional(),
         googleEventId: z.string().optional(),
+        reminder1Min: z.number().nullable().optional(),
+        reminder2Min: z.number().nullable().optional(),
+        reminder3Min: z.number().nullable().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
         const id = await createCalendarEvent({
           ...input,
           allDay: input.allDay ? 1 : 0,
           createdBy: ctx.user.id,
+          reminderSent: 0,
         });
         return { id };
       }),
-
     update: protectedProcedure
       .input(z.object({
         id: z.number(),
@@ -1227,11 +1230,49 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
         customerId: z.number().optional(),
         projectId: z.number().optional(),
         googleEventId: z.string().optional(),
+        reminder1Min: z.number().nullable().optional(),
+        reminder2Min: z.number().nullable().optional(),
+        reminder3Min: z.number().nullable().optional(),
       }))
       .mutation(async ({ input }) => {
         const { id, allDay, ...rest } = input;
-        await updateCalendarEvent(id, { ...rest, ...(allDay !== undefined ? { allDay: allDay ? 1 : 0 } : {}) });
+        await updateCalendarEvent(id, { ...rest, ...(allDay !== undefined ? { allDay: allDay ? 1 : 0 } : {}), reminderSent: 0 });
         return { success: true };
+      }),
+    checkReminders: protectedProcedure
+      .mutation(async () => {
+        const db = await (await import('./db')).getDb();
+        if (!db) return { notified: 0 };
+        const { calendarEvents: calEventsTable } = await import('../drizzle/schema');
+        const { and, gt, lte, eq, or, isNotNull } = await import('drizzle-orm');
+        const now = Date.now();
+        const lookahead = now + 8 * 24 * 60 * 60 * 1000; // 8 Tage voraus
+        const events = await db.select().from(calEventsTable)
+          .where(and(
+            gt(calEventsTable.startAt, now),
+            lte(calEventsTable.startAt, lookahead),
+            eq(calEventsTable.reminderSent, 0),
+            or(isNotNull(calEventsTable.reminder1Min), isNotNull(calEventsTable.reminder2Min), isNotNull(calEventsTable.reminder3Min))
+          ));
+        const { notifyOwner } = await import('./_core/notification');
+        let notified = 0;
+        for (const ev of events) {
+          const reminders = [ev.reminder1Min, ev.reminder2Min, ev.reminder3Min].filter((r): r is number => r !== null && r !== undefined);
+          for (const minBefore of reminders) {
+            const triggerAt = ev.startAt - minBefore * 60 * 1000;
+            if (triggerAt <= now && triggerAt > now - 5 * 60 * 1000) {
+              const label = minBefore >= 10080 ? '1 Woche' : minBefore >= 1440 ? '1 Tag' : `${minBefore} Minuten`;
+              await notifyOwner({
+                title: `⏰ Erinnerung: ${ev.title}`,
+                content: `Termin beginnt in ${label}: ${ev.title}\n${ev.location ? 'Ort: ' + ev.location : ''}\n${new Date(ev.startAt).toLocaleString('de-DE')}`,
+              });
+              notified++;
+              await db.update(calEventsTable).set({ reminderSent: 1 }).where(eq(calEventsTable.id, ev.id));
+              break;
+            }
+          }
+        }
+        return { notified };
       }),
 
     delete: protectedProcedure

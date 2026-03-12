@@ -321,3 +321,10 @@
 - [x] Frontend: Bearbeiten-Button (Stift-Icon) in ProjectDocCard
 - [x] Frontend: Inline-Edit mit Textarea und Speichern/Abbrechen
 - [x] Tests: Vitest für updateNote-Logik (5 neue Tests, 174 gesamt)
+
+## Phase 39: Kalender Erinnerung + Layout-Fix
+- [x] DB: reminder1, reminder2, reminder3 Felder (Minuten vor dem Termin) zu calendar_events
+- [x] Backend: checkReminders Procedure + notifyOwner bei fälligen Erinnerungen
+- [x] Frontend: Layout-Fix Kunde/Projekt (untereinander statt nebeneinander)
+- [x] Frontend: Erinnerungs-Stufen im Formular (1 Woche / 1 Tag / 1 Stunde / 30 Min)
+- [x] Tests: Vitest 186 gesamt, alle grün

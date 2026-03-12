@@ -43,6 +43,13 @@
       "when": 1773348852926,
       "tag": "0005_magical_onslaught",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1773353864682,
+      "tag": "0006_daily_impossible_man",
+      "breakpoints": true
     }
   ]
 }
