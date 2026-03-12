@@ -16,6 +16,7 @@ import {
   ExternalLink, Bell, StickyNote, Clock, Paperclip, CheckCircle2, Circle,
   AlertCircle, Zap, Upload, FileText, Image, X, Edit2, Save, AlertTriangle,
   ShieldAlert, Receipt, BookOpen, Loader2, Printer, ChevronDown, ChevronUp,
+  Download,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
@@ -291,6 +292,18 @@ export default function ProjectDetail() {
           >
             <Receipt className="h-4 w-4" />
             <span className="hidden sm:inline">Angebot</span>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 text-emerald-400 border-emerald-400/30 hover:bg-emerald-400/10"
+            title="Projekt als ZIP-Backup herunterladen (Notizen als .txt + alle Dokumente als echte Dateien)"
+            onClick={() => {
+              window.location.href = `/api/export/project/${id}`;
+            }}
+          >
+            <Download className="h-4 w-4" />
+            <span className="hidden sm:inline">Backup</span>
           </Button>
         </div>
       </div>

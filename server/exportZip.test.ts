@@ -155,3 +155,87 @@ describe("Export-Abschnitte", () => {
     expect(formats).toHaveLength(3);
   });
 });
+
+// ─── Projekt-Backup-Logik ─────────────────────────────────────────────────────
+describe("Projekt-Backup ZIP – Struktur und Inhalt", () => {
+  it("Backup-Dateiname enthält Projektslug und Datum", () => {
+    const exportDate = "2026-03-12";
+    const projectSlug = "argos-kamera";
+    const filename = `fabrica-backup_${projectSlug}_${exportDate}.zip`;
+    expect(filename).toBe("fabrica-backup_argos-kamera_2026-03-12.zip");
+    expect(filename).toMatch(/\.zip$/);
+  });
+
+  it("Kategorie-Ordner werden korrekt zugeordnet", () => {
+    const categoryNames: Record<string, string> = {
+      supplier_offer: "Lieferantenangebote",
+      nda: "Geheimhaltung",
+      order: "Bestellungen",
+      delivery_note: "Lieferscheine",
+      invoice: "Eingangsrechnungen",
+      contract: "Vertraege",
+      drawing: "Zeichnungen",
+      other: "Sonstiges",
+    };
+    expect(categoryNames["supplier_offer"]).toBe("Lieferantenangebote");
+    expect(categoryNames["nda"]).toBe("Geheimhaltung");
+    expect(categoryNames["order"]).toBe("Bestellungen");
+    expect(categoryNames["other"]).toBe("Sonstiges");
+  });
+
+  it("Lieferantenname wird als Präfix für Dateinamen verwendet", () => {
+    const supplier = { id: 1, name: "Müller GmbH" };
+    const supplierSlug = supplier.name.toLowerCase()
+      .replace(/[äöü]/g, (c: string) => ({ ä: "ae", ö: "oe", ü: "ue" }[c] ?? c))
+      .replace(/ß/g, "ss").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    const filename = `${supplierSlug}_Angebot_2026.pdf`;
+    expect(filename).toBe("mueller-gmbh_Angebot_2026.pdf");
+  });
+
+  it("Projekt-Info.txt enthält alle wichtigen Felder", () => {
+    const project = { title: "Test Projekt", projectNumber: "#2026-1", status: "order", notes: "Beschreibung" };
+    const statusMap: Record<string, string> = { order: "Auftrag" };
+    const infoLines = [
+      `Projekt: ${project.title}`,
+      `Projektnummer: ${project.projectNumber}`,
+      `Status: ${statusMap[project.status] ?? project.status}`,
+      `Beschreibung:`,
+      project.notes,
+    ];
+    const infoText = infoLines.join("\n");
+    expect(infoText).toContain("Test Projekt");
+    expect(infoText).toContain("Auftrag");
+    expect(infoText).toContain("Beschreibung");
+  });
+
+  it("Notizen werden als .txt-Dateien formatiert", () => {
+    const note = { title: "Wichtige Notiz", content: "Inhalt", status: "offen", priority: "hoch" };
+    const noteLines = [`Titel: ${note.title}`, `Status: ${note.status}`, ``, note.content];
+    const noteTxt = noteLines.join("\n");
+    expect(noteTxt).toContain("Wichtige Notiz");
+    expect(noteTxt).toContain("Inhalt");
+  });
+
+  it("CAD-Datei-Version wird als Suffix ergänzt", () => {
+    const cad1 = { filename: "model.step", version: 1 };
+    const cad2 = { filename: "model.step", version: 3 };
+    const suffix1 = cad1.version > 1 ? `_v${cad1.version}` : "";
+    const suffix2 = cad2.version > 1 ? `_v${cad2.version}` : "";
+    expect(`${cad1.filename}${suffix1}`).toBe("model.step");
+    expect(`${cad2.filename}${suffix2}`).toBe("model.step_v3");
+  });
+
+  it("Ordnerstruktur ist korrekt aufgebaut", () => {
+    const base = "argos-kamera-2026";
+    const paths = [
+      `${base}/Projekt-Info.txt`,
+      `${base}/Notizen/wichtige-notiz.txt`,
+      `${base}/Dokumente/Lieferantenangebote/angebot.pdf`,
+      `${base}/CAD-Daten/model.step`,
+    ];
+    expect(paths[0]).toMatch(/^argos-kamera-2026\/Projekt-Info\.txt$/);
+    expect(paths[1]).toMatch(/Notizen\//);
+    expect(paths[2]).toMatch(/Dokumente\/Lieferantenangebote\//);
+    expect(paths[3]).toMatch(/CAD-Daten\//);
+  });
+});

@@ -5,6 +5,7 @@
 
 import type { Express, Request, Response } from "express";
 import archiver from "archiver";
+import axios from "axios";
 import { getFullExport } from "./db";
 
 // ─── Typen ────────────────────────────────────────────────────────────────────
@@ -472,6 +473,166 @@ export function registerExportRoutes(app: Express): void {
       console.error("[export/zip] Fehler:", err);
       if (!res.headersSent) {
         res.status(500).json({ error: "Export fehlgeschlagen" });
+      }
+    }
+  });
+
+  // ─── Projekt-Backup-Route ────────────────────────────────────────────────────
+  // GET /api/export/project/:id  → ZIP mit Notizen als .txt + alle Dokumente als echte Dateien
+  app.get("/api/export/project/:id", async (req: Request, res: Response) => {
+    try {
+      const projectId = parseInt(req.params.id, 10);
+      if (isNaN(projectId)) {
+        res.status(400).json({ error: "Ungültige Projekt-ID" });
+        return;
+      }
+
+      const { getDb } = await import("./db");
+      const db = await getDb();
+      if (!db) {
+        res.status(500).json({ error: "Keine Datenbankverbindung" });
+        return;
+      }
+
+      const {
+        projects: projectsTable,
+        notes: notesTable,
+        quickNotes: quickNotesTable,
+        projectDocuments: projectDocumentsTable,
+        cadFiles: cadFilesTable,
+        suppliers: suppliersTable,
+      } = await import("../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+
+      // Projektdaten laden
+      const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
+      if (!project) {
+        res.status(404).json({ error: "Projekt nicht gefunden" });
+        return;
+      }
+
+      // Notizen, Dokumente, CAD-Dateien laden
+      const notes = await db.select().from(notesTable).where(eq(notesTable.projectId, projectId));
+      const quickNotes = await db.select().from(quickNotesTable).where(eq(quickNotesTable.projectId, projectId));
+      const documents = await db.select().from(projectDocumentsTable).where(eq(projectDocumentsTable.projectId, projectId));
+      const cadFiles = await db.select().from(cadFilesTable).where(eq(cadFilesTable.projectId, projectId));
+      const allSuppliers = await db.select().from(suppliersTable);
+
+      const exportDate = new Date().toISOString().slice(0, 10);
+      const projectSlug = slugify(project.title ?? `projekt-${projectId}`);
+      const filename = `fabrica-backup_${projectSlug}_${exportDate}.zip`;
+
+      res.setHeader("Content-Type", "application/zip");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+
+      const archive = archiver("zip", { zlib: { level: 6 } });
+      archive.on("error", (err) => { throw err; });
+      archive.pipe(res);
+
+      const base = projectSlug;
+
+      // ── Projekt-Info.txt ──────────────────────────────────────────────────────
+      const statusMap: Record<string, string> = {
+        inquiry: "Anfrage", calculation: "Kalkulation", offer: "Angebot",
+        order: "Auftrag", production: "Produktion", shipping: "Versand",
+        completed: "Abgeschlossen", cancelled: "Storniert",
+      };
+      const infoLines = [
+        `Projekt: ${project.title ?? ""}`,
+        `Projektnummer: ${project.projectNumber ?? ""}`,
+        `Status: ${statusMap[project.status] ?? project.status ?? ""}`,
+        `Fälligkeitsdatum: ${project.deadline ? formatDate(project.deadline) : ""}`,
+        `Erstellt: ${formatDate(project.createdAt)}`,
+        ``,
+        `Beschreibung:`,
+        project.notes ?? "(keine)",
+        ``,
+        `Interne Notizen:`,
+        project.internalNotes ?? "(keine)",
+        ``,
+        `EK gesamt: ${formatCurrency(project.totalEk)}`,
+        `VK gesamt: ${formatCurrency(project.totalVk)}`,
+        `Marge: ${formatCurrency(project.totalMargin)}`,
+        ``,
+        `Exportiert am: ${new Date().toLocaleString("de-DE")}`,
+        `Erstellt mit Fabrica ERP`,
+      ];
+      archive.append(infoLines.join("\n"), { name: `${base}/Projekt-Info.txt` });
+
+      // ── Notizen als .txt ──────────────────────────────────────────────────────
+      for (const note of notes) {
+        const noteSlug = slugify(note.title ?? "notiz");
+        const noteLines = [
+          `Titel: ${note.title ?? ""}`,
+          `Status: ${note.status ?? ""}`,
+          `Priorität: ${note.priority ?? ""}`,
+          `Erstellt: ${formatDate(note.createdAt)}`,
+          ``,
+          note.content ?? "",
+        ];
+        archive.append(noteLines.join("\n"), { name: `${base}/Notizen/${noteSlug}.txt` });
+      }
+
+      // Schnellnotizen als eine Datei
+      if (quickNotes.length > 0) {
+        const qnLines: string[] = [`Schnellnotizen für Projekt: ${project.title}`, ``];
+        for (const qn of quickNotes) {
+          qnLines.push(`[${formatDate(qn.createdAt)}] ${qn.source ?? ""}`);
+          qnLines.push(qn.text ?? "");
+          qnLines.push(``);
+        }
+        archive.append(qnLines.join("\n"), { name: `${base}/Notizen/schnellnotizen.txt` });
+      }
+
+      // ── Dokumente als echte Dateien ───────────────────────────────────────────
+      const categoryNames: Record<string, string> = {
+        supplier_offer: "Lieferantenangebote",
+        nda: "Geheimhaltung",
+        order: "Bestellungen",
+        delivery_note: "Lieferscheine",
+        invoice: "Eingangsrechnungen",
+        contract: "Vertraege",
+        drawing: "Zeichnungen",
+        other: "Sonstiges",
+      };
+
+      for (const doc of documents) {
+        try {
+          const supplier = doc.supplierId ? allSuppliers.find((s: any) => s.id === doc.supplierId) : null;
+          const supplierPrefix = supplier ? `${slugify((supplier as any).name)}_` : "";
+          const catFolder = categoryNames[doc.category] ?? "Sonstiges";
+          const safeName = `${supplierPrefix}${doc.filename}`;
+          const resp = await axios.get(doc.fileUrl, { responseType: "arraybuffer", timeout: 30000 });
+          archive.append(Buffer.from(resp.data), { name: `${base}/Dokumente/${catFolder}/${safeName}` });
+        } catch (dlErr) {
+          // Wenn Download fehlschlägt: Platzhalter-TXT
+          archive.append(
+            `Datei konnte nicht heruntergeladen werden.\nURL: ${doc.fileUrl}\nFehler: ${String(dlErr)}`,
+            { name: `${base}/Dokumente/${doc.filename}.FEHLER.txt` }
+          );
+        }
+      }
+
+      // ── CAD-Dateien als echte Dateien ─────────────────────────────────────────
+      for (const cad of cadFiles) {
+        try {
+          const resp = await axios.get(cad.fileUrl, { responseType: "arraybuffer", timeout: 30000 });
+          const versionSuffix = cad.version && cad.version > 1 ? `_v${cad.version}` : "";
+          const safeName = cad.filename.replace(/[/\\]/g, "_");
+          archive.append(Buffer.from(resp.data), { name: `${base}/CAD-Daten/${safeName}${versionSuffix}` });
+        } catch (dlErr) {
+          archive.append(
+            `Datei konnte nicht heruntergeladen werden.\nURL: ${cad.fileUrl}\nFehler: ${String(dlErr)}`,
+            { name: `${base}/CAD-Daten/${cad.filename}.FEHLER.txt` }
+          );
+        }
+      }
+
+      await archive.finalize();
+    } catch (err) {
+      console.error("[export/project] Fehler:", err);
+      if (!res.headersSent) {
+        res.status(500).json({ error: "Projekt-Export fehlgeschlagen" });
       }
     }
   });
