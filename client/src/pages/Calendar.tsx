@@ -139,6 +139,7 @@ export default function Calendar() {
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [form, setForm] = useState(emptyForm());
   const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSync, setLastSync] = useState<string | null>(null);
 
   // Zeitbereich für die Abfrage
   const { from, to } = useMemo(() => {
@@ -223,23 +224,23 @@ export default function Calendar() {
     else createMut.mutate(payload);
   }
 
-  // Google Calendar Sync (liest Events und importiert sie)
-  async function syncGoogleCalendar() {
-    setIsSyncing(true);
-    try {
-      const timeMin = new Date(currentYear, currentMonth, 1).toISOString();
-      const timeMax = new Date(currentYear, currentMonth + 1, 0, 23, 59, 59).toISOString();
-      const response = await fetch('/api/trpc/calendar.syncFromGoogle', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ json: { from: timeMin, to: timeMax } }),
-      });
-      toast.info('Google Calendar Sync: Bitte verbinde Google Calendar in den Einstellungen');
-    } catch {
-      toast.error('Google Calendar Sync fehlgeschlagen');
-    } finally {
+  const syncMut = trpc.calendar.syncFromGoogle.useMutation({
+    onSuccess: (data) => {
+      utils.calendar.list.invalidate();
+      setLastSync(new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }));
+      toast.success(`✅ Google Sync: ${data.message}`);
       setIsSyncing(false);
-    }
+    },
+    onError: (e) => {
+      toast.error(`Google Sync Fehler: ${e.message}`);
+      setIsSyncing(false);
+    },
+  });
+
+  // Google Calendar Sync
+  function syncGoogleCalendar() {
+    setIsSyncing(true);
+    syncMut.mutate({});
   }
 
   const isToday = (date: Date) => isSameDay(date, today);
@@ -257,9 +258,10 @@ export default function Calendar() {
             </Badge>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={syncGoogleCalendar} disabled={isSyncing}>
-              {isSyncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-              <span className="ml-1.5 hidden sm:inline">Google Sync</span>
+            <Button variant="outline" size="sm" onClick={syncGoogleCalendar} disabled={isSyncing}
+              title={lastSync ? `Zuletzt synchronisiert: ${lastSync}` : 'Google Calendar synchronisieren'}>
+              {isSyncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4 text-green-500" />}
+              <span className="ml-1.5 hidden sm:inline">{lastSync ? `Sync (${lastSync})` : 'Google Sync'}</span>
             </Button>
             <div className="flex items-center border border-border rounded-md overflow-hidden">
               <Button

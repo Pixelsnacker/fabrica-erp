@@ -1242,10 +1242,106 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
       }),
 
     syncFromGoogle: protectedProcedure
-      .input(z.object({ from: z.string(), to: z.string() }))
+      .input(z.object({ from: z.string().optional(), to: z.string().optional() }))
+      .mutation(async ({ ctx }) => {
+        const { execSync } = await import('child_process');
+        const now = new Date();
+        const timeMin = new Date(now.getTime() - 7 * 24 * 3600000).toISOString();
+        const timeMax = new Date(now.getTime() + 60 * 24 * 3600000).toISOString();
+        // MCP Google Calendar abfragen
+        let googleEvents: any[] = [];
+        try {
+          const result = execSync(
+            `manus-mcp-cli tool call google_calendar_search_events --server google-calendar --input '${JSON.stringify({ calendar_id: 'primary', time_min: timeMin, time_max: timeMax, max_results: 100 })}'`,
+            { encoding: 'utf8', timeout: 30000 }
+          );
+          // Parse MCP result
+          const lines = result.split('\n');
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+              try { googleEvents = JSON.parse(trimmed); break; } catch {}
+            }
+          }
+          // Try to find JSON array in output
+          const jsonMatch = result.match(/\[\s*\{[\s\S]*\}\s*\]/);
+          if (jsonMatch && googleEvents.length === 0) {
+            try { googleEvents = JSON.parse(jsonMatch[0]); } catch {}
+          }
+        } catch (e: any) {
+          throw new Error('Google Calendar MCP Fehler: ' + e.message);
+        }
+        if (!Array.isArray(googleEvents)) googleEvents = [];
+        // Bestehende Google-Events im ERP holen
+        const db = await (await import('./db')).getDb();
+        if (!db) return { synced: 0, updated: 0, message: 'DB nicht verfügbar' };
+        const { calendarEvents: calEventsTable } = await import('../drizzle/schema');
+        const { eq } = await import('drizzle-orm');
+        const existing = await db.select({ id: calEventsTable.id, googleEventId: calEventsTable.googleEventId })
+          .from(calEventsTable)
+          .where(eq(calEventsTable.createdBy, ctx.user.id));
+        const existingMap = new Map(
+          existing
+            .filter((e): e is { id: number; googleEventId: string } => !!e.googleEventId)
+            .map(e => [e.googleEventId, e.id] as [string, number])
+        );
+        let synced = 0, updated = 0;
+        for (const ev of googleEvents) {
+          if (!ev.id || !ev.summary) continue;
+          const startAt: number | null = ev.start?.dateTime ? new Date(ev.start.dateTime).getTime()
+            : ev.start?.date ? new Date(ev.start.date).getTime() : null;
+          const endAt: number | null = ev.end?.dateTime ? new Date(ev.end.dateTime).getTime()
+            : ev.end?.date ? new Date(ev.end.date).getTime() : null;
+          if (!startAt || !endAt) continue;
+          const allDay = !ev.start?.dateTime ? 1 : 0;
+          const data = {
+            title: ev.summary as string,
+            description: (ev.description as string) || null,
+            startAt,
+            endAt,
+            allDay,
+            location: (ev.location as string) || null,
+            googleEventId: ev.id as string,
+            category: 'other' as const,
+            color: '#10b981',
+            createdBy: ctx.user.id,
+          };
+          if (existingMap.has(ev.id as string)) {
+            const existingId = existingMap.get(ev.id as string)!;
+            await updateCalendarEvent(existingId, data);
+            updated++;
+          } else {
+            await createCalendarEvent({ ...data, createdAt: Date.now(), updatedAt: Date.now() });
+            synced++;
+          }
+        }
+        return { synced, updated, total: googleEvents.length, message: `${synced} neu importiert, ${updated} aktualisiert` };
+      }),
+    syncToGoogle: protectedProcedure
+      .input(z.object({ eventId: z.number() }))
       .mutation(async ({ input }) => {
-        // Wird vom Frontend via MCP aufgerufen und gibt Events zurück
-        return { synced: 0, message: 'Google Calendar Sync über MCP verfügbar' };
+        const { execSync } = await import('child_process');
+        const ev = await getCalendarEvent(input.eventId);
+        if (!ev) throw new Error('Termin nicht gefunden');
+        const startIso = new Date(ev.startAt).toISOString();
+        const endIso = new Date(ev.endAt).toISOString();
+        const payload = {
+          calendar_id: 'primary',
+          summary: ev.title,
+          description: ev.description || '',
+          start_time: startIso,
+          end_time: endIso,
+          location: ev.location || '',
+        };
+        try {
+          execSync(
+            `manus-mcp-cli tool call google_calendar_create_events --server google-calendar --input '${JSON.stringify(payload)}'`,
+            { encoding: 'utf8', timeout: 30000 }
+          );
+        } catch (e: any) {
+          throw new Error('Google Calendar Export Fehler: ' + e.message);
+        }
+        return { success: true };
       }),
   }),
   // ─── Data Export ────────────────────────────────────────────────────────────────────────────────────
