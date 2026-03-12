@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -178,6 +179,7 @@ function SupplierDialog({
 }
 
 export default function Suppliers() {
+  const [, setLocation] = useLocation();
   const [search, setSearch] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
@@ -296,7 +298,11 @@ export default function Suppliers() {
             return (
               <div
                 key={supplier.id}
-                className="flex items-start gap-4 p-4 rounded-lg bg-card border border-border hover:border-primary/50 transition-all group"
+                className="flex items-start gap-4 p-4 rounded-lg bg-card border border-border hover:border-primary/50 transition-all group cursor-pointer"
+                onClick={(e) => {
+                  if ((e.target as HTMLElement).closest('button, a')) return;
+                  setLocation(`/suppliers/${supplier.id}`);
+                }}
               >
                 {/* Avatar */}
                 <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-0.5">

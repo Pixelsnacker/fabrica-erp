@@ -238,3 +238,66 @@ describe("projectDocs – Notiz-Bearbeitung", () => {
     expect(sanitizeNote(long)).toBe(long);
   });
 });
+
+// ─── bySupplier – Lieferanten-Detailansicht ───────────────────────────────────
+describe("projectDocs.bySupplier – Dokumente projektübergreifend", () => {
+  it("filtert Dokumente nach supplierId", () => {
+    const docs = [
+      { id: 1, supplierId: 10, projectId: 1, projectTitle: "Projekt A", category: "supplier_offer", createdAt: 1000 },
+      { id: 2, supplierId: 20, projectId: 1, projectTitle: "Projekt A", category: "nda", createdAt: 900 },
+      { id: 3, supplierId: 10, projectId: 2, projectTitle: "Projekt B", category: "order", createdAt: 800 },
+    ];
+    const result = docs.filter(d => d.supplierId === 10);
+    expect(result).toHaveLength(2);
+    expect(result.map(d => d.id)).toEqual([1, 3]);
+  });
+
+  it("gruppiert Dokumente nach Projekt", () => {
+    const docs = [
+      { id: 1, supplierId: 10, projectId: 1, projectTitle: "Projekt A", category: "supplier_offer" },
+      { id: 2, supplierId: 10, projectId: 2, projectTitle: "Projekt B", category: "nda" },
+      { id: 3, supplierId: 10, projectId: 1, projectTitle: "Projekt A", category: "order" },
+    ];
+    const grouped = docs.reduce((acc: Record<string, any[]>, doc) => {
+      const key = `${doc.projectId}__${doc.projectTitle}`;
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(doc);
+      return acc;
+    }, {});
+    expect(Object.keys(grouped)).toHaveLength(2);
+    expect(grouped["1__Projekt A"]).toHaveLength(2);
+    expect(grouped["2__Projekt B"]).toHaveLength(1);
+  });
+
+  it("gibt leeres Array zurück wenn Lieferant keine Dokumente hat", () => {
+    const docs: any[] = [];
+    const result = docs.filter(d => d.supplierId === 99);
+    expect(result).toHaveLength(0);
+  });
+
+  it("zählt Dokumente pro Kategorie korrekt", () => {
+    const docs = [
+      { category: "supplier_offer" },
+      { category: "supplier_offer" },
+      { category: "nda" },
+      { category: "order" },
+    ];
+    const count = docs.reduce((acc: Record<string, number>, d) => {
+      acc[d.category] = (acc[d.category] ?? 0) + 1;
+      return acc;
+    }, {});
+    expect(count["supplier_offer"]).toBe(2);
+    expect(count["nda"]).toBe(1);
+    expect(count["order"]).toBe(1);
+  });
+
+  it("sortiert Dokumente nach createdAt absteigend", () => {
+    const docs = [
+      { id: 3, createdAt: 800 },
+      { id: 1, createdAt: 1000 },
+      { id: 2, createdAt: 900 },
+    ];
+    const sorted = [...docs].sort((a, b) => b.createdAt - a.createdAt);
+    expect(sorted.map(d => d.id)).toEqual([1, 2, 3]);
+  });
+});

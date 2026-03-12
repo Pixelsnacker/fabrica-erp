@@ -9,7 +9,8 @@ import Dashboard from "./pages/Dashboard";
 import Projects from "./pages/Projects";
 import ProjectDetail from "./pages/ProjectDetail";
 import Customers from "./pages/Customers";
-import Suppliers from "./pages/Suppliers";
+import Suppliers from './pages/Suppliers';
+import SupplierDetail from './pages/SupplierDetail';
 import KnowledgeBase from "./pages/KnowledgeBase";
 import ImageLibrary from "./pages/ImageLibrary";
 import AIAssistant from "./pages/AIAssistant";
@@ -31,6 +32,7 @@ function Router() {
         <Route path="/projects/:id" component={ProjectDetail} />
         <Route path="/customers" component={Customers} />
         <Route path="/suppliers" component={Suppliers} />
+        <Route path="/suppliers/:id" component={SupplierDetail} />
         <Route path="/knowledge" component={KnowledgeBase} />
         <Route path="/images" component={ImageLibrary} />
         <Route path="/ai" component={AIAssistant} />

@@ -1296,6 +1296,34 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
           .where(eq(projectDocuments.id, input.id));
         return { success: true };
       }),
+    bySupplier: protectedProcedure
+      .input(z.object({ supplierId: z.number() }))
+      .query(async ({ input }) => {
+        const db = await (await import('./db')).getDb();
+        if (!db) return [];
+        const { projectDocuments, projects } = await import('../drizzle/schema');
+        const { eq, desc } = await import('drizzle-orm');
+        const rows = await db
+          .select({
+            id: projectDocuments.id,
+            projectId: projectDocuments.projectId,
+            projectTitle: projects.title,
+            category: projectDocuments.category,
+            filename: projectDocuments.filename,
+            fileUrl: projectDocuments.fileUrl,
+            fileKey: projectDocuments.fileKey,
+            fileSize: projectDocuments.fileSize,
+            mimeType: projectDocuments.mimeType,
+            notes: projectDocuments.notes,
+            uploadedBy: projectDocuments.uploadedBy,
+            createdAt: projectDocuments.createdAt,
+          })
+          .from(projectDocuments)
+          .innerJoin(projects, eq(projectDocuments.projectId, projects.id))
+          .where(eq(projectDocuments.supplierId, input.supplierId))
+          .orderBy(desc(projectDocuments.createdAt));
+        return rows;
+      }),
   }),
 });
 export type AppRouter = typeof appRouter;
