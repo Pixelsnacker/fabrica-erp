@@ -345,3 +345,12 @@
 ## Phase 38: Kalender-Bugfixes
 - [x] Bug: Google Calendar Sync schlägt fehl — Fix: MCP-Ergebnis aus JSON-Datei lesen statt stdout
 - [x] Bug: Woche/Monat-Umschaltung — Fix: Wochenansicht vollständig implementiert (getWeekDays, weekAnchor, Wochenspalten-Grid)
+
+## Phase 39: Google Calendar Sync Fix (v2)
+- [ ] Bug: Google Sync schlägt weiterhin fehl — tiefere Diagnose und robuste Lösung
+
+## Phase 40: Materialbibliothek – Bearbeiten & Löschen
+- [x] Backend: updateMaterial-Procedure (PUT) — bereits vorhanden
+- [x] Backend: deleteMaterial-Procedure (DELETE) — bereits vorhanden
+- [x] Frontend: Bearbeiten-Button (Stift-Icon) + Edit-Dialog auf jeder Material-Karte
+- [x] Frontend: Löschen-Button mit Bestätigungs-Dialog
