@@ -231,6 +231,33 @@ function DashboardLayoutContent({
   const sidebarRef = useRef<HTMLDivElement>(null);
   const activeMenuItem = menuItems.find(item => item.path === location);
   const isMobile = useIsMobile();
+  const utils = trpc.useUtils();
+  const markReminderSent = trpc.quickNotes.markReminderSent.useMutation();
+
+  // Erinnerungs-Polling: alle 60s fällige Kurznotiz-Erinnerungen prüfen
+  useEffect(() => {
+    if (!user) return;
+    const checkReminders = async () => {
+      try {
+        const due = await utils.quickNotes.dueReminders.fetch();
+        if (due && due.length > 0) {
+          for (const note of due) {
+            const label = (note as any).remindLabel || (note as any).text?.slice(0, 60);
+            toast(`⏰ Erinnerung: ${label}`, {
+              description: (note as any).text?.length > 60 ? (note as any).text.slice(0, 120) + "..." : undefined,
+              duration: 12000,
+              action: { label: "OK", onClick: () => markReminderSent.mutate({ id: (note as any).id }) },
+            });
+            markReminderSent.mutate({ id: (note as any).id });
+          }
+          utils.quickNotes.list.invalidate();
+        }
+      } catch {}
+    };
+    checkReminders();
+    const interval = setInterval(checkReminders, 60000);
+    return () => clearInterval(interval);
+  }, [user]);
 
   useEffect(() => {
     if (isCollapsed) {

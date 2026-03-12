@@ -20,7 +20,7 @@ import {
   getImageLibrary, createImageEntry, deleteImageEntry,
   getAiSessions, createAiSession, updateAiSession,
   getDashboardStats,
-  getQuickNotes, createQuickNote, deleteQuickNote,
+  getQuickNotes, createQuickNote, deleteQuickNote, updateQuickNote, getDueQuickNoteReminders, markQuickNoteReminderSent,
   getFullExport,
   getNotes, getNoteById, createNote, updateNote, deleteNote,
   getNoteAttachments, addNoteAttachment, deleteNoteAttachment,
@@ -688,8 +688,23 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
       await createQuickNote(input);
       return { success: true };
     }),
+    update: protectedProcedure.input(z.object({
+      id: z.number(),
+      text: z.string().min(1).optional(),
+      remindAt: z.string().nullable().optional(),
+      remindLabel: z.string().nullable().optional(),
+    })).mutation(async ({ input }) => {
+      const { id, ...data } = input;
+      await updateQuickNote(id, data);
+      return { success: true };
+    }),
     delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
       await deleteQuickNote(input.id);
+      return { success: true };
+    }),
+    dueReminders: protectedProcedure.query(async () => getDueQuickNoteReminders()),
+    markReminderSent: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
+      await markQuickNoteReminderSent(input.id);
       return { success: true };
     }),
   }),

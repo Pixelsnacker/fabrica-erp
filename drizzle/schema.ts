@@ -198,6 +198,10 @@ export const quickNotes = mysqlTable("quick_notes", {
 	projectId: int("project_id").references(() => projects.id, { onDelete: "set null" } ),
 	source: mysqlEnum(['whatsapp','telefon','persoenlich','email','sonstiges']).default('sonstiges'),
 	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP'),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow(),
+	remindAt: timestamp("remind_at", { mode: 'string' }),
+	remindLabel: varchar("remind_label", { length: 255 }),
+	remindSent: tinyint("remind_sent").default(0),
 });
 
 export const rfqResponses = mysqlTable("rfq_responses", {

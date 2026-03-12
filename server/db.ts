@@ -533,6 +533,29 @@ export async function deleteQuickNote(id: number) {
   if (!db) throw new Error("DB not available");
   await db.delete(quickNotes).where(eq(quickNotes.id, id));
 }
+export async function updateQuickNote(id: number, data: { text?: string; remindAt?: string | null; remindLabel?: string | null }) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const update: Record<string, any> = {};
+  if (data.text !== undefined) update.text = data.text;
+  if (data.remindAt !== undefined) update.remindAt = data.remindAt;
+  if (data.remindLabel !== undefined) update.remindLabel = data.remindLabel;
+  await db.update(quickNotes).set(update).where(eq(quickNotes.id, id));
+}
+export async function getDueQuickNoteReminders() {
+  const db = await getDb();
+  if (!db) return [];
+  const { lte, isNotNull, and } = await import('drizzle-orm');
+  const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
+  return db.select().from(quickNotes)
+    .where(and(isNotNull(quickNotes.remindAt), lte(quickNotes.remindAt, now)))
+    .orderBy(quickNotes.remindAt);
+}
+export async function markQuickNoteReminderSent(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(quickNotes).set({ remindSent: 1, remindAt: null }).where(eq(quickNotes.id, id));
+}
 
 // ─── Full Data Export ─────────────────────────────────────────────────────────
 export async function getFullExport() {

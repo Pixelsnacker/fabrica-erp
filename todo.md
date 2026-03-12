@@ -354,3 +354,18 @@
 - [x] Backend: deleteMaterial-Procedure (DELETE) — bereits vorhanden
 - [x] Frontend: Bearbeiten-Button (Stift-Icon) + Edit-Dialog auf jeder Material-Karte
 - [x] Frontend: Löschen-Button mit Bestätigungs-Dialog
+
+## Phase 41: Kurznotizen – Bearbeiten & Erinnerung
+- [ ] DB-Schema: remindAt-Feld (bigint, nullable) zu notes-Tabelle hinzufügen
+- [ ] Backend: updateNote-Procedure implementieren
+- [ ] Backend: getDueReminders-Procedure (Notizen mit fälliger Erinnerung)
+- [ ] Frontend: Bearbeiten-Button + vorausgefüllter Edit-Dialog
+- [ ] Frontend: Erinnerungs-Datum/Uhrzeit-Picker im Notiz-Dialog
+- [ ] Frontend: Erinnerungs-Banner/Toast bei fälligen Notizen (Polling alle 60s)
+
+## Phase 41: Kurznotizen – Bearbeiten + Erinnerung
+- [x] DB-Schema: remindAt, remindLabel, remindSent, updatedAt Felder in quick_notes
+- [x] Backend: updateQuickNote, getDueQuickNoteReminders, markQuickNoteReminderSent in db.ts
+- [x] Backend: update, dueReminders, markReminderSent Procedures in routers.ts
+- [x] Frontend Settings.tsx: Bearbeiten-Button (Stift-Icon) + EditQuickNoteDialog mit Datum/Uhrzeit-Picker
+- [x] Frontend DashboardLayout.tsx: Erinnerungs-Polling alle 60s, Toast mit OK-Button

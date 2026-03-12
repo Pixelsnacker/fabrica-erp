@@ -11,10 +11,84 @@ import { Separator } from "@/components/ui/separator";
 import { trpc } from "@/lib/trpc";
 import {
   Download, Trash2, MessageCircle, Phone, UserCheck, Mail, MoreHorizontal,
-  Zap, Database, Shield, Building2, Upload, X, Loader2, FileText, Table2, Code2, CheckSquare, Square, FolderOpen, FileJson
+  Zap, Database, Shield, Building2, Upload, X, Loader2, FileText, Table2, Code2, CheckSquare, Square, FolderOpen, FileJson,
+  Pencil, Bell
 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { useState, useEffect, useRef } from "react";
+
+type QuickNoteForEdit = { id: number; text: string; remindAt?: string | null; remindLabel?: string | null };
+
+function EditQuickNoteDialog({ note, onClose }: { note: QuickNoteForEdit | null; onClose: () => void }) {
+  const utils = trpc.useUtils();
+  const [text, setText] = useState("");
+  const [remindAt, setRemindAt] = useState("");
+  const [remindLabel, setRemindLabel] = useState("");
+
+  useEffect(() => {
+    if (note) {
+      setText(note.text);
+      setRemindLabel(note.remindLabel ?? "");
+      if (note.remindAt) {
+        const d = new Date(note.remindAt);
+        const pad = (n: number) => String(n).padStart(2, "0");
+        setRemindAt(`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`);
+      } else {
+        setRemindAt("");
+      }
+    }
+  }, [note]);
+
+  const updateMutation = trpc.quickNotes.update.useMutation({
+    onSuccess: () => { utils.quickNotes.list.invalidate(); toast.success("Notiz aktualisiert"); onClose(); },
+    onError: (e) => toast.error("Fehler: " + e.message),
+  });
+
+  return (
+    <Dialog open={!!note} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Pencil className="h-4 w-4" /> Schnellnotiz bearbeiten
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label>Notiztext</Label>
+            <Textarea value={text} onChange={(e) => setText(e.target.value)} rows={4} className="resize-none" />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="flex items-center gap-1.5">
+              <Bell className="h-3.5 w-3.5 text-yellow-400" /> Erinnerung (optional)
+            </Label>
+            <input
+              type="datetime-local"
+              value={remindAt}
+              onChange={(e) => setRemindAt(e.target.value)}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          </div>
+          {remindAt && (
+            <div className="space-y-1.5">
+              <Label>Erinnerungstext (optional)</Label>
+              <Input placeholder="z.B. Angebot nachfassen" value={remindLabel} onChange={(e) => setRemindLabel(e.target.value)} />
+            </div>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Abbrechen</Button>
+          <Button
+            onClick={() => note && updateMutation.mutate({ id: note.id, text: text.trim(), remindAt: remindAt ? new Date(remindAt).toISOString() : null, remindLabel: remindLabel.trim() || null })}
+            disabled={!text.trim() || updateMutation.isPending}
+          >
+            {updateMutation.isPending ? "Speichern..." : "Speichern"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 const SOURCE_ICONS: Record<string, React.ElementType> = {
   whatsapp: MessageCircle,
@@ -78,6 +152,7 @@ export default function Settings() {
 
   const { data: companyData, isLoading: isLoadingCompany } = trpc.companySettings.get.useQuery();
   const { data: quickNotesList, isLoading } = trpc.quickNotes.list.useQuery();
+  const [editNote, setEditNote] = useState<QuickNoteForEdit | null>(null);
   const utils = trpc.useUtils();
 
   const updateCompany = trpc.companySettings.update.useMutation({
@@ -667,9 +742,20 @@ export default function Settings() {
                               </span>
                             </div>
                           </div>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => deleteNote.mutate({ id: note.id })}>
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                            {note.remindAt && (
+                              <span className="text-xs text-yellow-400 flex items-center gap-0.5 mr-1">
+                                <Bell className="h-3 w-3" />
+                                {new Date(note.remindAt).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                              </span>
+                            )}
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => setEditNote(note)}>
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => deleteNote.mutate({ id: note.id })}>
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
                         </div>
                       );
                     })}
@@ -680,6 +766,7 @@ export default function Settings() {
           </TabsContent>
         </Tabs>
       </div>
+      <EditQuickNoteDialog note={editNote} onClose={() => setEditNote(null)} />
     </DashboardLayout>
   );
 }

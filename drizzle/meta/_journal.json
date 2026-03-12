@@ -50,6 +50,13 @@
       "when": 1773353864682,
       "tag": "0006_daily_impossible_man",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1773357318646,
+      "tag": "0007_chemical_newton_destine",
+      "breakpoints": true
     }
   ]
 }
