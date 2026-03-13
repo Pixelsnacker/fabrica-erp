@@ -499,6 +499,7 @@ export const projectDocuments = mysqlTable("project_documents", {
     "invoice",          // Eingangsrechnung
     "contract",         // Vertrag
     "drawing",          // Zeichnung / Technische Unterlagen
+    "cad_data",         // CAD Daten
     "other",            // Sonstiges
   ]).default("other").notNull(),
   filename: varchar("filename", { length: 512 }).notNull(),

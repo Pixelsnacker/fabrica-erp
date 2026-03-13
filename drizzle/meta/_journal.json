@@ -57,6 +57,13 @@
       "when": 1773357318646,
       "tag": "0007_chemical_newton_destine",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1773399027703,
+      "tag": "0008_lyrical_naoko",
+      "breakpoints": true
     }
   ]
 }

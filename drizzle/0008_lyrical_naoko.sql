@@ -1,0 +1,1 @@
+ALTER TABLE `project_documents` MODIFY COLUMN `category` enum('supplier_offer','nda','order','delivery_note','invoice','contract','drawing','cad_data','other') NOT NULL DEFAULT 'other';

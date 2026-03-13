@@ -1476,6 +1476,22 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
           .where(eq(projectDocuments.id, input.id));
         return { success: true };
       }),
+
+    updateCategory: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        category: z.enum(['supplier_offer','nda','order','delivery_note','invoice','contract','drawing','cad_data','other']),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await (await import('./db')).getDb();
+        if (!db) throw new Error('DB nicht verfügbar');
+        const { projectDocuments } = await import('../drizzle/schema');
+        const { eq } = await import('drizzle-orm');
+        await db.update(projectDocuments)
+          .set({ category: input.category })
+          .where(eq(projectDocuments.id, input.id));
+        return { success: true };
+      }),
     bySupplier: protectedProcedure
       .input(z.object({ supplierId: z.number() }))
       .query(async ({ input }) => {

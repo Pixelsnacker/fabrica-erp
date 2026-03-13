@@ -379,3 +379,7 @@
 
 ## Phase 43: Dokumenttyp CAD Daten
 - [x] Dokumenttyp "CAD Daten" vor "Sonstiges" in der Dropdown-Liste ergänzt (icon: 📐, Farbe: emerald)
+
+## Phase 44: Dokument-Typ nachträglich ändern
+- [x] Backend: updateCategory-Procedure in projectDocs-Router
+- [x] Frontend: Typ-Ändern-Dropdown direkt auf der Dokument-Karte (Inline, Klick auf Typ-Label)

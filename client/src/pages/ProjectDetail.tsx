@@ -1526,10 +1526,16 @@ function ProjectDocCard({ doc, onDelete, supplierName, onNoteUpdated }: {
   const sizeKb = doc.fileSize ? Math.round(doc.fileSize / 1024) : null;
   const [editingNote, setEditingNote] = useState(false);
   const [noteValue, setNoteValue] = useState(doc.notes ?? "");
+  const [editingCategory, setEditingCategory] = useState(false);
 
   const updateNote = trpc.projectDocs.updateNote.useMutation({
     onSuccess: () => { setEditingNote(false); onNoteUpdated(); },
     onError: (e: any) => { import("sonner").then((m: any) => m.toast.error("Fehler: " + e.message)); },
+  });
+
+  const updateCategory = trpc.projectDocs.updateCategory.useMutation({
+    onSuccess: () => { setEditingCategory(false); onNoteUpdated(); toast.success("Dokumenttyp geändert"); },
+    onError: (e: any) => toast.error("Fehler: " + e.message),
   });
 
   return (
@@ -1549,7 +1555,37 @@ function ProjectDocCard({ doc, onDelete, supplierName, onNoteUpdated }: {
           >
             {doc.filename}
           </a>
-          <span className={`text-xs ${cat.color}`}>{cat.label}</span>
+          {/* Dokumenttyp – klickbar zum Ändern */}
+          {editingCategory ? (
+            <Select
+              value={doc.category}
+              onValueChange={(val) => updateCategory.mutate({ id: doc.id, category: val as any })}
+            >
+              <SelectTrigger className="h-6 text-xs w-auto min-w-[160px] border-primary">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(DOC_CATEGORY_LABELS).map(([v, c]) => (
+                  <SelectItem key={v} value={v}>
+                    <span className="flex items-center gap-1.5">{c.icon} {c.label}</span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <button
+              className={`text-xs ${cat.color} hover:underline hover:decoration-dotted cursor-pointer transition-colors`}
+              onClick={() => setEditingCategory(true)}
+              title="Typ ändern"
+            >
+              {cat.label}
+            </button>
+          )}
+          {editingCategory && (
+            <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => setEditingCategory(false)} title="Abbrechen">
+              <X className="h-3 w-3" />
+            </Button>
+          )}
         </div>
         <div className="flex items-center gap-3 mt-0.5 flex-wrap">
           {sizeKb !== null && (
