@@ -489,14 +489,16 @@ export default function Invoices() {
     const renderCol = (text: string) =>
       text.split('\n').map(l => `<span>${l}</span>`).join('<br/>');
     return `
-      <table style="width:100%;border-top:1px solid #ccc;margin-top:32px;padding-top:8px;font-size:9px;color:#555;">
-        <tr>
-          <td style="width:25%;vertical-align:top;padding-right:8px;">${renderCol(col1)}</td>
-          <td style="width:25%;vertical-align:top;padding-right:8px;">${renderCol(col2)}</td>
-          <td style="width:25%;vertical-align:top;padding-right:8px;">${renderCol(col3)}</td>
-          <td style="width:25%;vertical-align:top;">${renderCol(col4)}</td>
-        </tr>
-      </table>`;
+      <div class="page-footer">
+        <table style="width:100%;border-top:1px solid #ccc;padding-top:6px;font-size:9px;color:#555;">
+          <tr>
+            <td style="width:25%;vertical-align:top;padding-right:8px;">${renderCol(col1)}</td>
+            <td style="width:25%;vertical-align:top;padding-right:8px;">${renderCol(col2)}</td>
+            <td style="width:25%;vertical-align:top;padding-right:8px;">${renderCol(col3)}</td>
+            <td style="width:25%;vertical-align:top;">${renderCol(col4)}</td>
+          </tr>
+        </table>
+      </div>`;
   }
 
   // PDF-Druckansicht (Browser-Print)
@@ -538,10 +540,14 @@ export default function Invoices() {
         <div style="white-space:pre-wrap;line-height:1.6;">${agbText}</div>
       </div>` : '';
     const html = `<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><title>${inv.invoiceNumber}</title>
-    <style>body{font-family:Arial,sans-serif;font-size:12px;margin:1cm;color:#111;}
-    table{width:100%;border-collapse:collapse;}th{background:#f5f5f5;text-align:left;padding:6px 8px;border-bottom:2px solid #ddd;}
-    .totals td{padding:4px 8px;}.totals tr:last-child td{font-weight:700;font-size:14px;border-top:2px solid #111;}
-    @media print{button{display:none}}</style></head><body>
+    <style>
+      @page{margin:1cm 1cm 3cm 1cm;}
+      body{font-family:Arial,sans-serif;font-size:12px;margin:0;padding:1cm;padding-bottom:0;color:#111;}
+      table{width:100%;border-collapse:collapse;}th{background:#f5f5f5;text-align:left;padding:6px 8px;border-bottom:2px solid #ddd;}
+      .totals td{padding:4px 8px;}.totals tr:last-child td{font-weight:700;font-size:14px;border-top:2px solid #111;}
+      .page-footer{position:fixed;bottom:1.5cm;left:1cm;right:1cm;}
+      @media print{button{display:none}.page-footer{position:fixed;bottom:1.5cm;left:1cm;right:1cm;}}
+    </style></head><body>
     <table style="margin-bottom:24px;"><tr>
       <td style="width:50%;vertical-align:top;">
         ${logoUrl ? `<img src="${logoUrl}" alt="Logo" style="max-height:70px;max-width:200px;object-fit:contain;margin-bottom:8px;display:block;">` : ''}
@@ -595,6 +601,7 @@ export default function Invoices() {
     ${inv.footerText ? '<p style="margin-top:24px;font-size:10px;color:#888;">' + inv.footerText + '</p>' : ''}
     <p style="margin-top:16px;font-size:9px;color:#aaa;">SHA-256: ${inv.contentHash ?? 'noch nicht finalisiert'}</p>
     ${buildFooterHtml()}
+    <div style="margin-bottom:3cm;"></div>
     ${agbPage}
     <script>window.onload=()=>window.print();</script></body></html>`;
     const w = window.open('', '_blank');
