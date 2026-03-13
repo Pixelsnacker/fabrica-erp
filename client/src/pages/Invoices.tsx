@@ -503,6 +503,7 @@ export default function Invoices() {
   function printInvoice(inv: any) {
     const cs = companySettings as any;
     const agbText: string = cs?.agbText ?? '';
+    const logoUrl: string = cs?.logoUrl ?? '';
     const taxModeNote = inv.taxMode === 'kleinunternehmer'
       ? '<p style="margin-top:16px;font-size:11px;">Gemäß §19 UStG wird keine Umsatzsteuer berechnet.</p>' : '';
     const itemRows = (inv.items ?? []).map((it: any, i: number) => {
@@ -542,7 +543,9 @@ export default function Invoices() {
     .totals td{padding:4px 8px;}.totals tr:last-child td{font-weight:700;font-size:14px;border-top:2px solid #111;}
     @media print{button{display:none}}</style></head><body>
     <table style="margin-bottom:24px;"><tr>
-      <td style="width:50%;vertical-align:top;"><strong style="font-size:16px;">Fabrica GmbH</strong><br>
+      <td style="width:50%;vertical-align:top;">
+        ${logoUrl ? `<img src="${logoUrl}" alt="Logo" style="max-height:70px;max-width:200px;object-fit:contain;margin-bottom:8px;display:block;">` : ''}
+        <strong style="font-size:16px;">${inv.senderName || 'Fabrica GmbH'}</strong><br>
         ${inv.senderStreet ?? ''}<br>${inv.senderZip ?? ''} ${inv.senderCity ?? ''}<br>
         ${inv.senderEmail ?? ''}<br>${inv.senderPhone ?? ''}<br>
         ${inv.senderVatId ? 'USt-IdNr: ' + inv.senderVatId : ''}</td>
