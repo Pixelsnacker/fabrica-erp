@@ -207,6 +207,13 @@ export default function Invoices() {
   const [importProjectId, setImportProjectId] = useState<number | undefined>(undefined);
   const [importDocId, setImportDocId] = useState<number | undefined>(undefined);
   const [importPreview, setImportPreview] = useState<any[] | null>(null);
+  // E-Mail-Versand
+  const [showEmailDialog, setShowEmailDialog] = useState<number | null>(null);
+  const [emailForm, setEmailForm] = useState({ to: '', cc: '', subject: '', body: '' });
+  const sendOfferEmail = trpc.companySettings.sendOfferEmail.useMutation({
+    onSuccess: () => { toast.success('E-Mail erfolgreich versendet!'); setShowEmailDialog(null); },
+    onError: (e) => toast.error('Fehler: ' + e.message),
+  });
   const { data: importDocs = [] } = trpc.projectDocs.list.useQuery(
     { projectId: importProjectId! },
     { enabled: importProjectId !== undefined }
@@ -690,6 +697,19 @@ export default function Invoices() {
                 <Button size="sm" variant="outline" onClick={() => printInvoice(inv)}>
                   <Download className="w-3 h-3 mr-1" /> PDF
                 </Button>
+                {inv.type === 'offer' && (
+                  <Button size="sm" variant="outline" className="text-blue-400 border-blue-400/30" onClick={() => {
+                    setEmailForm({
+                      to: inv.recipientEmail ?? '',
+                      cc: '',
+                      subject: `Angebot ${inv.invoiceNumber} von Fabrica GmbH`,
+                      body: `vielen Dank für Ihr Interesse.\n\nAnbei erhalten Sie unser Angebot ${inv.invoiceNumber}.\n\nBei Fragen stehen wir Ihnen gerne zur Verfügung.`,
+                    });
+                    setShowEmailDialog(inv.id);
+                  }}>
+                    <Send className="w-3 h-3 mr-1" /> E-Mail
+                  </Button>
+                )}
                 {!inv.isLocked && inv.type === 'invoice' && inv.status !== 'cancelled' && (
                   <Button size="sm" variant="outline" className="text-yellow-400 border-yellow-400/30" onClick={() => { if (confirm('Rechnung finalisieren (GoBD-gesperrt)?')) lockMut.mutate({ id: inv.id }); }}>
                     <Lock className="w-3 h-3 mr-1" /> Finalisieren
@@ -1156,8 +1176,21 @@ export default function Invoices() {
               {detailData.contentHash && (
                 <p className="text-xs text-muted-foreground break-all">SHA-256: {detailData.contentHash}</p>
               )}
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <Button size="sm" onClick={() => printInvoice(detailData)}><Download className="w-3 h-3 mr-1" /> PDF drucken</Button>
+                {detailData.type === 'offer' && (
+                  <Button size="sm" variant="outline" className="text-blue-400 border-blue-400/30" onClick={() => {
+                    setEmailForm({
+                      to: detailData.recipientEmail ?? '',
+                      cc: '',
+                      subject: `Angebot ${detailData.invoiceNumber} von Fabrica GmbH`,
+                      body: `vielen Dank für Ihr Interesse.\n\nAnbei erhalten Sie unser Angebot ${detailData.invoiceNumber}.\n\nBei Fragen stehen wir Ihnen gerne zur Verfügung.`,
+                    });
+                    setShowEmailDialog(detailData.id);
+                  }}>
+                    <Send className="w-3 h-3 mr-1" /> Per E-Mail senden
+                  </Button>
+                )}
               </div>
             </div>
           )}
@@ -1366,6 +1399,82 @@ export default function Invoices() {
               </div>
             ))}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── E-Mail-Versand-Dialog ──────────────────────────────────────────────── */}
+      <Dialog open={showEmailDialog !== null} onOpenChange={() => setShowEmailDialog(null)}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Send className="h-5 w-5 text-blue-400" />
+              Angebot per E-Mail senden
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <Label>Empfänger (An)*</Label>
+              <Input
+                value={emailForm.to}
+                onChange={e => setEmailForm(f => ({ ...f, to: e.target.value }))}
+                placeholder="kunde@beispiel.de"
+                type="email"
+              />
+            </div>
+            <div>
+              <Label>CC (optional)</Label>
+              <Input
+                value={emailForm.cc}
+                onChange={e => setEmailForm(f => ({ ...f, cc: e.target.value }))}
+                placeholder="kopie@beispiel.de"
+                type="email"
+              />
+            </div>
+            <div>
+              <Label>Betreff*</Label>
+              <Input
+                value={emailForm.subject}
+                onChange={e => setEmailForm(f => ({ ...f, subject: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Label>Nachricht*</Label>
+              <Textarea
+                value={emailForm.body}
+                onChange={e => setEmailForm(f => ({ ...f, body: e.target.value }))}
+                rows={7}
+                placeholder="Ihre Nachricht an den Kunden..."
+              />
+              <p className="text-xs text-muted-foreground mt-1">Die E-Mail-Signatur aus den Einstellungen wird automatisch angehängt.</p>
+            </div>
+            <div className="rounded-md bg-blue-500/10 border border-blue-500/20 p-3 text-sm text-blue-300">
+              <p className="font-medium mb-1">ℹ️ Hinweis zum PDF-Anhang</p>
+              <p className="text-xs text-muted-foreground">Das Angebot wird als strukturierte HTML-E-Mail versendet. Für den PDF-Anhang: Drucken Sie das Angebot zuerst als PDF und hängen Sie es manuell an, oder konfigurieren Sie einen PDF-Export-Service.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEmailDialog(null)}>Abbrechen</Button>
+            <Button
+              onClick={() => {
+                if (!emailForm.to || !emailForm.subject || !emailForm.body) {
+                  toast.error('Bitte Empfänger, Betreff und Nachricht ausfüllen.');
+                  return;
+                }
+                sendOfferEmail.mutate({
+                  invoiceId: showEmailDialog!,
+                  to: emailForm.to,
+                  cc: emailForm.cc || undefined,
+                  subject: emailForm.subject,
+                  body: emailForm.body,
+                });
+              }}
+              disabled={sendOfferEmail.isPending}
+              className="gap-2"
+            >
+              {sendOfferEmail.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              E-Mail senden
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </DashboardLayout>

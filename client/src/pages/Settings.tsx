@@ -159,6 +159,14 @@ export default function Settings() {
     creditNoteStartNumber: 1,
     // AGB
     agbText: "",
+    // SMTP
+    smtpHost: "",
+    smtpPort: 587,
+    smtpUser: "",
+    smtpPass: "",
+    smtpFrom: "",
+    smtpSecure: false,
+    emailSignature: "",
   });
 
   const { data: companyData, isLoading: isLoadingCompany } = trpc.companySettings.get.useQuery();
@@ -229,6 +237,13 @@ export default function Settings() {
         invoiceStartNumber: (companyData as any).invoiceStartNumber ?? 1,
         creditNoteStartNumber: (companyData as any).creditNoteStartNumber ?? 1,
         agbText: (companyData as any).agbText ?? "",
+        smtpHost: (companyData as any).smtpHost ?? "",
+        smtpPort: (companyData as any).smtpPort ?? 587,
+        smtpUser: (companyData as any).smtpUser ?? "",
+        smtpPass: (companyData as any).smtpPass ?? "",
+        smtpFrom: (companyData as any).smtpFrom ?? "",
+        smtpSecure: Boolean((companyData as any).smtpSecure),
+        emailSignature: (companyData as any).emailSignature ?? "",
       });
       if (companyData.logoUrl) setLogoPreview(companyData.logoUrl);
     }
@@ -672,6 +687,56 @@ export default function Settings() {
                   </CardContent>
                 </Card>
 
+                {/* SMTP E-Mail-Einstellungen */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">E-Mail-Versand (SMTP)</CardTitle>
+                    <CardDescription>SMTP-Zugangsdaten für den direkten E-Mail-Versand von Angeboten aus dem System.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>SMTP-Server (Host)</Label>
+                        <Input value={form.smtpHost} onChange={e => setForm(f => ({ ...f, smtpHost: e.target.value }))} placeholder="mail.fabrica3d.eu" />
+                      </div>
+                      <div>
+                        <Label>Port</Label>
+                        <Input type="number" value={form.smtpPort} onChange={e => setForm(f => ({ ...f, smtpPort: Number(e.target.value) }))} placeholder="587" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>Benutzername / E-Mail</Label>
+                        <Input value={form.smtpUser} onChange={e => setForm(f => ({ ...f, smtpUser: e.target.value }))} placeholder="d.rincon@fabrica3d.eu" />
+                      </div>
+                      <div>
+                        <Label>Passwort</Label>
+                        <Input type="password" value={form.smtpPass} onChange={e => setForm(f => ({ ...f, smtpPass: e.target.value }))} placeholder="••••••••" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>Absender-Adresse (Von)</Label>
+                        <Input value={form.smtpFrom} onChange={e => setForm(f => ({ ...f, smtpFrom: e.target.value }))} placeholder="Fabrica GmbH &lt;d.rincon@fabrica3d.eu&gt;" />
+                      </div>
+                      <div className="flex items-center gap-3 pt-6">
+                        <Switch checked={form.smtpSecure} onCheckedChange={v => setForm(f => ({ ...f, smtpSecure: v }))} />
+                        <Label>SSL/TLS (Port 465)</Label>
+                      </div>
+                    </div>
+                    <div>
+                      <Label>E-Mail-Signatur</Label>
+                      <Textarea
+                        value={form.emailSignature}
+                        onChange={e => setForm(f => ({ ...f, emailSignature: e.target.value }))}
+                        placeholder="Mit freundlichen Grüßen&#10;Daniel Rincón&#10;Fabrica GmbH..."
+                        rows={6}
+                        className="font-mono text-xs resize-y"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">Wird automatisch an jede versendete Angebots-E-Mail angehängt.</p>
+                    </div>
+                  </CardContent>
+                </Card>
                 <div className="flex justify-end">
                   <Button onClick={handleSaveCompany} disabled={isSaving} className="gap-2">
                     {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}

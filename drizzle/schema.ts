@@ -463,6 +463,14 @@ export const companySettings = mysqlTable("company_settings", {
   invoiceStartNumber: int("invoice_start_number").default(1),
   creditNoteStartNumber: int("credit_note_start_number").default(1),
   agbText: text("agb_text"),
+  // SMTP-Konfiguration für E-Mail-Versand
+  smtpHost: varchar("smtp_host", { length: 255 }),
+  smtpPort: int("smtp_port").default(587),
+  smtpUser: varchar("smtp_user", { length: 255 }),
+  smtpPass: varchar("smtp_pass", { length: 500 }),
+  smtpFrom: varchar("smtp_from", { length: 255 }),
+  smtpSecure: tinyint("smtp_secure").default(0),
+  emailSignature: text("email_signature"),
   createdAt: bigint("created_at", { mode: "number" }),
   updatedAt: bigint("updated_at", { mode: "number" }),
 });

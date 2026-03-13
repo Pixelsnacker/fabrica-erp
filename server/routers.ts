@@ -1181,13 +1181,88 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
         creditNoteStartNumber: z.number().int().min(1).optional(),
         // AGB
         agbText: z.string().optional(),
+        // SMTP
+        smtpHost: z.string().optional(),
+        smtpPort: z.number().int().optional(),
+        smtpUser: z.string().optional(),
+        smtpPass: z.string().optional(),
+        smtpFrom: z.string().optional(),
+        smtpSecure: z.boolean().optional(),
+        emailSignature: z.string().optional(),
       }))
       .mutation(async ({ input }) => {
         return upsertCompanySettings({
           ...input,
           kleinunternehmer: input.kleinunternehmer !== undefined ? (input.kleinunternehmer ? 1 : 0) : undefined,
           includeYear: input.includeYear !== undefined ? (input.includeYear ? 1 : 0) : undefined,
+          smtpSecure: input.smtpSecure !== undefined ? (input.smtpSecure ? 1 : 0) : undefined,
         } as any);
+      }),
+    // SMTP-Verbindungstest
+    testSmtp: protectedProcedure
+      .input(z.object({
+        smtpHost: z.string(),
+        smtpPort: z.number().int(),
+        smtpUser: z.string(),
+        smtpPass: z.string(),
+        smtpFrom: z.string(),
+        smtpSecure: z.boolean().default(false),
+      }))
+      .mutation(async ({ input }) => {
+        const { sendEmail } = await import('./email');
+        const result = await sendEmail({
+          ...input,
+          to: input.smtpUser,
+          subject: 'Fabrica ERP – SMTP-Test',
+          html: '<p>SMTP-Verbindungstest erfolgreich. Diese E-Mail wurde automatisch generiert.</p>',
+        });
+        return result;
+      }),
+    // Angebot per E-Mail versenden
+    sendOfferEmail: protectedProcedure
+      .input(z.object({
+        invoiceId: z.number(),
+        to: z.string().email(),
+        cc: z.string().optional(),
+        subject: z.string(),
+        body: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        const { getCompanySettings } = await import('./db');
+        const { getInvoiceById } = await import('./db');
+        const { sendEmail, buildOfferEmailHtml } = await import('./email');
+        const cs = await getCompanySettings();
+        if (!cs?.smtpHost || !cs?.smtpUser || !cs?.smtpPass) {
+          throw new Error('SMTP nicht konfiguriert. Bitte SMTP-Einstellungen in den Firmen-Einstellungen hinterlegen.');
+        }
+        const inv = await getInvoiceById(input.invoiceId);
+        if (!inv) throw new Error('Angebot nicht gefunden');
+        const html = buildOfferEmailHtml({
+          invoiceNumber: inv.invoiceNumber ?? '',
+          recipientName: inv.recipientName ?? undefined,
+          recipientCompany: inv.recipientCompany ?? undefined,
+          senderName: inv.senderName ?? undefined,
+          emailBody: input.body,
+          emailSignature: cs.emailSignature ?? undefined,
+          totalGross: inv.totalGross ?? undefined,
+          issueDate: inv.issueDate ?? undefined,
+          validUntil: inv.dueDate ?? undefined,
+        });
+        const result = await sendEmail({
+          smtpHost: cs.smtpHost,
+          smtpPort: cs.smtpPort ?? 587,
+          smtpUser: cs.smtpUser,
+          smtpPass: cs.smtpPass,
+          smtpFrom: cs.smtpFrom ?? cs.smtpUser,
+          smtpSecure: Boolean(cs.smtpSecure),
+          to: input.to,
+          cc: input.cc,
+          subject: input.subject,
+          html,
+        });
+        if (!result.success) throw new Error(result.error ?? 'E-Mail-Versand fehlgeschlagen');
+        // sentAsEmail-Flag setzen (sofern vorhanden)
+        return { success: true, messageId: result.messageId };
       }),
     numberPreview: protectedProcedure
       .input(z.object({
