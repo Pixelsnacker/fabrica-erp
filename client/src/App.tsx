@@ -22,6 +22,7 @@ import Notes from "@/pages/Notes";
 import Complaints from "@/pages/Complaints";
 import Invoices from "@/pages/Invoices";
 import Calendar from "@/pages/Calendar";
+import Articles from "@/pages/Articles";
 
 function Router() {
   return (
@@ -42,6 +43,7 @@ function Router() {
         <Route path="/settings" component={Settings} />
         <Route path="/notes" component={Notes} />
         <Route path="/complaints" component={Complaints} />
+        <Route path="/articles" component={Articles} />
         <Route path="/invoices" component={Invoices} />
         <Route path="/calendar" component={Calendar} />
         <Route path="/404" component={NotFound} />

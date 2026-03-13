@@ -531,3 +531,21 @@ export const projectDocuments = mysqlTable("project_documents", {
 });
 export type InsertProjectDocument = typeof projectDocuments.$inferInsert;
 export type ProjectDocument = typeof projectDocuments.$inferSelect;
+
+// ── Artikeldatenbank ──────────────────────────────────────────────────────────
+export const articles = mysqlTable("articles", {
+  id: int("id").autoincrement().notNull(),
+  articleNumber: varchar("article_number", { length: 64 }),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  longDescription: text("long_description"),
+  unit: varchar("unit", { length: 32 }).default("Stk.").notNull(),
+  unitPriceNet: decimal("unit_price_net", { precision: 12, scale: 2 }).default("0.00").notNull(),
+  taxRate: int("tax_rate").default(19).notNull(),
+  category: varchar("category", { length: 128 }),
+  isActive: tinyint("is_active").default(1).notNull(),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+});
+export type InsertArticle = typeof articles.$inferInsert;
+export type Article = typeof articles.$inferSelect;

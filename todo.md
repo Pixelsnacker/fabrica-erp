@@ -435,3 +435,9 @@
 - [ ] Frontend: Rabatt-Feld pro Position (%) mit Berechnung
 - [ ] Frontend: AGB-Textfeld in Einstellungen
 - [ ] Frontend: AGB als automatische 2. Seite im PDF-Druck
+
+## Phase 50: Artikeldatenbank (Produktkatalog)
+- [x] DB: articles Tabelle (id, articleNumber, name, description, unit, unitPriceNet, taxRate, category, isActive)
+- [x] Backend: articles.list, create, update, delete Procedures
+- [x] Frontend: Artikel-Seite mit Liste, Suche, Formular
+- [x] Frontend: Artikel-Suche beim Hinzufügen von Positionen in Angeboten/Rechnungen

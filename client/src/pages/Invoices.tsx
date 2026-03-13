@@ -17,7 +17,7 @@ import {
   Plus, FileText, Receipt, Search, Download, Lock, XCircle,
   ChevronDown, ChevronUp, Trash2, Eye, History, AlertTriangle,
   CheckCircle, Clock, Send, Euro, Loader2, Printer, BookOpen, ArrowRight,
-  PackageSearch, FolderOpen
+  PackageSearch, FolderOpen, Package
 } from "lucide-react";
 
 // ─── Typen ───────────────────────────────────────────────────────────────────
@@ -151,6 +151,8 @@ export default function Invoices() {
   const [tab, setTab] = useState<'all' | 'offer' | 'invoice' | 'credit_note'>('all');
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
+  const [showArticleSearch, setShowArticleSearch] = useState(false);
+  const [articleSearchQuery, setArticleSearchQuery] = useState('');
   const [editId, setEditId] = useState<number | null>(null);
   const [showDetail, setShowDetail] = useState<number | null>(null);
   const [showAudit, setShowAudit] = useState<number | null>(null);
@@ -171,6 +173,7 @@ export default function Invoices() {
 
   // Daten laden
   const { data: invoiceList = [], isLoading } = trpc.invoices.list.useQuery(undefined);
+  const { data: articleList = [] } = trpc.articles.list.useQuery({ search: articleSearchQuery || undefined, activeOnly: true });
   const { data: customers = [] } = trpc.customers.list.useQuery();
   const { data: projects = [] } = trpc.projects.list.useQuery();
   const { data: companySettings } = trpc.companySettings.get.useQuery();
@@ -872,6 +875,9 @@ export default function Invoices() {
                   <Button size="sm" variant="outline" className="text-amber-400 border-amber-400/40 hover:bg-amber-400/10" onClick={() => { setImportPreview(null); setImportProjectId(undefined); setImportDocId(undefined); setShowImportDialog(true); }}>
                     <PackageSearch className="w-3 h-3 mr-1" /> Aus Lieferantenangebot
                   </Button>
+                  <Button size="sm" variant="outline" className="text-primary border-primary/40 hover:bg-primary/10" onClick={() => { setArticleSearchQuery(''); setShowArticleSearch(true); }}>
+                    <Package className="w-3 h-3 mr-1" /> Aus Artikeldatenbank
+                  </Button>
                   <Button size="sm" variant="outline" onClick={addItem}><Plus className="w-3 h-3 mr-1" /> Position</Button>
                 </div>
               </div>
@@ -1027,6 +1033,80 @@ export default function Invoices() {
           </SheetFooter>
         </SheetContent>
       </Sheet>
+      {/* ─── Artikeldatenbank-Such-Dialog ──────────────────────────────────────────── */}
+      <Dialog open={showArticleSearch} onOpenChange={o => { if (!o) setShowArticleSearch(false); }}>
+        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Package className="h-4 w-4 text-primary" />
+              Artikel aus Datenbank einfügen
+            </DialogTitle>
+          </DialogHeader>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              autoFocus
+              placeholder="Suche nach Name, Artikelnummer..."
+              value={articleSearchQuery}
+              onChange={e => setArticleSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <div className="overflow-y-auto flex-1 space-y-1 mt-2">
+            {articleList.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground text-sm">
+                {articleSearchQuery ? 'Keine Artikel gefunden.' : 'Noch keine Artikel in der Datenbank.'}
+              </div>
+            ) : (
+              articleList.map((a: any) => {
+                const net = parseFloat(a.unitPriceNet ?? 0);
+                const gross = net * (1 + (a.taxRate ?? 19) / 100);
+                return (
+                  <button
+                    key={a.id}
+                    className="w-full text-left px-4 py-3 rounded-lg hover:bg-muted/50 transition-colors border border-transparent hover:border-border group"
+                    onClick={() => {
+                      setItems(prev => [...prev, {
+                        position: prev.length + 1,
+                        description: a.name,
+                        longDescription: a.longDescription ?? '',
+                        quantity: '1',
+                        unit: a.unit ?? 'Stk.',
+                        unitPriceNet: String(net.toFixed(2)),
+                        taxRate: a.taxRate ?? 19,
+                        discount: '0',
+                        isOptional: false,
+                        lineTotalNet: String(net.toFixed(2)),
+                        lineTax: String((net * (a.taxRate ?? 19) / 100).toFixed(2)),
+                        lineTotalGross: String(gross.toFixed(2)),
+                        discountedNet: '0',
+                      }]);
+                      setShowArticleSearch(false);
+                      toast.success(`"${a.name}" eingefügt`);
+                    }}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <div className="font-medium text-sm">{a.name}</div>
+                        {a.description && <div className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{a.description}</div>}
+                        {a.articleNumber && <div className="text-xs text-muted-foreground/60 font-mono mt-0.5">{a.articleNumber}</div>}
+                      </div>
+                      <div className="text-right shrink-0">
+                        <div className="text-sm font-semibold text-primary">{net.toLocaleString('de-DE', { minimumFractionDigits: 2 })} €</div>
+                        <div className="text-xs text-muted-foreground">{a.unit} · {a.taxRate} % MwSt</div>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </div>
+          <DialogFooter className="border-t border-border pt-3">
+            <Button variant="outline" onClick={() => setShowArticleSearch(false)}>Schließen</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* ─── Lieferantenangebot-Import-Dialog ──────────────────────────────────────── */}
       <Dialog open={showImportDialog} onOpenChange={o => { if (!o) { setShowImportDialog(false); setImportPreview(null); } }}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">

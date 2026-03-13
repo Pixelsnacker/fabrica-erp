@@ -1729,5 +1729,115 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
         return rows;
       }),
   }),
+
+  // ── Artikeldatenbank ────────────────────────────────────────────────────────
+  articles: router({
+    list: publicProcedure
+      .input(z.object({ search: z.string().optional(), category: z.string().optional(), activeOnly: z.boolean().optional() }).optional())
+      .query(async ({ input }) => {
+        const db = await (await import('./db')).getDb();
+        if (!db) return [];
+        const { articles } = await import('../drizzle/schema');
+        const { like, eq, and, or } = await import('drizzle-orm');
+        const conditions: any[] = [];
+        if (input?.activeOnly !== false) conditions.push(eq(articles.isActive, 1));
+        if (input?.category) conditions.push(eq(articles.category, input.category));
+        if (input?.search) {
+          const s = `%${input.search}%`;
+          conditions.push(or(like(articles.name, s), like(articles.articleNumber, s), like(articles.description, s)));
+        }
+        const rows = await db.select().from(articles)
+          .where(conditions.length ? and(...conditions) : undefined)
+          .orderBy(articles.name);
+        return rows;
+      }),
+
+    create: protectedProcedure
+      .input(z.object({
+        articleNumber: z.string().optional(),
+        name: z.string().min(1),
+        description: z.string().optional(),
+        longDescription: z.string().optional(),
+        unit: z.string().default('Stk.'),
+        unitPriceNet: z.string().default('0.00'),
+        taxRate: z.number().default(19),
+        category: z.string().optional(),
+        isActive: z.boolean().default(true),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await (await import('./db')).getDb();
+        if (!db) throw new Error('DB not available');
+        const { articles } = await import('../drizzle/schema');
+        const now = Date.now();
+        const [result] = await db.insert(articles).values({
+          articleNumber: input.articleNumber || null,
+          name: input.name,
+          description: input.description || null,
+          longDescription: input.longDescription || null,
+          unit: input.unit,
+          unitPriceNet: input.unitPriceNet,
+          taxRate: input.taxRate,
+          category: input.category || null,
+          isActive: input.isActive ? 1 : 0,
+          createdAt: now,
+          updatedAt: now,
+        });
+        return { id: (result as any).insertId };
+      }),
+
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        articleNumber: z.string().optional(),
+        name: z.string().min(1).optional(),
+        description: z.string().optional(),
+        longDescription: z.string().optional(),
+        unit: z.string().optional(),
+        unitPriceNet: z.string().optional(),
+        taxRate: z.number().optional(),
+        category: z.string().optional(),
+        isActive: z.boolean().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await (await import('./db')).getDb();
+        if (!db) throw new Error('DB not available');
+        const { articles } = await import('../drizzle/schema');
+        const { eq } = await import('drizzle-orm');
+        const { id, ...fields } = input;
+        const update: any = { updatedAt: Date.now() };
+        if (fields.articleNumber !== undefined) update.articleNumber = fields.articleNumber || null;
+        if (fields.name !== undefined) update.name = fields.name;
+        if (fields.description !== undefined) update.description = fields.description || null;
+        if (fields.longDescription !== undefined) update.longDescription = fields.longDescription || null;
+        if (fields.unit !== undefined) update.unit = fields.unit;
+        if (fields.unitPriceNet !== undefined) update.unitPriceNet = fields.unitPriceNet;
+        if (fields.taxRate !== undefined) update.taxRate = fields.taxRate;
+        if (fields.category !== undefined) update.category = fields.category || null;
+        if (fields.isActive !== undefined) update.isActive = fields.isActive ? 1 : 0;
+        await db.update(articles).set(update).where(eq(articles.id, id));
+        return { success: true };
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const db = await (await import('./db')).getDb();
+        if (!db) throw new Error('DB not available');
+        const { articles } = await import('../drizzle/schema');
+        const { eq } = await import('drizzle-orm');
+        await db.delete(articles).where(eq(articles.id, input.id));
+        return { success: true };
+      }),
+
+    categories: publicProcedure.query(async () => {
+      const db = await (await import('./db')).getDb();
+      if (!db) return [];
+      const { articles } = await import('../drizzle/schema');
+      const { isNotNull, ne } = await import('drizzle-orm');
+      const rows = await db.selectDistinct({ category: articles.category }).from(articles)
+        .where(isNotNull(articles.category));
+      return rows.map(r => r.category).filter(Boolean) as string[];
+    }),
+  }),
 });
 export type AppRouter = typeof appRouter;
