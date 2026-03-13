@@ -388,3 +388,8 @@
 - [x] PDF-Vorschau-Button auf Dokument-Karte (blauer FileText-Button beim Hover)
 - [x] Dialog mit eingebettetem PDF-Viewer (iframe, 85vh) + Vollbild-Button + Download-Button
 - [x] Bild-Vorschau für PNG/JPG/JPEG/GIF/WEBP/SVG/BMP ebenfalls im Dialog
+
+## Phase 46: CAD-Vorschau in Dokument-Karte
+- [x] getFilePreviewType: 'stl' und 'cad_other' (STP/STEP/OBJ/3MF/IGES) Typen hinzugefügt
+- [x] STL-Vorschau: CadViewer-Komponente im Dialog eingebunden (interaktiver 3D-Viewer, 85vh)
+- [x] STP/STEP/OBJ/3MF/IGES-Vorschau: Info-Dialog mit Dateiinfo + programm-spezifischem Hinweis + Download

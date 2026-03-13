@@ -1517,11 +1517,13 @@ const DOC_CATEGORY_LABELS: Record<string, { label: string; color: string; icon: 
 
 // ─── Dokument-Karte ───────────────────────────────────────────────────────────
 // Hilfsfunktion: Dateiformat-Typ ermitteln
-function getFilePreviewType(filename: string, mimeType?: string): 'pdf' | 'image' | 'none' {
+function getFilePreviewType(filename: string, mimeType?: string): 'pdf' | 'image' | 'stl' | 'cad_other' | 'none' {
   const name = filename.toLowerCase();
   const mime = (mimeType ?? '').toLowerCase();
   if (name.endsWith('.pdf') || mime === 'application/pdf') return 'pdf';
   if (/\.(png|jpg|jpeg|gif|webp|svg|bmp)$/.test(name) || mime.startsWith('image/')) return 'image';
+  if (name.endsWith('.stl')) return 'stl';
+  if (/\.(stp|step|obj|3mf|iges|igs)$/.test(name)) return 'cad_other';
   return 'none';
 }
 
@@ -1665,15 +1667,26 @@ function ProjectDocCard({ doc, onDelete, supplierName, onNoteUpdated }: {
 
       {/* Aktionen */}
       <div className="flex flex-col items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-        {/* Vorschau-Button nur für PDF und Bilder */}
+        {/* Vorschau-Button für PDF, Bilder und CAD */}
         {previewType !== 'none' && (
           <Button
             variant="ghost" size="sm"
-            className="h-7 w-7 p-0 text-blue-400 hover:text-blue-300"
+            className={`h-7 w-7 p-0 ${
+              previewType === 'stl' || previewType === 'cad_other'
+                ? 'text-emerald-400 hover:text-emerald-300'
+                : 'text-blue-400 hover:text-blue-300'
+            }`}
             onClick={() => setShowPreview(true)}
-            title={previewType === 'pdf' ? 'PDF-Vorschau' : 'Bild-Vorschau'}
+            title={
+              previewType === 'pdf' ? 'PDF-Vorschau' :
+              previewType === 'image' ? 'Bild-Vorschau' :
+              previewType === 'stl' ? '3D-Vorschau (STL)' :
+              '3D-Datei-Info'
+            }
           >
-            <FileText className="h-3.5 w-3.5" />
+            {(previewType === 'stl' || previewType === 'cad_other')
+              ? <FileCode2 className="h-3.5 w-3.5" />
+              : <FileText className="h-3.5 w-3.5" />}
           </Button>
         )}
         <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer">
@@ -1694,10 +1707,16 @@ function ProjectDocCard({ doc, onDelete, supplierName, onNoteUpdated }: {
       {/* Vorschau-Dialog */}
       {showPreview && (
         <Dialog open={showPreview} onOpenChange={setShowPreview}>
-          <DialogContent className="max-w-4xl w-full h-[85vh] flex flex-col p-0 gap-0">
+          <DialogContent className={`w-full flex flex-col p-0 gap-0 ${
+            previewType === 'stl' ? 'max-w-4xl h-[85vh]' :
+            previewType === 'cad_other' ? 'max-w-lg' :
+            'max-w-4xl h-[85vh]'
+          }`}>
             <DialogHeader className="px-4 py-3 border-b border-border flex-row items-center justify-between shrink-0">
               <DialogTitle className="text-sm font-medium truncate max-w-[500px] flex items-center gap-2">
-                {previewType === 'pdf' ? <FileText className="h-4 w-4 text-red-400" /> : <Image className="h-4 w-4 text-blue-400" />}
+                {previewType === 'pdf' && <FileText className="h-4 w-4 text-red-400" />}
+                {previewType === 'image' && <Image className="h-4 w-4 text-blue-400" />}
+                {(previewType === 'stl' || previewType === 'cad_other') && <FileCode2 className="h-4 w-4 text-emerald-400" />}
                 {doc.filename}
               </DialogTitle>
               <div className="flex items-center gap-2">
@@ -1707,28 +1726,58 @@ function ProjectDocCard({ doc, onDelete, supplierName, onNoteUpdated }: {
                     Herunterladen
                   </Button>
                 </a>
-                <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer">
-                  <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs">
-                    <ExternalLink className="h-3 w-3" />
-                    Vollbild
-                  </Button>
-                </a>
+                {previewType !== 'cad_other' && (
+                  <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer">
+                    <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs">
+                      <ExternalLink className="h-3 w-3" />
+                      Vollbild
+                    </Button>
+                  </a>
+                )}
               </div>
             </DialogHeader>
-            <div className="flex-1 overflow-hidden bg-muted/30">
-              {previewType === 'pdf' ? (
+            <div className={`${
+              previewType === 'cad_other' ? 'p-6' : 'flex-1 overflow-hidden bg-muted/30'
+            }`}>
+              {previewType === 'pdf' && (
                 <iframe
                   src={`${doc.fileUrl}#toolbar=1&navpanes=0&scrollbar=1&view=FitH`}
                   className="w-full h-full border-0"
                   title={doc.filename}
                 />
-              ) : (
+              )}
+              {previewType === 'image' && (
                 <div className="w-full h-full flex items-center justify-center p-4">
                   <img
                     src={doc.fileUrl}
                     alt={doc.filename}
                     className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
                   />
+                </div>
+              )}
+              {previewType === 'stl' && (
+                <CadViewer url={doc.fileUrl} filename={doc.filename} fileSize={doc.fileSize} />
+              )}
+              {previewType === 'cad_other' && (
+                <div className="flex flex-col items-center gap-4 text-center">
+                  <FileCode2 className="h-16 w-16 text-emerald-400/60" />
+                  <div>
+                    <p className="font-medium">{doc.filename}</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {doc.filename.split('.').pop()?.toUpperCase()} · {doc.fileSize ? (doc.fileSize < 1024*1024 ? `${Math.round(doc.fileSize/1024)} KB` : `${(doc.fileSize/1024/1024).toFixed(1)} MB`) : ''}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-3 max-w-xs">
+                      {/\.(stp|step)$/i.test(doc.filename)
+                        ? 'STEP-Dateien können mit FreeCAD, CATIA, SolidWorks oder Fusion 360 geöffnet werden.'
+                        : /\.obj$/i.test(doc.filename)
+                        ? 'OBJ-Dateien können mit Blender, MeshLab oder Fusion 360 geöffnet werden.'
+                        : /\.3mf$/i.test(doc.filename)
+                        ? '3MF-Dateien können mit PrusaSlicer, Bambu Studio oder Cura geöffnet werden.'
+                        : /\.(iges|igs)$/i.test(doc.filename)
+                        ? 'IGES-Dateien können mit FreeCAD, CATIA oder SolidWorks geöffnet werden.'
+                        : 'Diese CAD-Datei kann nicht direkt im Browser angezeigt werden.'}
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
