@@ -383,3 +383,8 @@
 ## Phase 44: Dokument-Typ nachträglich ändern
 - [x] Backend: updateCategory-Procedure in projectDocs-Router
 - [x] Frontend: Typ-Ändern-Dropdown direkt auf der Dokument-Karte (Inline, Klick auf Typ-Label)
+
+## Phase 45: PDF-Vorschau in Dokument-Karte
+- [x] PDF-Vorschau-Button auf Dokument-Karte (blauer FileText-Button beim Hover)
+- [x] Dialog mit eingebettetem PDF-Viewer (iframe, 85vh) + Vollbild-Button + Download-Button
+- [x] Bild-Vorschau für PNG/JPG/JPEG/GIF/WEBP/SVG/BMP ebenfalls im Dialog

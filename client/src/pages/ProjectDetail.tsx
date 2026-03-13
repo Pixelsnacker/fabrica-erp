@@ -1516,6 +1516,15 @@ const DOC_CATEGORY_LABELS: Record<string, { label: string; color: string; icon: 
 };
 
 // ─── Dokument-Karte ───────────────────────────────────────────────────────────
+// Hilfsfunktion: Dateiformat-Typ ermitteln
+function getFilePreviewType(filename: string, mimeType?: string): 'pdf' | 'image' | 'none' {
+  const name = filename.toLowerCase();
+  const mime = (mimeType ?? '').toLowerCase();
+  if (name.endsWith('.pdf') || mime === 'application/pdf') return 'pdf';
+  if (/\.(png|jpg|jpeg|gif|webp|svg|bmp)$/.test(name) || mime.startsWith('image/')) return 'image';
+  return 'none';
+}
+
 function ProjectDocCard({ doc, onDelete, supplierName, onNoteUpdated }: {
   doc: any;
   onDelete: () => void;
@@ -1527,6 +1536,8 @@ function ProjectDocCard({ doc, onDelete, supplierName, onNoteUpdated }: {
   const [editingNote, setEditingNote] = useState(false);
   const [noteValue, setNoteValue] = useState(doc.notes ?? "");
   const [editingCategory, setEditingCategory] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const previewType = getFilePreviewType(doc.filename, doc.mimeType);
 
   const updateNote = trpc.projectDocs.updateNote.useMutation({
     onSuccess: () => { setEditingNote(false); onNoteUpdated(); },
@@ -1654,6 +1665,17 @@ function ProjectDocCard({ doc, onDelete, supplierName, onNoteUpdated }: {
 
       {/* Aktionen */}
       <div className="flex flex-col items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+        {/* Vorschau-Button nur für PDF und Bilder */}
+        {previewType !== 'none' && (
+          <Button
+            variant="ghost" size="sm"
+            className="h-7 w-7 p-0 text-blue-400 hover:text-blue-300"
+            onClick={() => setShowPreview(true)}
+            title={previewType === 'pdf' ? 'PDF-Vorschau' : 'Bild-Vorschau'}
+          >
+            <FileText className="h-3.5 w-3.5" />
+          </Button>
+        )}
         <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer">
           <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Öffnen / Herunterladen">
             <ExternalLink className="h-3.5 w-3.5" />
@@ -1668,6 +1690,51 @@ function ProjectDocCard({ doc, onDelete, supplierName, onNoteUpdated }: {
           <Trash2 className="h-3.5 w-3.5" />
         </Button>
       </div>
+
+      {/* Vorschau-Dialog */}
+      {showPreview && (
+        <Dialog open={showPreview} onOpenChange={setShowPreview}>
+          <DialogContent className="max-w-4xl w-full h-[85vh] flex flex-col p-0 gap-0">
+            <DialogHeader className="px-4 py-3 border-b border-border flex-row items-center justify-between shrink-0">
+              <DialogTitle className="text-sm font-medium truncate max-w-[500px] flex items-center gap-2">
+                {previewType === 'pdf' ? <FileText className="h-4 w-4 text-red-400" /> : <Image className="h-4 w-4 text-blue-400" />}
+                {doc.filename}
+              </DialogTitle>
+              <div className="flex items-center gap-2">
+                <a href={doc.fileUrl} download={doc.filename} target="_blank" rel="noopener noreferrer">
+                  <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs">
+                    <Download className="h-3 w-3" />
+                    Herunterladen
+                  </Button>
+                </a>
+                <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer">
+                  <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs">
+                    <ExternalLink className="h-3 w-3" />
+                    Vollbild
+                  </Button>
+                </a>
+              </div>
+            </DialogHeader>
+            <div className="flex-1 overflow-hidden bg-muted/30">
+              {previewType === 'pdf' ? (
+                <iframe
+                  src={`${doc.fileUrl}#toolbar=1&navpanes=0&scrollbar=1&view=FitH`}
+                  className="w-full h-full border-0"
+                  title={doc.filename}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center p-4">
+                  <img
+                    src={doc.fileUrl}
+                    alt={doc.filename}
+                    className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
+                  />
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
