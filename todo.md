@@ -446,3 +446,8 @@
 - [x] Angebotspositionen: Kopieren-Button pro Position
 - [x] Angebotspositionen: Neue Positionen oben einfügen (statt unten)
 - [x] Schnellnotizen: Nachträgliches Bearbeiten (Edit-Dialog)
+
+## Phase 52: Angebot konvertieren
+- [x] Backend: invoices.convert Mutation (Angebot → Auftragsbestätigung oder Bestellung, alle Positionen übernehmen)
+- [x] Frontend: "Konvertieren"-Button in Angebots-Detail und Listenansicht
+- [x] Nach Konvertierung: Weiterleitung zum neuen Dokument, Angebot-Status auf "Angenommen" setzen

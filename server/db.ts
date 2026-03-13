@@ -772,7 +772,7 @@ export async function getAllComplaints() {
 // ─── Invoice Module ───────────────────────────────────────────────────────────
 
 /** Atomare Nummernvergabe – sicher gegen Race Conditions, Präfix aus Firmeneinstellungen */
-export async function getNextInvoiceNumber(type: 'invoice' | 'offer' | 'credit_note'): Promise<string> {
+export async function getNextInvoiceNumber(type: 'invoice' | 'offer' | 'credit_note' | 'order_confirmation' | 'purchase_order'): Promise<string> {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
   const year = new Date().getFullYear();
@@ -786,14 +786,20 @@ export async function getNextInvoiceNumber(type: 'invoice' | 'offer' | 'credit_n
     ? (settings?.invoicePrefix ?? 'RE')
     : type === 'offer'
       ? (settings?.offerPrefix ?? 'AN')
-      : (settings?.creditNotePrefix ?? 'GS');
+      : type === 'order_confirmation'
+        ? 'AB'
+        : type === 'purchase_order'
+          ? 'BE'
+          : (settings?.creditNotePrefix ?? 'GS');
 
   // Startnummer aus Einstellungen lesen
   const startNum = type === 'invoice'
     ? (settings?.invoiceStartNumber ?? 1)
     : type === 'offer'
       ? (settings?.offerStartNumber ?? 1)
-      : (settings?.creditNoteStartNumber ?? 1);
+      : type === 'order_confirmation' || type === 'purchase_order'
+        ? 1
+        : (settings?.creditNoteStartNumber ?? 1);
   // Prüfen ob bereits ein Eintrag für dieses Jahr existiert
   const existing = await db.select().from(invoiceSequences)
     .where(and(eq(invoiceSequences.year, year), eq(invoiceSequences.type, type)));

@@ -1,0 +1,2 @@
+ALTER TABLE `invoice_sequences` MODIFY COLUMN `type` enum('invoice','offer','credit_note','order_confirmation','purchase_order') NOT NULL;--> statement-breakpoint
+ALTER TABLE `invoices` MODIFY COLUMN `type` enum('offer','invoice','credit_note','order_confirmation','purchase_order') NOT NULL DEFAULT 'offer';

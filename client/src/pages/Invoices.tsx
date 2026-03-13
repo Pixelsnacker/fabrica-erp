@@ -22,7 +22,7 @@ import {
 
 // ─── Typen ───────────────────────────────────────────────────────────────────
 type TaxMode = 'standard' | 'reduced' | 'mixed' | 'tax_free' | 'kleinunternehmer';
-type InvoiceType = 'offer' | 'invoice' | 'credit_note';
+type InvoiceType = 'offer' | 'invoice' | 'credit_note' | 'order_confirmation' | 'purchase_order';
 type InvoiceStatus = 'draft' | 'sent' | 'accepted' | 'invoiced' | 'paid' | 'cancelled' | 'overdue';
 
 interface InvoiceItem {
@@ -60,6 +60,7 @@ const STATUS_COLORS: Record<InvoiceStatus, string> = {
 };
 const TYPE_LABELS: Record<InvoiceType, string> = {
   offer: 'Angebot', invoice: 'Rechnung', credit_note: 'Gutschrift',
+  order_confirmation: 'Auftragsbestätigung', purchase_order: 'Bestellung',
 };
 const TAX_MODE_LABELS: Record<TaxMode, string> = {
   standard: '19% MwSt (Standard)',
@@ -148,7 +149,7 @@ export default function Invoices() {
   const utils = trpc.useUtils();
   const [location, setLocation] = useLocation();
 
-  const [tab, setTab] = useState<'all' | 'offer' | 'invoice' | 'credit_note'>('all');
+  const [tab, setTab] = useState<'all' | 'offer' | 'invoice' | 'credit_note' | 'order_confirmation' | 'purchase_order'>('all');
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [showArticleSearch, setShowArticleSearch] = useState(false);
@@ -197,14 +198,16 @@ export default function Invoices() {
   const lockMut = trpc.invoices.lock.useMutation({ onSuccess: () => { utils.invoices.list.invalidate(); toast.success('Rechnung finalisiert — GoBD-konform gesperrt.'); } });
   const cancelMut = trpc.invoices.cancel.useMutation({ onSuccess: () => { utils.invoices.list.invalidate(); toast.success('Storniert'); } });
   const deleteMut = trpc.invoices.delete.useMutation({ onSuccess: () => { utils.invoices.list.invalidate(); toast.success('Gelöscht'); } });
-  const convertMut = trpc.invoices.convertToInvoice.useMutation({
-    onSuccess: (data) => {
+  const convertMut = trpc.invoices.convert.useMutation({
+    onSuccess: (data: { id?: number; invoiceNumber: string }, vars: { offerId: number; targetType: 'invoice' | 'order_confirmation' | 'purchase_order' }) => {
       utils.invoices.list.invalidate();
-      toast.success(`✅ Rechnung ${data.invoiceNumber} wurde erstellt`);
-      setTab('invoice');
+      const label = vars.targetType === 'invoice' ? 'Rechnung' : vars.targetType === 'order_confirmation' ? 'Auftragsbestätigung' : 'Bestellung';
+      toast.success(`✅ ${label} ${data.invoiceNumber} wurde erstellt`);
+      setShowConvertDialog(null);
     },
-    onError: (e) => toast.error('Fehler: ' + e.message),
+    onError: (e: { message: string }) => toast.error('Fehler: ' + e.message),
   });
+  const [showConvertDialog, setShowConvertDialog] = useState<number | null>(null);
   // ─── Lieferantenangebot-Import ───────────────────────────────────────────────
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [importProjectId, setImportProjectId] = useState<number | undefined>(undefined);
@@ -748,13 +751,10 @@ export default function Invoices() {
                     variant="outline"
                     className="text-green-400 border-green-400/30 hover:bg-green-400/10"
                     disabled={convertMut.isPending}
-                    onClick={() => {
-                      if (confirm(`Angebot ${inv.invoiceNumber} in eine Rechnung umwandeln?\n\nAlle Positionen und Kundendaten werden übernommen.`))
-                        convertMut.mutate({ offerId: inv.id });
-                    }}
+                    onClick={() => setShowConvertDialog(inv.id)}
                   >
-                    {convertMut.isPending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <ArrowRight className="w-3 h-3 mr-1" />}
-                    In Rechnung umwandeln
+                    <ArrowRight className="w-3 h-3 mr-1" />
+                    Konvertieren
                   </Button>
                 )}
                 {inv.status === 'draft' && (
@@ -1278,17 +1278,22 @@ export default function Invoices() {
               <div className="flex gap-2 flex-wrap">
                 <Button size="sm" onClick={() => printInvoice(detailData)}><Download className="w-3 h-3 mr-1" /> PDF drucken</Button>
                 {detailData.type === 'offer' && (
-                  <Button size="sm" variant="outline" className="text-blue-400 border-blue-400/30" onClick={() => {
-                    setEmailForm({
-                      to: detailData.recipientEmail ?? '',
-                      cc: '',
-                      subject: `Angebot ${detailData.invoiceNumber} von Fabrica GmbH`,
-                      body: `vielen Dank für Ihr Interesse.\n\nAnbei erhalten Sie unser Angebot ${detailData.invoiceNumber}.\n\nBei Fragen stehen wir Ihnen gerne zur Verfügung.`,
-                    });
-                    setShowEmailDialog(detailData.id);
-                  }}>
-                    <Send className="w-3 h-3 mr-1" /> Per E-Mail senden
-                  </Button>
+                  <>
+                    <Button size="sm" variant="outline" className="text-green-400 border-green-400/30 hover:bg-green-400/10" onClick={() => setShowConvertDialog(detailData.id)}>
+                      <ArrowRight className="w-3 h-3 mr-1" /> Konvertieren
+                    </Button>
+                    <Button size="sm" variant="outline" className="text-blue-400 border-blue-400/30" onClick={() => {
+                      setEmailForm({
+                        to: detailData.recipientEmail ?? '',
+                        cc: '',
+                        subject: `Angebot ${detailData.invoiceNumber} von Fabrica GmbH`,
+                        body: `vielen Dank für Ihr Interesse.\n\nAnbei erhalten Sie unser Angebot ${detailData.invoiceNumber}.\n\nBei Fragen stehen wir Ihnen gerne zur Verfügung.`,
+                      });
+                      setShowEmailDialog(detailData.id);
+                    }}>
+                      <Send className="w-3 h-3 mr-1" /> Per E-Mail senden
+                    </Button>
+                  </>
                 )}
               </div>
             </div>
@@ -1573,6 +1578,68 @@ export default function Invoices() {
               {sendOfferEmail.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               E-Mail senden
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Konvertierungs-Dialog ──────────────────────────────────────────────── */}
+      <Dialog open={showConvertDialog !== null} onOpenChange={() => setShowConvertDialog(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ArrowRight className="w-5 h-5 text-green-400" />
+              Angebot konvertieren
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-3">
+            <p className="text-sm text-muted-foreground">Wähle den Zieldokumenttyp. Alle Positionen und Kundendaten werden übernommen.</p>
+            <div className="grid gap-2">
+              <Button
+                variant="outline"
+                className="justify-start gap-3 h-14 text-left"
+                disabled={convertMut.isPending}
+                onClick={() => convertMut.mutate({ offerId: showConvertDialog!, targetType: 'order_confirmation' })}
+              >
+                <div className="w-8 h-8 rounded-full bg-cyan-500/20 flex items-center justify-center">
+                  <CheckCircle className="w-4 h-4 text-cyan-400" />
+                </div>
+                <div>
+                  <div className="font-medium">Auftragsbestätigung</div>
+                  <div className="text-xs text-muted-foreground">Angebot wird als angenommen markiert (AB-Nummer)</div>
+                </div>
+              </Button>
+              <Button
+                variant="outline"
+                className="justify-start gap-3 h-14 text-left"
+                disabled={convertMut.isPending}
+                onClick={() => convertMut.mutate({ offerId: showConvertDialog!, targetType: 'invoice' })}
+              >
+                <div className="w-8 h-8 rounded-full bg-yellow-500/20 flex items-center justify-center">
+                  <Receipt className="w-4 h-4 text-yellow-400" />
+                </div>
+                <div>
+                  <div className="font-medium">Rechnung</div>
+                  <div className="text-xs text-muted-foreground">Direkt zur Rechnung umwandeln (RE-Nummer)</div>
+                </div>
+              </Button>
+              <Button
+                variant="outline"
+                className="justify-start gap-3 h-14 text-left"
+                disabled={convertMut.isPending}
+                onClick={() => convertMut.mutate({ offerId: showConvertDialog!, targetType: 'purchase_order' })}
+              >
+                <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center">
+                  <Package className="w-4 h-4 text-purple-400" />
+                </div>
+                <div>
+                  <div className="font-medium">Bestellung</div>
+                  <div className="text-xs text-muted-foreground">Als Bestellung an Lieferanten (BE-Nummer)</div>
+                </div>
+              </Button>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setShowConvertDialog(null)}>Abbrechen</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

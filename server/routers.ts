@@ -1075,22 +1075,25 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
       ].join(';'));
       return { csv: [header, ...rows].join('\n'), filename: `DATEV-${year}.csv` };
     }),
-    convertToInvoice: protectedProcedure
-      .input(z.object({ offerId: z.number() }))
+    convert: protectedProcedure
+      .input(z.object({
+        offerId: z.number(),
+        targetType: z.enum(['invoice', 'order_confirmation', 'purchase_order']),
+      }))
       .mutation(async ({ input, ctx }) => {
         // Angebot laden
         const offer = await getInvoiceById(input.offerId);
         if (!offer) throw new Error('Angebot nicht gefunden');
-        if (offer.type !== 'offer') throw new Error('Nur Angebote können in Rechnungen umgewandelt werden');
-        // Neue Rechnungsnummer vergeben
-        const invoiceNumber = await getNextInvoiceNumber('invoice');
+        if (offer.type !== 'offer') throw new Error('Nur Angebote können konvertiert werden');
+        // Neue Nummer vergeben
+        const invoiceNumber = await getNextInvoiceNumber(input.targetType);
         const today = new Date().toISOString().slice(0, 10);
         // Fälligkeitsdatum: heute + 14 Tage
         const dueDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-        // Neue Rechnung aus Angebotsdaten erstellen
+        // Neues Dokument aus Angebotsdaten erstellen
         const invoiceData: any = {
           invoiceNumber,
-          type: 'invoice' as const,
+          type: input.targetType as any,
           status: 'draft' as const,
           customerId: offer.customerId,
           projectId: offer.projectId,
@@ -1134,10 +1137,15 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
           lineTotalNet: item.lineTotalNet,
           lineTax: item.lineTax,
           lineTotalGross: item.lineTotalGross,
+          longDescription: item.longDescription,
+          isOptional: item.isOptional ? 1 : 0,
+          discount: item.discount,
+          discountedNet: item.discountedNet,
         }));
         const newId = await createInvoice(invoiceData, items, ctx.user.email ?? 'system');
-        // Angebot auf 'invoiced' setzen
-        await changeInvoiceStatus(input.offerId, 'invoiced', ctx.user.email ?? 'system');
+        // Angebot-Status setzen
+        const newStatus = input.targetType === 'invoice' ? 'invoiced' : 'accepted';
+        await changeInvoiceStatus(input.offerId, newStatus, ctx.user.email ?? 'system');
         return { id: newId, invoiceNumber };
       }),
   }),
