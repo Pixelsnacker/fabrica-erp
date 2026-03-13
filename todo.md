@@ -376,3 +376,6 @@
 - [x] Backend: CAD-Upload-Procedure (S3) für STL, STP, STEP, OBJ, 3MF, IGES
 - [x] Projekt-Detail: CAD-Tab mit Drag&Drop-Upload und 3D-Viewer-Dialog
 - [x] Dateiliste: Name, Größe, Datum, Download-Link, Löschen, Typ-Badge
+
+## Phase 43: Dokumenttyp CAD Daten
+- [x] Dokumenttyp "CAD Daten" vor "Sonstiges" in der Dropdown-Liste ergänzt (icon: 📐, Farbe: emerald)

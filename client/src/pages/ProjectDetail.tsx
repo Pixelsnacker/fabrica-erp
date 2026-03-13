@@ -1510,8 +1510,9 @@ const DOC_CATEGORY_LABELS: Record<string, { label: string; color: string; icon: 
   delivery_note:   { label: "Lieferschein",             color: "text-cyan-400",   icon: "🚚" },
   invoice:         { label: "Eingangsrechnung",         color: "text-yellow-400", icon: "🧾" },
   contract:        { label: "Vertrag",                  color: "text-orange-400", icon: "📝" },
-  drawing:         { label: "Zeichnung / Techn. Unterl.", color: "text-pink-400", icon: "📐" },
-  other:           { label: "Sonstiges",                color: "text-muted-foreground", icon: "📎" },
+  drawing:         { label: "Zeichnung / Techn. Unterl.", color: "text-pink-400",          icon: "📐" },
+  cad_data:        { label: "CAD Daten",                  color: "text-emerald-400",       icon: "📷" },
+  other:           { label: "Sonstiges",                  color: "text-muted-foreground",  icon: "📎" },
 };
 
 // ─── Dokument-Karte ───────────────────────────────────────────────────────────
