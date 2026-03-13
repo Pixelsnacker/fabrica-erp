@@ -409,3 +409,17 @@
 - [x] Frontend Settings.tsx: Startnummern-Karte mit Echtzeit-Vorschau der nächsten Nummer
 - [x] Frontend Settings.tsx: 4-spaltiges Fußzeilen-Formular mit Vorschau
 - [x] Frontend Invoices.tsx: buildFooterHtml() generiert 4-spaltige Fußzeile im PDF-Druck
+
+## Phase 48: Lieferantenangebot-Import ins Angebots-Formular
+- [ ] Backend: extractSupplierOfferItems Procedure — KI liest Positionen aus Lieferanten-PDF
+- [ ] Frontend: "Aus Lieferantenangebot importieren"-Button im Angebots-Formular
+- [ ] Frontend: Projekt-Auswahl → Lieferantenangebote aus dem Projekt anzeigen
+- [ ] Frontend: Positions-Vorschau nach KI-Extraktion mit Bearbeiten-Möglichkeit vor Übernahme
+- [ ] Frontend: Projektbezug im Angebot (Referenz auf Quell-Projekt)
+
+## Phase 48: Lieferantenangebot-Import in Angebots-Formular
+- [x] Backend: extractItems-Procedure (KI liest PDF via LLM file_url, JSON-Schema-Ausgabe)
+- [x] Frontend: Import-Button (amber) im Positionen-Header des Angebots-Formulars
+- [x] Frontend: Import-Dialog 4-stufig (Projekt → PDF → KI-Extraktion → Vorschau + Übernahme)
+- [x] Projektbezug wird beim Import automatisch gesetzt
+- [x] 186 Tests grün, 0 TypeScript-Fehler

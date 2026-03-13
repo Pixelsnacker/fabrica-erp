@@ -16,7 +16,8 @@ import { toast } from "sonner";
 import {
   Plus, FileText, Receipt, Search, Download, Lock, XCircle,
   ChevronDown, ChevronUp, Trash2, Eye, History, AlertTriangle,
-  CheckCircle, Clock, Send, Euro, Loader2, Printer, BookOpen, ArrowRight
+  CheckCircle, Clock, Send, Euro, Loader2, Printer, BookOpen, ArrowRight,
+  PackageSearch, FolderOpen
 } from "lucide-react";
 
 // ─── Typen ───────────────────────────────────────────────────────────────────
@@ -176,6 +177,45 @@ export default function Invoices() {
     },
     onError: (e) => toast.error('Fehler: ' + e.message),
   });
+  // ─── Lieferantenangebot-Import ───────────────────────────────────────────────
+  const [showImportDialog, setShowImportDialog] = useState(false);
+  const [importProjectId, setImportProjectId] = useState<number | undefined>(undefined);
+  const [importDocId, setImportDocId] = useState<number | undefined>(undefined);
+  const [importPreview, setImportPreview] = useState<any[] | null>(null);
+  const { data: importDocs = [] } = trpc.projectDocs.list.useQuery(
+    { projectId: importProjectId! },
+    { enabled: importProjectId !== undefined }
+  );
+  const supplierDocs = importDocs.filter((d: any) => d.category === 'supplier_offer' && (d.mimeType === 'application/pdf' || d.filename?.toLowerCase().endsWith('.pdf')));
+  const extractMut = trpc.projectDocs.extractItems.useMutation({
+    onSuccess: (data) => {
+      setImportPreview(data.items);
+      toast.success(`${data.items.length} Positionen aus "${data.filename}" extrahiert`);
+    },
+    onError: (e) => toast.error('KI-Extraktion fehlgeschlagen: ' + e.message),
+  });
+  function applyImport() {
+    if (!importPreview?.length) return;
+    setItems(importPreview.map((it, idx) => ({
+      position: idx + 1,
+      description: it.description,
+      quantity: String(it.quantity),
+      unit: it.unit,
+      unitPriceNet: String(it.unitPriceNet),
+      taxRate: String(it.taxRate),
+      lineTotalNet: it.lineTotalNet,
+      lineTax: it.lineTax,
+      lineTotalGross: it.lineTotalGross,
+    })));
+    // Projektbezug setzen
+    if (importProjectId) setForm(f => ({ ...f, projectId: importProjectId }));
+    setShowImportDialog(false);
+    setImportPreview(null);
+    setImportProjectId(undefined);
+    setImportDocId(undefined);
+    toast.success('Positionen übernommen — du kannst sie jetzt bearbeiten');
+  }
+  // ─────────────────────────────────────────────────────────────────────────────
   const { data: csvData } = trpc.invoices.exportCsv.useQuery(undefined);
   const { data: datevData } = trpc.invoices.exportDatev.useQuery(undefined);
   const { data: knowledgeEntries = [] } = trpc.knowledge.list.useQuery({});
@@ -729,7 +769,12 @@ export default function Invoices() {
             <div className="border border-border rounded-lg p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Positionen</h3>
-                <Button size="sm" variant="outline" onClick={addItem}><Plus className="w-3 h-3 mr-1" /> Position</Button>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" className="text-amber-400 border-amber-400/40 hover:bg-amber-400/10" onClick={() => { setImportPreview(null); setImportProjectId(undefined); setImportDocId(undefined); setShowImportDialog(true); }}>
+                    <PackageSearch className="w-3 h-3 mr-1" /> Aus Lieferantenangebot
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={addItem}><Plus className="w-3 h-3 mr-1" /> Position</Button>
+                </div>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -838,8 +883,112 @@ export default function Invoices() {
           </SheetFooter>
         </SheetContent>
       </Sheet>
+      {/* ─── Lieferantenangebot-Import-Dialog ──────────────────────────────────────── */}
+      <Dialog open={showImportDialog} onOpenChange={o => { if (!o) { setShowImportDialog(false); setImportPreview(null); } }}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <PackageSearch className="w-5 h-5 text-amber-400" />
+              Positionen aus Lieferantenangebot importieren
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* Schritt 1: Projekt wählen */}
+            <div className="space-y-2">
+              <Label>1. Projekt auswählen</Label>
+              <Select value={importProjectId ? String(importProjectId) : ''} onValueChange={v => { setImportProjectId(Number(v)); setImportDocId(undefined); setImportPreview(null); }}>
+                <SelectTrigger><SelectValue placeholder="Projekt wählen..." /></SelectTrigger>
+                <SelectContent>
+                  {(projects as any[]).map((p: any) => (
+                    <SelectItem key={p.id} value={String(p.id)}>{p.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {/* Schritt 2: Lieferantenangebot-PDF wählen */}
+            {importProjectId && (
+              <div className="space-y-2">
+                <Label>2. Lieferantenangebot (PDF) auswählen</Label>
+                {supplierDocs.length === 0 ? (
+                  <p className="text-sm text-muted-foreground p-3 border border-dashed border-border rounded-lg">
+                    Keine Lieferantenangebote (PDF) im Projekt gefunden. Lade zuerst ein PDF im Projekt-Detail unter Dokumente hoch (Typ: Lieferantenangebot).
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {supplierDocs.map((doc: any) => (
+                      <div key={doc.id} className={`flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-colors ${
+                        importDocId === doc.id ? 'border-amber-400 bg-amber-400/10' : 'border-border hover:border-amber-400/50'
+                      }`} onClick={() => { setImportDocId(doc.id); setImportPreview(null); }}>
+                        <div className="flex items-center gap-2">
+                          <FolderOpen className="w-4 h-4 text-amber-400" />
+                          <div>
+                            <p className="text-sm font-medium">{doc.filename}</p>
+                            <p className="text-xs text-muted-foreground">{doc.notes || 'Kein Kommentar'} · {new Date(doc.createdAt).toLocaleDateString('de-DE')}</p>
+                          </div>
+                        </div>
+                        {importDocId === doc.id && <CheckCircle className="w-4 h-4 text-amber-400" />}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            {/* Schritt 3: KI-Extraktion starten */}
+            {importDocId && !importPreview && (
+              <Button className="w-full" variant="outline" disabled={extractMut.isPending}
+                onClick={() => extractMut.mutate({ docId: importDocId! })}>
+                {extractMut.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> KI liest Positionen aus PDF...</> : <><PackageSearch className="w-4 h-4 mr-2" /> Positionen extrahieren</>}
+              </Button>
+            )}
+            {/* Schritt 4: Vorschau und Bestätigung */}
+            {importPreview && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-green-400">✓ {importPreview.length} Positionen erkannt</Label>
+                  <Button size="sm" variant="ghost" className="text-xs" onClick={() => { setImportPreview(null); }}>
+                    Neu extrahieren
+                  </Button>
+                </div>
+                <div className="border border-border rounded-lg overflow-hidden">
+                  <table className="w-full text-xs">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        <th className="text-left p-2 text-muted-foreground">#</th>
+                        <th className="text-left p-2 text-muted-foreground">Beschreibung</th>
+                        <th className="text-right p-2 text-muted-foreground">Menge</th>
+                        <th className="text-left p-2 text-muted-foreground">Einheit</th>
+                        <th className="text-right p-2 text-muted-foreground">EP netto</th>
+                        <th className="text-right p-2 text-muted-foreground">Gesamt</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {importPreview.map((it, idx) => (
+                        <tr key={idx} className="border-t border-border/50">
+                          <td className="p-2 text-muted-foreground">{it.position}</td>
+                          <td className="p-2 max-w-xs truncate" title={it.description}>{it.description}</td>
+                          <td className="p-2 text-right">{it.quantity}</td>
+                          <td className="p-2">{it.unit}</td>
+                          <td className="p-2 text-right">{parseFloat(it.unitPriceNet).toLocaleString('de-DE', { minimumFractionDigits: 2 })} €</td>
+                          <td className="p-2 text-right font-semibold text-green-400">{parseFloat(it.lineTotalGross).toLocaleString('de-DE', { minimumFractionDigits: 2 })} €</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="text-xs text-muted-foreground">Du kannst alle Positionen nach der Übernahme noch bearbeiten (Preis, Menge, Beschreibung).</p>
+              </div>
+            )}
+          </div>
+          <div className="flex justify-end gap-2 pt-2 border-t border-border">
+            <Button variant="ghost" onClick={() => { setShowImportDialog(false); setImportPreview(null); }}>Abbrechen</Button>
+            <Button disabled={!importPreview?.length} onClick={applyImport} className="bg-amber-500 hover:bg-amber-600 text-black">
+              <ArrowRight className="w-4 h-4 mr-2" /> {importPreview?.length ?? 0} Positionen übernehmen
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
-      {/* ─── Detail-Dialog ────────────────────────────────────────────────────── */}
+      {/* ─── Detail-Dialog ───────────────────────────────────────────────────────── */}
       <Dialog open={showDetail !== null} onOpenChange={() => setShowDetail(null)}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>

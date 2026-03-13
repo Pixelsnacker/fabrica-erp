@@ -1501,6 +1501,100 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
           .where(eq(projectDocuments.id, input.id));
         return { success: true };
       }),
+    // KI-Extraktion: Positionen aus Lieferantenangebot-PDF lesen
+    extractItems: protectedProcedure
+      .input(z.object({
+        docId: z.number(),       // ID des projectDocument (Lieferantenangebot)
+      }))
+      .mutation(async ({ input }) => {
+        const db = await (await import('./db')).getDb();
+        if (!db) throw new Error('DB nicht verfügbar');
+        const { projectDocuments } = await import('../drizzle/schema');
+        const { eq } = await import('drizzle-orm');
+        // Dokument laden
+        const [doc] = await db.select().from(projectDocuments).where(eq(projectDocuments.id, input.docId)).limit(1);
+        if (!doc) throw new Error('Dokument nicht gefunden');
+        if (!doc.fileUrl) throw new Error('Keine Datei-URL vorhanden');
+        // KI-Extraktion via LLM mit PDF file_url
+        const response = await invokeLLM({
+          messages: [
+            {
+              role: 'system',
+              content: 'Du bist ein Experte für das Lesen von Lieferantenangeboten. Extrahiere alle Positionen aus dem PDF und gib sie als JSON-Array zurück. Jede Position hat: position (Nummer), description (Beschreibung), quantity (Menge als Zahl), unit (Einheit z.B. Stk., m, kg), unitPriceNet (Einzelpreis netto als Zahl), taxRate (MwSt-Satz als Zahl, Standard 19). Falls kein Preis erkennbar, setze 0. Antworte NUR mit dem JSON-Array, kein anderer Text.',
+            },
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'file_url' as const,
+                  file_url: {
+                    url: doc.fileUrl,
+                    mime_type: 'application/pdf' as const,
+                  },
+                },
+                {
+                  type: 'text' as const,
+                  text: 'Extrahiere alle Positionen aus diesem Lieferantenangebot als JSON-Array. Format: [{"position":1,"description":"...","quantity":1,"unit":"Stk.","unitPriceNet":0,"taxRate":19}]',
+                },
+              ],
+            },
+          ],
+          response_format: {
+            type: 'json_schema',
+            json_schema: {
+              name: 'supplier_items',
+              strict: true,
+              schema: {
+                type: 'object',
+                properties: {
+                  items: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        position: { type: 'integer' },
+                        description: { type: 'string' },
+                        quantity: { type: 'number' },
+                        unit: { type: 'string' },
+                        unitPriceNet: { type: 'number' },
+                        taxRate: { type: 'number' },
+                      },
+                      required: ['position', 'description', 'quantity', 'unit', 'unitPriceNet', 'taxRate'],
+                      additionalProperties: false,
+                    },
+                  },
+                },
+                required: ['items'],
+                additionalProperties: false,
+              },
+            },
+          },
+        });
+        const content = response?.choices?.[0]?.message?.content ?? '{"items":[]}';
+        let parsed: { items: any[] };
+        try {
+          parsed = typeof content === 'string' ? JSON.parse(content) : content;
+        } catch {
+          parsed = { items: [] };
+        }
+        return {
+          docId: doc.id,
+          filename: doc.filename,
+          projectId: doc.projectId,
+          items: (parsed.items ?? []).map((it: any, idx: number) => ({
+            position: it.position ?? idx + 1,
+            description: String(it.description ?? ''),
+            quantity: String(it.quantity ?? 1),
+            unit: String(it.unit ?? 'Stk.'),
+            unitPriceNet: String(it.unitPriceNet ?? 0),
+            taxRate: String(it.taxRate ?? 19),
+            lineTotalNet: String((Number(it.quantity ?? 1) * Number(it.unitPriceNet ?? 0)).toFixed(2)),
+            lineTax: String((Number(it.quantity ?? 1) * Number(it.unitPriceNet ?? 0) * Number(it.taxRate ?? 19) / 100).toFixed(2)),
+            lineTotalGross: String((Number(it.quantity ?? 1) * Number(it.unitPriceNet ?? 0) * (1 + Number(it.taxRate ?? 19) / 100)).toFixed(2)),
+          })),
+        };
+      }),
+
     bySupplier: protectedProcedure
       .input(z.object({ supplierId: z.number() }))
       .query(async ({ input }) => {
