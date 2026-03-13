@@ -28,6 +28,10 @@ type InvoiceStatus = 'draft' | 'sent' | 'accepted' | 'invoiced' | 'paid' | 'canc
 interface InvoiceItem {
   position: number;
   description: string;
+  longDescription?: string;
+  isOptional?: boolean;
+  discount?: string;
+  discountedNet?: string;
   quantity: string;
   unit: string;
   unitPriceNet: string;
@@ -36,6 +40,10 @@ interface InvoiceItem {
   lineTax: string;
   lineTotalGross: string;
 }
+
+const UNIT_OPTIONS = [
+  'Stk.', 'Std.', 'km', 'pauschal', '%', 'm²', 'm', 'kg', 't', 'lfm', 'm³', 'L', 'Tag(e)', 'Woche(n)', 'Monat(e)',
+];
 
 const STATUS_LABELS: Record<InvoiceStatus, string> = {
   draft: 'Entwurf', sent: 'Gesendet', accepted: 'Angenommen',
@@ -69,11 +77,15 @@ function calcItem(item: InvoiceItem, taxMode: TaxMode): InvoiceItem {
     : taxMode === 'standard' ? 19
     : taxMode === 'reduced' ? 7
     : parseFloat(item.taxRate) || 19;
-  const net = qty * price;
+  const discountPct = parseFloat(item.discount || '0') || 0;
+  const baseNet = qty * price;
+  const discountAmount = baseNet * discountPct / 100;
+  const net = baseNet - discountAmount;
   const tax = net * rate / 100;
   return {
     ...item,
     taxRate: String(rate),
+    discountedNet: discountAmount.toFixed(2),
     lineTotalNet: net.toFixed(2),
     lineTax: tax.toFixed(2),
     lineTotalGross: (net + tax).toFixed(2),
@@ -101,7 +113,7 @@ function downloadCsv(csv: string, filename: string) {
 
 // ─── Leere Position ───────────────────────────────────────────────────────────
 function emptyItem(pos: number): InvoiceItem {
-  return { position: pos, description: '', quantity: '1', unit: 'Stk.', unitPriceNet: '0.00', taxRate: '19', lineTotalNet: '0.00', lineTax: '0.00', lineTotalGross: '0.00' };
+  return { position: pos, description: '', longDescription: '', isOptional: false, discount: '0', discountedNet: '0.00', quantity: '1', unit: 'Stk.', unitPriceNet: '0.00', taxRate: '19', lineTotalNet: '0.00', lineTax: '0.00', lineTotalGross: '0.00' };
 }
 
 // ─── Formular-Standardwerte ───────────────────────────────────────────────────
@@ -376,6 +388,10 @@ export default function Invoices() {
     });
     setItems((inv.items ?? []).map((it: any) => ({
       position: it.position, description: it.description,
+      longDescription: it.longDescription ?? '',
+      isOptional: !!it.isOptional,
+      discount: it.discount ?? '0',
+      discountedNet: it.discountedNet ?? '0.00',
       quantity: it.quantity ?? '1', unit: it.unit ?? 'Stk.',
       unitPriceNet: it.unitPriceNet ?? '0.00', taxRate: it.taxRate ?? '19',
       lineTotalNet: it.lineTotalNet ?? '0.00', lineTax: it.lineTax ?? '0.00',
@@ -402,7 +418,7 @@ export default function Invoices() {
   }
 
   // Position bearbeiten
-  function updateItem(idx: number, field: keyof InvoiceItem, val: string) {
+  function updateItem(idx: number, field: keyof InvoiceItem, val: string | boolean) {
     setItems(prev => {
       const next = [...prev];
       next[idx] = calcItem({ ...next[idx], [field]: val }, form.taxMode);
@@ -465,18 +481,41 @@ export default function Invoices() {
 
   // PDF-Druckansicht (Browser-Print)
   function printInvoice(inv: any) {
+    const cs = companySettings as any;
+    const agbText: string = cs?.agbText ?? '';
     const taxModeNote = inv.taxMode === 'kleinunternehmer'
       ? '<p style="margin-top:16px;font-size:11px;">Gemäß §19 UStG wird keine Umsatzsteuer berechnet.</p>' : '';
-    const itemRows = (inv.items ?? []).map((it: any, i: number) => `
-      <tr>
+    const itemRows = (inv.items ?? []).map((it: any, i: number) => {
+      const discountPct = parseFloat(it.discount ?? '0');
+      const discountCell = discountPct > 0
+        ? `<span style="color:#d97706;font-size:10px;"> (${discountPct}% Rabatt)</span>`
+        : '';
+      const optionalBadge = it.isOptional
+        ? '<span style="background:#f3f4f6;color:#6b7280;font-size:9px;padding:1px 5px;border-radius:3px;margin-left:6px;">Optional</span>'
+        : '';
+      const longDesc = it.longDescription
+        ? `<div style="font-size:10px;color:#6b7280;margin-top:2px;">${it.longDescription}</div>`
+        : '';
+      return `
+      <tr style="${it.isOptional ? 'opacity:0.7;' : ''}">
         <td style="padding:6px 8px;border-bottom:1px solid #eee;">${i + 1}</td>
-        <td style="padding:6px 8px;border-bottom:1px solid #eee;">${it.description}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #eee;">
+          ${it.description}${optionalBadge}${discountCell}
+          ${longDesc}
+        </td>
         <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;">${parseFloat(it.quantity ?? 1).toLocaleString('de-DE')}</td>
         <td style="padding:6px 8px;border-bottom:1px solid #eee;">${it.unit ?? 'Stk.'}</td>
         <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;">${parseFloat(it.unitPriceNet ?? 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })} €</td>
         <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;">${it.taxRate ?? 19} %</td>
         <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;font-weight:600;">${parseFloat(it.lineTotalGross ?? 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })} €</td>
-      </tr>`).join('');
+      </tr>`;
+    }).join('');
+    // AGB als zweite Seite
+    const agbPage = agbText ? `
+      <div style="page-break-before:always;padding:1cm;font-family:Arial,sans-serif;font-size:11px;color:#111;">
+        <h2 style="font-size:16px;margin-bottom:16px;border-bottom:2px solid #111;padding-bottom:8px;">Allgemeine Geschäftsbedingungen</h2>
+        <div style="white-space:pre-wrap;line-height:1.6;">${agbText}</div>
+      </div>` : '';
     const html = `<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><title>${inv.invoiceNumber}</title>
     <style>body{font-family:Arial,sans-serif;font-size:12px;margin:1cm;color:#111;}
     table{width:100%;border-collapse:collapse;}th{background:#f5f5f5;text-align:left;padding:6px 8px;border-bottom:2px solid #ddd;}
@@ -517,6 +556,7 @@ export default function Invoices() {
     ${inv.footerText ? '<p style="margin-top:24px;font-size:10px;color:#888;">' + inv.footerText + '</p>' : ''}
     <p style="margin-top:16px;font-size:9px;color:#aaa;">SHA-256: ${inv.contentHash ?? 'noch nicht finalisiert'}</p>
     ${buildFooterHtml()}
+    ${agbPage}
     <script>window.onload=()=>window.print();</script></body></html>`;
     const w = window.open('', '_blank');
     if (w) { w.document.write(html); w.document.close(); }
@@ -776,35 +816,68 @@ export default function Invoices() {
                   <Button size="sm" variant="outline" onClick={addItem}><Plus className="w-3 h-3 mr-1" /> Position</Button>
                 </div>
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-muted-foreground text-xs border-b border-border">
-                      <th className="text-left pb-2 w-8">#</th>
-                      <th className="text-left pb-2">Beschreibung</th>
-                      <th className="text-right pb-2 w-20">Menge</th>
-                      <th className="text-left pb-2 w-20">Einheit</th>
-                      <th className="text-right pb-2 w-28">EP netto</th>
-                      {form.taxMode === 'mixed' && <th className="text-right pb-2 w-20">MwSt %</th>}
-                      <th className="text-right pb-2 w-28">Gesamt brutto</th>
-                      <th className="w-8"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {items.map((it, idx) => (
-                      <tr key={idx} className="border-b border-border/50">
-                        <td className="py-2 text-muted-foreground">{it.position}</td>
-                        <td className="py-2 pr-2"><Input className="h-8 text-sm" value={it.description} onChange={e => updateItem(idx, 'description', e.target.value)} placeholder="Leistungsbeschreibung" /></td>
-                        <td className="py-2 pr-2"><Input className="h-8 text-sm text-right w-20" value={it.quantity} onChange={e => updateItem(idx, 'quantity', e.target.value)} /></td>
-                        <td className="py-2 pr-2"><Input className="h-8 text-sm w-20" value={it.unit} onChange={e => updateItem(idx, 'unit', e.target.value)} /></td>
-                        <td className="py-2 pr-2"><Input className="h-8 text-sm text-right w-28" value={it.unitPriceNet} onChange={e => updateItem(idx, 'unitPriceNet', e.target.value)} /></td>
-                        {form.taxMode === 'mixed' && <td className="py-2 pr-2"><Input className="h-8 text-sm text-right w-20" value={it.taxRate} onChange={e => updateItem(idx, 'taxRate', e.target.value)} /></td>}
-                        <td className="py-2 text-right font-semibold text-green-400">{parseFloat(it.lineTotalGross).toLocaleString('de-DE', { minimumFractionDigits: 2 })} €</td>
-                        <td className="py-2 pl-2"><Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-400" onClick={() => removeItem(idx)}><Trash2 className="w-3 h-3" /></Button></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="space-y-2">
+                {items.map((it, idx) => (
+                  <div key={idx} className={`border rounded-lg p-3 space-y-2 ${it.isOptional ? 'border-dashed border-muted-foreground/40 bg-muted/20' : 'border-border'}`}>
+                    {/* Zeile 1: #, Beschreibung, Menge, Einheit, EP, Rabatt, Gesamt, Löschen */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-muted-foreground text-xs w-5 shrink-0">{it.position}</span>
+                      <Input className="h-8 text-sm flex-1 min-w-[160px]" value={it.description} onChange={e => updateItem(idx, 'description', e.target.value)} placeholder="Leistungsbeschreibung *" />
+                      <Input className="h-8 text-sm text-right w-16" value={it.quantity} onChange={e => updateItem(idx, 'quantity', e.target.value)} placeholder="Menge" />
+                      {/* Einheit-Dropdown mit Freitext */}
+                      <Select value={UNIT_OPTIONS.includes(it.unit) ? it.unit : '__custom'} onValueChange={v => { if (v !== '__custom') updateItem(idx, 'unit', v); }}>
+                        <SelectTrigger className="h-8 w-24 text-xs">
+                          <SelectValue>{UNIT_OPTIONS.includes(it.unit) ? it.unit : it.unit}</SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {UNIT_OPTIONS.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                          <SelectItem value="__custom">Eigene...</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {!UNIT_OPTIONS.includes(it.unit) && (
+                        <Input className="h-8 text-sm w-20" value={it.unit} onChange={e => updateItem(idx, 'unit', e.target.value)} placeholder="Einheit" />
+                      )}
+                      <Input className="h-8 text-sm text-right w-24" value={it.unitPriceNet} onChange={e => updateItem(idx, 'unitPriceNet', e.target.value)} placeholder="EP netto" />
+                      {/* Rabatt % */}
+                      <div className="flex items-center gap-1">
+                        <Input className="h-8 text-sm text-right w-16" value={it.discount ?? '0'} onChange={e => updateItem(idx, 'discount', e.target.value)} placeholder="0" />
+                        <span className="text-xs text-muted-foreground">%</span>
+                      </div>
+                      {form.taxMode === 'mixed' && (
+                        <div className="flex items-center gap-1">
+                          <Input className="h-8 text-sm text-right w-14" value={it.taxRate} onChange={e => updateItem(idx, 'taxRate', e.target.value)} />
+                          <span className="text-xs text-muted-foreground">%</span>
+                        </div>
+                      )}
+                      <span className="font-semibold text-green-400 text-sm w-24 text-right shrink-0">
+                        {parseFloat(it.lineTotalGross).toLocaleString('de-DE', { minimumFractionDigits: 2 })} €
+                      </span>
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-400 shrink-0" onClick={() => removeItem(idx)}><Trash2 className="w-3 h-3" /></Button>
+                    </div>
+                    {/* Zeile 2: Langbeschreibung + Optional-Toggle */}
+                    <div className="flex items-start gap-3 pl-7">
+                      <Input
+                        className="h-7 text-xs flex-1 text-muted-foreground"
+                        value={it.longDescription ?? ''}
+                        onChange={e => updateItem(idx, 'longDescription', e.target.value)}
+                        placeholder="Detailbeschreibung (optional, erscheint im PDF)"
+                      />
+                      <label className="flex items-center gap-1.5 cursor-pointer shrink-0 mt-0.5">
+                        <Checkbox
+                          checked={!!it.isOptional}
+                          onCheckedChange={checked => updateItem(idx, 'isOptional', !!checked)}
+                          className="h-4 w-4"
+                        />
+                        <span className="text-xs text-muted-foreground">Optional</span>
+                      </label>
+                      {parseFloat(it.discount ?? '0') > 0 && (
+                        <span className="text-xs text-amber-400 shrink-0">
+                          -{parseFloat(it.discountedNet ?? '0').toLocaleString('de-DE', { minimumFractionDigits: 2 })} € Rabatt
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
               {/* Summen */}
               <div className="flex justify-end">

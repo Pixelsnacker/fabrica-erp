@@ -423,3 +423,15 @@
 - [x] Frontend: Import-Dialog 4-stufig (Projekt → PDF → KI-Extraktion → Vorschau + Übernahme)
 - [x] Projektbezug wird beim Import automatisch gesetzt
 - [x] 186 Tests grün, 0 TypeScript-Fehler
+
+## Phase 49: Angebots-Formular Sevdesk-Erweiterungen
+- [ ] DB: invoice_items – longDescription, isOptional (tinyint), discount (decimal) Felder
+- [ ] DB: company_settings – agbText Feld
+- [ ] Backend: invoice_items Felder in create/update Procedures
+- [ ] Backend: agbText in companySettings.update Procedure
+- [ ] Frontend: Einheiten-Dropdown (Stk, Std, km, pauschal, %, m², m, kg, t, lfm, m³, L, Tag(e))
+- [ ] Frontend: Langbeschreibung-Textfeld pro Position (mehrzeilig)
+- [ ] Frontend: Optional-Toggle pro Position
+- [ ] Frontend: Rabatt-Feld pro Position (%) mit Berechnung
+- [ ] Frontend: AGB-Textfeld in Einstellungen
+- [ ] Frontend: AGB als automatische 2. Seite im PDF-Druck

@@ -402,6 +402,10 @@ export const invoiceItems = mysqlTable("invoice_items", {
   lineTotalNet: decimal("line_total_net", { precision: 12, scale: 2 }).default('0.00'),
   lineTax: decimal("line_tax", { precision: 12, scale: 2 }).default('0.00'),
   lineTotalGross: decimal("line_total_gross", { precision: 12, scale: 2 }).default('0.00'),
+  longDescription: text("long_description"),
+  isOptional: tinyint("is_optional").default(0),
+  discount: decimal({ precision: 5, scale: 2 }).default('0.00'),
+  discountedNet: decimal("discounted_net", { precision: 12, scale: 2 }).default('0.00'),
 });
 
 export const invoiceAuditLog = mysqlTable("invoice_audit_log", {
@@ -458,6 +462,7 @@ export const companySettings = mysqlTable("company_settings", {
   offerStartNumber: int("offer_start_number").default(1),
   invoiceStartNumber: int("invoice_start_number").default(1),
   creditNoteStartNumber: int("credit_note_start_number").default(1),
+  agbText: text("agb_text"),
   createdAt: bigint("created_at", { mode: "number" }),
   updatedAt: bigint("updated_at", { mode: "number" }),
 });

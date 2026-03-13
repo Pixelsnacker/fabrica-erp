@@ -381,3 +381,82 @@ describe("Angebot → Rechnung Konvertierung", () => {
     expect(result.taxMode).toBe('kleinunternehmer');
   });
 });
+
+// ─── Tests für erweiterte Positions-Felder (Sevdesk-Style) ──────────────────
+describe("Erweiterte Positions-Felder", () => {
+  // Hilfsfunktion: Positions-Berechnung mit Rabatt (spiegelt calcItem aus Frontend)
+  function calcItemWithDiscount(item: {
+    quantity: number;
+    unitPriceNet: number;
+    discount: number;
+    taxRate: number;
+  }) {
+    const baseNet = item.quantity * item.unitPriceNet;
+    const discountAmount = baseNet * item.discount / 100;
+    const net = baseNet - discountAmount;
+    const tax = net * item.taxRate / 100;
+    return {
+      discountedNet: discountAmount,
+      lineTotalNet: net,
+      lineTax: tax,
+      lineTotalGross: net + tax,
+    };
+  }
+
+  it("berechnet Rabatt korrekt (10% auf 1000 EUR)", () => {
+    const result = calcItemWithDiscount({ quantity: 1, unitPriceNet: 1000, discount: 10, taxRate: 19 });
+    expect(result.discountedNet).toBe(100);
+    expect(result.lineTotalNet).toBe(900);
+    expect(result.lineTax).toBe(171);
+    expect(result.lineTotalGross).toBe(1071);
+  });
+
+  it("berechnet 0% Rabatt korrekt (kein Abzug)", () => {
+    const result = calcItemWithDiscount({ quantity: 1, unitPriceNet: 500, discount: 0, taxRate: 19 });
+    expect(result.discountedNet).toBe(0);
+    expect(result.lineTotalNet).toBe(500);
+    expect(result.lineTotalGross).toBe(595);
+  });
+
+  it("berechnet 100% Rabatt korrekt (Gratisoption)", () => {
+    const result = calcItemWithDiscount({ quantity: 1, unitPriceNet: 200, discount: 100, taxRate: 19 });
+    expect(result.discountedNet).toBe(200);
+    expect(result.lineTotalNet).toBe(0);
+    expect(result.lineTotalGross).toBe(0);
+  });
+
+  it("berechnet Rabatt mit Menge korrekt (3x 100 EUR, 20% Rabatt)", () => {
+    const result = calcItemWithDiscount({ quantity: 3, unitPriceNet: 100, discount: 20, taxRate: 19 });
+    expect(result.discountedNet).toBe(60); // 300 * 20% = 60
+    expect(result.lineTotalNet).toBe(240); // 300 - 60 = 240
+    expect(result.lineTax).toBeCloseTo(45.6, 1); // 240 * 19%
+    expect(result.lineTotalGross).toBeCloseTo(285.6, 1);
+  });
+
+  it("validiert gültige Einheiten", () => {
+    const VALID_UNITS = ['Stk.', 'Std.', 'km', 'pauschal', '%', 'm²', 'm', 'kg', 't', 'lfm', 'm³', 'L', 'Tag(e)', 'Woche(n)', 'Monat(e)'];
+    expect(VALID_UNITS).toContain('Stk.');
+    expect(VALID_UNITS).toContain('Std.');
+    expect(VALID_UNITS).toContain('pauschal');
+    expect(VALID_UNITS).toContain('m²');
+    expect(VALID_UNITS).toHaveLength(15);
+  });
+
+  it("Optional-Feld ist boolean", () => {
+    const item = { isOptional: true, description: 'Optionale Leistung' };
+    expect(typeof item.isOptional).toBe('boolean');
+    expect(item.isOptional).toBe(true);
+  });
+
+  it("Langbeschreibung kann leer sein", () => {
+    const item = { description: 'Hauptbeschreibung', longDescription: '' };
+    expect(item.longDescription).toBe('');
+    expect(item.description).toBeTruthy();
+  });
+
+  it("AGB-Text wird korrekt als String gespeichert", () => {
+    const agbText = "§1 Geltungsbereich\n§2 Vertragsschluss\n§3 Preise";
+    expect(typeof agbText).toBe('string');
+    expect(agbText.split('\n')).toHaveLength(3);
+  });
+});

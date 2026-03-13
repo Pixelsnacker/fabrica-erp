@@ -941,6 +941,10 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
         lineTotalNet: z.string().optional(),
         lineTax: z.string().optional(),
         lineTotalGross: z.string().optional(),
+        longDescription: z.string().optional(),
+        isOptional: z.boolean().optional(),
+        discount: z.string().optional(),
+        discountedNet: z.string().optional(),
       })).default([]),
     })).mutation(async ({ input, ctx }) => {
       const { items, ...invoiceData } = input;
@@ -993,6 +997,10 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
         lineTotalNet: z.string().optional(),
         lineTax: z.string().optional(),
         lineTotalGross: z.string().optional(),
+        longDescription: z.string().optional(),
+        isOptional: z.boolean().optional(),
+        discount: z.string().optional(),
+        discountedNet: z.string().optional(),
       })).optional(),
     })).mutation(async ({ input, ctx }) => {
       const { id, items, ...data } = input;
@@ -1164,6 +1172,8 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
         offerStartNumber: z.number().int().min(1).optional(),
         invoiceStartNumber: z.number().int().min(1).optional(),
         creditNoteStartNumber: z.number().int().min(1).optional(),
+        // AGB
+        agbText: z.string().optional(),
       }))
       .mutation(async ({ input }) => {
         return upsertCompanySettings({

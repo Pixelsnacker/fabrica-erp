@@ -157,6 +157,8 @@ export default function Settings() {
     offerStartNumber: 1,
     invoiceStartNumber: 1,
     creditNoteStartNumber: 1,
+    // AGB
+    agbText: "",
   });
 
   const { data: companyData, isLoading: isLoadingCompany } = trpc.companySettings.get.useQuery();
@@ -226,6 +228,7 @@ export default function Settings() {
         offerStartNumber: (companyData as any).offerStartNumber ?? 1,
         invoiceStartNumber: (companyData as any).invoiceStartNumber ?? 1,
         creditNoteStartNumber: (companyData as any).creditNoteStartNumber ?? 1,
+        agbText: (companyData as any).agbText ?? "",
       });
       if (companyData.logoUrl) setLogoPreview(companyData.logoUrl);
     }
@@ -646,6 +649,26 @@ export default function Settings() {
                         </div>
                       </div>
                     )}
+                  </CardContent>
+                </Card>
+
+                {/* AGB */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Allgemeine Geschäftsbedingungen (AGB)</CardTitle>
+                    <CardDescription>Wird automatisch als zweite Seite an Angebots-PDFs angehängt. Leer lassen = kein AGB-Anhang.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Textarea
+                      value={form.agbText}
+                      onChange={e => setForm(f => ({ ...f, agbText: e.target.value }))}
+                      placeholder="§1 Geltungsbereich&#10;§2 Vertragsschluss&#10;..."
+                      rows={12}
+                      className="font-mono text-xs resize-y"
+                    />
+                    <p className="text-xs text-muted-foreground mt-2">
+                      {form.agbText ? `${form.agbText.length} Zeichen — AGB wird beim PDF-Druck als Seite 2 angehängt` : 'Kein AGB-Text hinterlegt'}
+                    </p>
                   </CardContent>
                 </Card>
 
