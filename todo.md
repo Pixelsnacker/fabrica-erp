@@ -455,3 +455,8 @@
 ## Phase 53: Bug-Fixes UI
 - [x] Bug: Schnellnotizen lassen sich nicht bearbeiten (Edit-Dialog öffnet sich nicht)
 - [x] Bug: Stift-Button in Dokumenten-Liste nur bei Hover sichtbar, soll immer gelb sein
+
+## Phase 54: Schnellnotiz-Dialog Bugs
+- [x] Bug: Schnellnotiz-Dialog wird abgeschnitten / überlappt falsch (z-index / Portal-Problem)
+- [x] Bug: EditQuickNoteDialog öffnet sich nicht beim Klick auf Stift-Button in Schnellnotizen-Liste
+- [x] Verbesserung: Schnellnotiz-Dialog saubereres Design
