@@ -393,3 +393,19 @@
 - [x] getFilePreviewType: 'stl' und 'cad_other' (STP/STEP/OBJ/3MF/IGES) Typen hinzugefügt
 - [x] STL-Vorschau: CadViewer-Komponente im Dialog eingebunden (interaktiver 3D-Viewer, 85vh)
 - [x] STP/STEP/OBJ/3MF/IGES-Vorschau: Info-Dialog mit Dateiinfo + programm-spezifischem Hinweis + Download
+
+## Phase 47: Fußzeile 4-spaltig + Startnummern
+- [ ] DB-Schema: footerCol1..4 Felder (Adresse/Kontakt/Rechtliches/Bank) + invoiceStartNumber + quoteStartNumber
+- [ ] Migration: ALTER TABLE company_settings
+- [ ] Einstellungen-UI: 4-spaltiges Fußzeilen-Formular mit Vorschau + Startnummern-Felder
+- [ ] PDF-Generator: 4-spaltige Fußzeile rendern
+- [ ] Nummerierungslogik: Startnummer als Basis für nächste Rechnungs-/Angebotsnummer
+
+## Phase 47: Fußzeile 4-spaltig + Startnummern
+- [x] DB-Schema: footerCol1-4 Felder in company_settings
+- [x] DB: ALTER TABLE für neue Spalten
+- [x] Backend: footerCol1-4 und Startnummern in companySettings.update Procedure
+- [x] Backend: getNextInvoiceNumber berücksichtigt Startnummer aus company_settings
+- [x] Frontend Settings.tsx: Startnummern-Karte mit Echtzeit-Vorschau der nächsten Nummer
+- [x] Frontend Settings.tsx: 4-spaltiges Fußzeilen-Formular mit Vorschau
+- [x] Frontend Invoices.tsx: buildFooterHtml() generiert 4-spaltige Fußzeile im PDF-Druck

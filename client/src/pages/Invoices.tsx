@@ -402,6 +402,27 @@ export default function Invoices() {
     });
   }, [invoiceList, tab, search]);
 
+  // 4-spaltige Fußzeile aus companySettings generieren
+  function buildFooterHtml(): string {
+    const cs = companySettings as any;
+    const col1 = cs?.footerCol1 ?? '';
+    const col2 = cs?.footerCol2 ?? '';
+    const col3 = cs?.footerCol3 ?? '';
+    const col4 = cs?.footerCol4 ?? '';
+    if (!col1 && !col2 && !col3 && !col4) return '';
+    const renderCol = (text: string) =>
+      text.split('\n').map(l => `<span>${l}</span>`).join('<br/>');
+    return `
+      <table style="width:100%;border-top:1px solid #ccc;margin-top:32px;padding-top:8px;font-size:9px;color:#555;">
+        <tr>
+          <td style="width:25%;vertical-align:top;padding-right:8px;">${renderCol(col1)}</td>
+          <td style="width:25%;vertical-align:top;padding-right:8px;">${renderCol(col2)}</td>
+          <td style="width:25%;vertical-align:top;padding-right:8px;">${renderCol(col3)}</td>
+          <td style="width:25%;vertical-align:top;">${renderCol(col4)}</td>
+        </tr>
+      </table>`;
+  }
+
   // PDF-Druckansicht (Browser-Print)
   function printInvoice(inv: any) {
     const taxModeNote = inv.taxMode === 'kleinunternehmer'
@@ -454,7 +475,8 @@ export default function Invoices() {
     ${inv.senderIban ? '<p>IBAN: ' + inv.senderIban + (inv.senderBic ? ' | BIC: ' + inv.senderBic : '') + '</p>' : ''}
     ${inv.notes ? '<p style="margin-top:16px;color:#555;">' + inv.notes + '</p>' : ''}
     ${inv.footerText ? '<p style="margin-top:24px;font-size:10px;color:#888;">' + inv.footerText + '</p>' : ''}
-    <p style="margin-top:32px;font-size:9px;color:#aaa;">SHA-256: ${inv.contentHash ?? 'noch nicht finalisiert'}</p>
+    <p style="margin-top:16px;font-size:9px;color:#aaa;">SHA-256: ${inv.contentHash ?? 'noch nicht finalisiert'}</p>
+    ${buildFooterHtml()}
     <script>window.onload=()=>window.print();</script></body></html>`;
     const w = window.open('', '_blank');
     if (w) { w.document.write(html); w.document.close(); }

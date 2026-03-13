@@ -1147,6 +1147,11 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
         bic: z.string().optional(),
         bankName: z.string().optional(),
         invoiceFooter: z.string().optional(),
+        // 4-spaltige Fußzeile
+        footerCol1: z.string().optional(),
+        footerCol2: z.string().optional(),
+        footerCol3: z.string().optional(),
+        footerCol4: z.string().optional(),
         kleinunternehmer: z.boolean().optional(),
         // Nummernkreis
         offerPrefix: z.string().max(20).optional(),
@@ -1155,6 +1160,10 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
         numberSeparator: z.string().max(5).optional(),
         numberPadding: z.number().int().min(1).max(8).optional(),
         includeYear: z.boolean().optional(),
+        // Startnummern (für Migration von Sevdesk etc.)
+        offerStartNumber: z.number().int().min(1).optional(),
+        invoiceStartNumber: z.number().int().min(1).optional(),
+        creditNoteStartNumber: z.number().int().min(1).optional(),
       }))
       .mutation(async ({ input }) => {
         return upsertCompanySettings({

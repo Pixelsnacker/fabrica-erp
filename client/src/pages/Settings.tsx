@@ -140,6 +140,11 @@ export default function Settings() {
     bic: "",
     bankName: "",
     invoiceFooter: "",
+    // 4-spaltige Fußzeile
+    footerCol1: "",
+    footerCol2: "",
+    footerCol3: "",
+    footerCol4: "",
     kleinunternehmer: false,
     // Nummernkreis
     offerPrefix: "AN",
@@ -148,6 +153,10 @@ export default function Settings() {
     numberSeparator: "-",
     numberPadding: 4,
     includeYear: true,
+    // Startnummern (Migration von Sevdesk etc.)
+    offerStartNumber: 1,
+    invoiceStartNumber: 1,
+    creditNoteStartNumber: 1,
   });
 
   const { data: companyData, isLoading: isLoadingCompany } = trpc.companySettings.get.useQuery();
@@ -203,6 +212,10 @@ export default function Settings() {
         bic: companyData.bic ?? "",
         bankName: companyData.bankName ?? "",
         invoiceFooter: companyData.invoiceFooter ?? "",
+        footerCol1: (companyData as any).footerCol1 ?? "",
+        footerCol2: (companyData as any).footerCol2 ?? "",
+        footerCol3: (companyData as any).footerCol3 ?? "",
+        footerCol4: (companyData as any).footerCol4 ?? "",
         kleinunternehmer: Boolean(companyData.kleinunternehmer),
         offerPrefix: companyData.offerPrefix ?? "AN",
         invoicePrefix: companyData.invoicePrefix ?? "RE",
@@ -210,6 +223,9 @@ export default function Settings() {
         numberSeparator: companyData.numberSeparator ?? "-",
         numberPadding: companyData.numberPadding ?? 4,
         includeYear: (companyData.includeYear ?? 1) === 1,
+        offerStartNumber: (companyData as any).offerStartNumber ?? 1,
+        invoiceStartNumber: (companyData as any).invoiceStartNumber ?? 1,
+        creditNoteStartNumber: (companyData as any).creditNoteStartNumber ?? 1,
       });
       if (companyData.logoUrl) setLogoPreview(companyData.logoUrl);
     }
@@ -539,19 +555,97 @@ export default function Settings() {
                   </CardContent>
                 </Card>
 
-                {/* Rechnungsfußzeile */}
+                {/* Startnummern */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Startnummern (Migration)</CardTitle>
+                    <CardDescription>Trage hier die letzte Nummer aus deinem bisherigen System ein (z.B. Sevdesk), damit die Nummerierung nahtlos weiterläuft. Wird nur beim ersten Dokument des laufenden Jahres berücksichtigt.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="space-y-1.5">
+                        <Label>Angebot Startnummer</Label>
+                        <Input type="number" min={1} value={form.offerStartNumber} onChange={e => setForm(f => ({ ...f, offerStartNumber: parseInt(e.target.value) || 1 }))} placeholder="z.B. 42" />
+                        <p className="text-xs text-muted-foreground">Nächstes Angebot: {form.offerPrefix}{form.numberSeparator}{form.includeYear ? new Date().getFullYear() + form.numberSeparator : ""}{String(form.offerStartNumber).padStart(form.numberPadding, "0")}</p>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Rechnung Startnummer</Label>
+                        <Input type="number" min={1} value={form.invoiceStartNumber} onChange={e => setForm(f => ({ ...f, invoiceStartNumber: parseInt(e.target.value) || 1 }))} placeholder="z.B. 128" />
+                        <p className="text-xs text-muted-foreground">Nächste Rechnung: {form.invoicePrefix}{form.numberSeparator}{form.includeYear ? new Date().getFullYear() + form.numberSeparator : ""}{String(form.invoiceStartNumber).padStart(form.numberPadding, "0")}</p>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Gutschrift Startnummer</Label>
+                        <Input type="number" min={1} value={form.creditNoteStartNumber} onChange={e => setForm(f => ({ ...f, creditNoteStartNumber: parseInt(e.target.value) || 1 }))} placeholder="z.B. 5" />
+                        <p className="text-xs text-muted-foreground">Nächste Gutschrift: {form.creditNotePrefix}{form.numberSeparator}{form.includeYear ? new Date().getFullYear() + form.numberSeparator : ""}{String(form.creditNoteStartNumber).padStart(form.numberPadding, "0")}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Rechnungsfußzeile 4-spaltig */}
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-base">Rechnungsfußzeile</CardTitle>
-                    <CardDescription>Wird am Ende jeder Rechnung und jedes Angebots angezeigt</CardDescription>
+                    <CardDescription>Wird am Ende jeder Rechnung und jedes Angebots als 4-spaltiger Footer angezeigt (wie auf professionellen Geschäftsbriefen)</CardDescription>
                   </CardHeader>
-                  <CardContent>
-                    <Textarea
-                      value={form.invoiceFooter}
-                      onChange={e => setForm(f => ({ ...f, invoiceFooter: e.target.value }))}
-                      placeholder="Zahlungsziel: 14 Tage netto&#10;Gerichtsstand: Köln&#10;Geschäftsführer: Daniel Rincón"
-                      rows={4}
-                    />
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <Label>Spalte 1 — Firmenadresse</Label>
+                        <Textarea
+                          value={form.footerCol1}
+                          onChange={e => setForm(f => ({ ...f, footerCol1: e.target.value }))}
+                          placeholder={`Fabrica GmbH\nHüttenstraße 205\n50170 Kerpen\nDeutschland`}
+                          rows={4}
+                          className="font-mono text-xs"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Spalte 2 — Kontakt</Label>
+                        <Textarea
+                          value={form.footerCol2}
+                          onChange={e => setForm(f => ({ ...f, footerCol2: e.target.value }))}
+                          placeholder={`Tel. 02273-9529429\nFax. 0221790760092\nE-Mail kontakt@fabrica3d.eu\nWeb www.fabrica3d.de`}
+                          rows={4}
+                          className="font-mono text-xs"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Spalte 3 — Rechtliches</Label>
+                        <Textarea
+                          value={form.footerCol3}
+                          onChange={e => setForm(f => ({ ...f, footerCol3: e.target.value }))}
+                          placeholder={`Amtsgericht Köln\nHR-Nr. 81094\nUSt.-ID DE295059929\nSteuer-Nr. 203/5741/0780\nGeschäftsführung Daniel Rincon`}
+                          rows={4}
+                          className="font-mono text-xs"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Spalte 4 — Bankverbindung</Label>
+                        <Textarea
+                          value={form.footerCol4}
+                          onChange={e => setForm(f => ({ ...f, footerCol4: e.target.value }))}
+                          placeholder={`Bank Kreissparkasse Köln\nIBAN DE40 3705 0299 0000 4241 65\nBIC COKSDE33XXX`}
+                          rows={4}
+                          className="font-mono text-xs"
+                        />
+                      </div>
+                    </div>
+                    {/* Vorschau */}
+                    {(form.footerCol1 || form.footerCol2 || form.footerCol3 || form.footerCol4) && (
+                      <div className="rounded-lg border border-border/50 bg-muted/10 p-4">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Vorschau Fußzeile</p>
+                        <div className="grid grid-cols-4 gap-4 text-xs text-muted-foreground">
+                          {[form.footerCol1, form.footerCol2, form.footerCol3, form.footerCol4].map((col, i) => (
+                            <div key={i} className="space-y-0.5">
+                              {(col || "").split("\n").map((line, j) => (
+                                <p key={j}>{line}</p>
+                              ))}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 

@@ -442,6 +442,11 @@ export const companySettings = mysqlTable("company_settings", {
   logoUrl: text("logo_url"),
   logoKey: text("logo_key"),
   invoiceFooter: text("invoice_footer"),
+  // 4-spaltige Fußzeile (Adresse | Kontakt | Rechtliches | Bank)
+  footerCol1: text("footer_col1"), // Spalte 1: Firmenadresse
+  footerCol2: text("footer_col2"), // Spalte 2: Tel/Fax/Email/Web
+  footerCol3: text("footer_col3"), // Spalte 3: Amtsgericht/HR/USt/Steuer/GF
+  footerCol4: text("footer_col4"), // Spalte 4: Bank/IBAN/BIC
   kleinunternehmer: tinyint("kleinunternehmer").default(0),
   // Nummernkreis-Konfiguration
   offerPrefix: varchar("offer_prefix", { length: 20 }).default("AN"),

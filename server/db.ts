@@ -787,14 +787,31 @@ export async function getNextInvoiceNumber(type: 'invoice' | 'offer' | 'credit_n
       ? (settings?.offerPrefix ?? 'AN')
       : (settings?.creditNotePrefix ?? 'GS');
 
-  // Upsert + Increment
-  await db.execute(
-    sql`INSERT INTO invoice_sequences (year, type, last_number) VALUES (${year}, ${type}, 1)
-        ON DUPLICATE KEY UPDATE last_number = last_number + 1`
-  );
+  // Startnummer aus Einstellungen lesen
+  const startNum = type === 'invoice'
+    ? (settings?.invoiceStartNumber ?? 1)
+    : type === 'offer'
+      ? (settings?.offerStartNumber ?? 1)
+      : (settings?.creditNoteStartNumber ?? 1);
+  // Prüfen ob bereits ein Eintrag für dieses Jahr existiert
+  const existing = await db.select().from(invoiceSequences)
+    .where(and(eq(invoiceSequences.year, year), eq(invoiceSequences.type, type)));
+  if (existing.length === 0) {
+    // Erster Eintrag: mit Startnummer beginnen
+    await db.execute(
+      sql`INSERT INTO invoice_sequences (year, type, last_number) VALUES (${year}, ${type}, ${startNum})
+          ON DUPLICATE KEY UPDATE last_number = last_number + 1`
+    );
+  } else {
+    // Bereits vorhanden: normal hochzählen
+    await db.execute(
+      sql`INSERT INTO invoice_sequences (year, type, last_number) VALUES (${year}, ${type}, 1)
+          ON DUPLICATE KEY UPDATE last_number = last_number + 1`
+    );
+  }
   const rows = await db.select().from(invoiceSequences)
     .where(and(eq(invoiceSequences.year, year), eq(invoiceSequences.type, type)));
-  const num = rows[0]?.lastNumber ?? 1;
+  const num = rows[0]?.lastNumber ?? startNum;
   const paddedNum = String(num).padStart(padding, '0');
 
   if (includeYear) {
