@@ -17,7 +17,7 @@ import {
   Plus, FileText, Receipt, Search, Download, Lock, XCircle,
   ChevronDown, ChevronUp, Trash2, Eye, History, AlertTriangle,
   CheckCircle, Clock, Send, Euro, Loader2, Printer, BookOpen, ArrowRight,
-  PackageSearch, FolderOpen, Package
+  PackageSearch, FolderOpen, Package, Copy
 } from "lucide-react";
 
 // ─── Typen ───────────────────────────────────────────────────────────────────
@@ -450,7 +450,15 @@ export default function Invoices() {
   }
 
   function addItem() {
-    setItems(prev => [...prev, emptyItem(prev.length + 1)]);
+    // Neue Position oben einfügen
+    setItems(prev => [emptyItem(1), ...prev].map((it, i) => ({ ...it, position: i + 1 })));
+  }
+  function copyItem(idx: number) {
+    setItems(prev => {
+      const copy = { ...prev[idx] };
+      const next = [copy, ...prev].map((it, i) => ({ ...it, position: i + 1 }));
+      return next;
+    });
   }
 
   function removeItem(idx: number) {
@@ -917,6 +925,7 @@ export default function Invoices() {
                       <span className="font-semibold text-green-400 text-sm w-24 text-right shrink-0">
                         {parseFloat(it.lineTotalGross).toLocaleString('de-DE', { minimumFractionDigits: 2 })} €
                       </span>
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-muted-foreground hover:text-primary shrink-0" title="Position kopieren" onClick={() => copyItem(idx)}><Copy className="w-3 h-3" /></Button>
                       <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-400 shrink-0" onClick={() => removeItem(idx)}><Trash2 className="w-3 h-3" /></Button>
                     </div>
                     {/* Zeile 2: Langbeschreibung + Optional-Toggle */}

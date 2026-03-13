@@ -533,11 +533,12 @@ export async function deleteQuickNote(id: number) {
   if (!db) throw new Error("DB not available");
   await db.delete(quickNotes).where(eq(quickNotes.id, id));
 }
-export async function updateQuickNote(id: number, data: { text?: string; remindAt?: string | null; remindLabel?: string | null }) {
+export async function updateQuickNote(id: number, data: { text?: string; source?: string; remindAt?: string | null; remindLabel?: string | null }) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
   const update: Record<string, any> = {};
   if (data.text !== undefined) update.text = data.text;
+  if (data.source !== undefined) update.source = data.source;
   if (data.remindAt !== undefined) update.remindAt = data.remindAt;
   if (data.remindLabel !== undefined) update.remindLabel = data.remindLabel;
   await db.update(quickNotes).set(update).where(eq(quickNotes.id, id));

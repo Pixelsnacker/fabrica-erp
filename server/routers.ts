@@ -691,6 +691,7 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
     update: protectedProcedure.input(z.object({
       id: z.number(),
       text: z.string().min(1).optional(),
+      source: z.enum(["whatsapp", "telefon", "persoenlich", "email", "sonstiges"]).optional(),
       remindAt: z.string().nullable().optional(),
       remindLabel: z.string().nullable().optional(),
     })).mutation(async ({ input }) => {

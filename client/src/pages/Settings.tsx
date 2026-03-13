@@ -15,20 +15,30 @@ import {
   Pencil, Bell
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { useState, useEffect, useRef } from "react";
 
-type QuickNoteForEdit = { id: number; text: string; remindAt?: string | null; remindLabel?: string | null };
+type QuickNoteForEdit = { id: number; text: string; source?: string; remindAt?: string | null; remindLabel?: string | null };
+const SOURCE_OPTIONS_EDIT = [
+  { value: "whatsapp", label: "WhatsApp" },
+  { value: "telefon", label: "Telefon" },
+  { value: "persoenlich", label: "Persönlich" },
+  { value: "email", label: "E-Mail" },
+  { value: "sonstiges", label: "Sonstiges" },
+];
 
 function EditQuickNoteDialog({ note, onClose }: { note: QuickNoteForEdit | null; onClose: () => void }) {
   const utils = trpc.useUtils();
   const [text, setText] = useState("");
+  const [source, setSource] = useState("sonstiges");
   const [remindAt, setRemindAt] = useState("");
   const [remindLabel, setRemindLabel] = useState("");
 
   useEffect(() => {
     if (note) {
       setText(note.text);
+      setSource(note.source ?? "sonstiges");
       setRemindLabel(note.remindLabel ?? "");
       if (note.remindAt) {
         const d = new Date(note.remindAt);
@@ -59,6 +69,19 @@ function EditQuickNoteDialog({ note, onClose }: { note: QuickNoteForEdit | null;
             <Textarea value={text} onChange={(e) => setText(e.target.value)} rows={4} className="resize-none" />
           </div>
           <div className="space-y-1.5">
+            <Label>Quelle</Label>
+            <Select value={source} onValueChange={setSource}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SOURCE_OPTIONS_EDIT.map(o => (
+                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
             <Label className="flex items-center gap-1.5">
               <Bell className="h-3.5 w-3.5 text-yellow-400" /> Erinnerung (optional)
             </Label>
@@ -79,7 +102,7 @@ function EditQuickNoteDialog({ note, onClose }: { note: QuickNoteForEdit | null;
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Abbrechen</Button>
           <Button
-            onClick={() => note && updateMutation.mutate({ id: note.id, text: text.trim(), remindAt: remindAt ? new Date(remindAt).toISOString() : null, remindLabel: remindLabel.trim() || null })}
+            onClick={() => note && updateMutation.mutate({ id: note.id, text: text.trim(), source: source as any, remindAt: remindAt ? new Date(remindAt).toISOString() : null, remindLabel: remindLabel.trim() || null })}
             disabled={!text.trim() || updateMutation.isPending}
           >
             {updateMutation.isPending ? "Speichern..." : "Speichern"}

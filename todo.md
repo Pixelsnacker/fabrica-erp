@@ -441,3 +441,8 @@
 - [x] Backend: articles.list, create, update, delete Procedures
 - [x] Frontend: Artikel-Seite mit Liste, Suche, Formular
 - [x] Frontend: Artikel-Suche beim Hinzufügen von Positionen in Angeboten/Rechnungen
+
+## Phase 51: UX-Verbesserungen Positionen + Schnellnotizen
+- [x] Angebotspositionen: Kopieren-Button pro Position
+- [x] Angebotspositionen: Neue Positionen oben einfügen (statt unten)
+- [x] Schnellnotizen: Nachträgliches Bearbeiten (Edit-Dialog)
