@@ -383,10 +383,10 @@ export default function Suppliers() {
                       <Star key={i} className={`h-3.5 w-3.5 ${i < (supplier.rating ?? 0) ? "text-yellow-400 fill-yellow-400" : "text-muted-foreground"}`} />
                     ))}
                   </div>
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center gap-1">
                     <Button
                       variant="ghost" size="sm"
-                      className="h-7 w-7 p-0"
+                      className="h-7 w-7 p-0 text-yellow-400 hover:text-yellow-300"
                       onClick={() => setEditId(supplier.id)}
                     >
                       <Edit2 className="h-3.5 w-3.5" />

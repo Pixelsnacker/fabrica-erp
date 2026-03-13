@@ -970,8 +970,8 @@ export default function Settings() {
             </Card>
           </TabsContent>
         </Tabs>
+        <EditQuickNoteDialog note={editNote} onClose={() => setEditNote(null)} />
       </div>
-      <EditQuickNoteDialog note={editNote} onClose={() => setEditNote(null)} />
     </DashboardLayout>
   );
 }

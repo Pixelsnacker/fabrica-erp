@@ -451,3 +451,7 @@
 - [x] Backend: invoices.convert Mutation (Angebot → Auftragsbestätigung oder Bestellung, alle Positionen übernehmen)
 - [x] Frontend: "Konvertieren"-Button in Angebots-Detail und Listenansicht
 - [x] Nach Konvertierung: Weiterleitung zum neuen Dokument, Angebot-Status auf "Angenommen" setzen
+
+## Phase 53: Bug-Fixes UI
+- [x] Bug: Schnellnotizen lassen sich nicht bearbeiten (Edit-Dialog öffnet sich nicht)
+- [x] Bug: Stift-Button in Dokumenten-Liste nur bei Hover sichtbar, soll immer gelb sein

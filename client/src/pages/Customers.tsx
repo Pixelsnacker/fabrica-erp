@@ -760,8 +760,8 @@ export default function Customers() {
 
                 <div className="flex items-center gap-2 shrink-0">
                   <Badge variant="secondary" className="text-xs">{TYPE_LABELS[customer.type] ?? customer.type}</Badge>
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setEditId(customer.id)}>
+                  <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-yellow-400 hover:text-yellow-300" onClick={() => setEditId(customer.id)}>
                       <Edit2 className="h-3.5 w-3.5" />
                     </Button>
                     <Button
