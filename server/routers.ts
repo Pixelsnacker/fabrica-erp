@@ -949,9 +949,13 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
     })).mutation(async ({ input, ctx }) => {
       const { items, ...invoiceData } = input;
       const invoiceNumber = await getNextInvoiceNumber(input.type);
+      const mappedItems = items.map(it => ({
+        ...it,
+        isOptional: it.isOptional ? 1 : 0,
+      }));
       const id = await createInvoice(
         { ...invoiceData as any, invoiceNumber },
-        items as any,
+        mappedItems as any,
         ctx.user.email ?? 'system',
       );
       return { id, invoiceNumber };
@@ -1004,7 +1008,10 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
       })).optional(),
     })).mutation(async ({ input, ctx }) => {
       const { id, items, ...data } = input;
-      await updateInvoice(id, data as any, items as any ?? null, ctx.user.email ?? 'system');
+      const mappedItems = items
+        ? items.map(it => ({ ...it, isOptional: it.isOptional ? 1 : 0 }))
+        : null;
+      await updateInvoice(id, data as any, mappedItems as any, ctx.user.email ?? 'system');
       return { success: true };
     }),
     changeStatus: protectedProcedure.input(z.object({ id: z.number(), status: z.string() })).mutation(async ({ input, ctx }) => {
@@ -1591,17 +1598,30 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
           docId: doc.id,
           filename: doc.filename,
           projectId: doc.projectId,
-          items: (parsed.items ?? []).map((it: any, idx: number) => ({
-            position: it.position ?? idx + 1,
-            description: String(it.description ?? ''),
-            quantity: String(it.quantity ?? 1),
-            unit: String(it.unit ?? 'Stk.'),
-            unitPriceNet: String(it.unitPriceNet ?? 0),
-            taxRate: String(it.taxRate ?? 19),
-            lineTotalNet: String((Number(it.quantity ?? 1) * Number(it.unitPriceNet ?? 0)).toFixed(2)),
-            lineTax: String((Number(it.quantity ?? 1) * Number(it.unitPriceNet ?? 0) * Number(it.taxRate ?? 19) / 100).toFixed(2)),
-            lineTotalGross: String((Number(it.quantity ?? 1) * Number(it.unitPriceNet ?? 0) * (1 + Number(it.taxRate ?? 19) / 100)).toFixed(2)),
-          })),
+          items: (parsed.items ?? [])
+            // Sortierung: kleinste Menge zuerst (aufsteigend), damit 1000 Stk. oben erscheint
+            // wenn alle Mengen gleich sind, nach Position sortieren
+            .sort((a: any, b: any) => {
+              const qA = Number(a.quantity ?? 1);
+              const qB = Number(b.quantity ?? 1);
+              if (qA !== qB) return qA - qB; // kleinste Menge zuerst
+              return (a.position ?? 0) - (b.position ?? 0);
+            })
+            .map((it: any, idx: number) => ({
+              position: idx + 1, // Positionen neu nummerieren nach Sortierung
+              description: String(it.description ?? ''),
+              longDescription: '',
+              isOptional: false,
+              discount: '0',
+              discountedNet: '0.00',
+              quantity: String(it.quantity ?? 1),
+              unit: String(it.unit ?? 'Stk.'),
+              unitPriceNet: String(it.unitPriceNet ?? 0),
+              taxRate: String(it.taxRate ?? 19),
+              lineTotalNet: String((Number(it.quantity ?? 1) * Number(it.unitPriceNet ?? 0)).toFixed(2)),
+              lineTax: String((Number(it.quantity ?? 1) * Number(it.unitPriceNet ?? 0) * Number(it.taxRate ?? 19) / 100).toFixed(2)),
+              lineTotalGross: String((Number(it.quantity ?? 1) * Number(it.unitPriceNet ?? 0) * (1 + Number(it.taxRate ?? 19) / 100)).toFixed(2)),
+            })),
         };
       }),
 

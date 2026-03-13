@@ -93,9 +93,22 @@ function calcItem(item: InvoiceItem, taxMode: TaxMode): InvoiceItem {
 }
 
 function calcTotals(items: InvoiceItem[]) {
-  const net = items.reduce((s, i) => s + parseFloat(i.lineTotalNet || '0'), 0);
-  const tax = items.reduce((s, i) => s + parseFloat(i.lineTax || '0'), 0);
-  return { subtotalNet: net.toFixed(2), taxAmount: tax.toFixed(2), totalGross: (net + tax).toFixed(2) };
+  // Optionale Positionen werden NICHT in die Gesamtsumme aufgenommen
+  const required = items.filter(i => !i.isOptional);
+  const optional = items.filter(i => i.isOptional);
+  const net = required.reduce((s, i) => s + parseFloat(i.lineTotalNet || '0'), 0);
+  const tax = required.reduce((s, i) => s + parseFloat(i.lineTax || '0'), 0);
+  const optionalNet = optional.reduce((s, i) => s + parseFloat(i.lineTotalNet || '0'), 0);
+  const totalDiscount = items.reduce((s, i) => s + parseFloat(i.discountedNet || '0'), 0);
+  return {
+    subtotalNet: net.toFixed(2),
+    taxAmount: tax.toFixed(2),
+    totalGross: (net + tax).toFixed(2),
+    optionalNet: optionalNet.toFixed(2),
+    hasOptional: optional.length > 0,
+    optionalCount: optional.length,
+    totalDiscount: totalDiscount.toFixed(2),
+  };
 }
 
 function formatEur(val: string | number | null | undefined) {
@@ -544,10 +557,26 @@ export default function Invoices() {
       <thead><tr><th>#</th><th>Beschreibung</th><th style="text-align:right">Menge</th><th>Einheit</th><th style="text-align:right">EP netto</th><th style="text-align:right">MwSt</th><th style="text-align:right">Gesamt brutto</th></tr></thead>
       <tbody>${itemRows}</tbody>
     </table>
-    <table class="totals" style="width:300px;margin-left:auto;">
-      <tr><td>Nettobetrag:</td><td style="text-align:right">${parseFloat(inv.subtotalNet ?? 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })} €</td></tr>
-      <tr><td>MwSt:</td><td style="text-align:right">${parseFloat(inv.taxAmount ?? 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })} €</td></tr>
-      <tr><td>Gesamtbetrag:</td><td style="text-align:right">${parseFloat(inv.totalGross ?? 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })} €</td></tr>
+    <table class="totals" style="width:320px;margin-left:auto;">
+      ${(() => {
+        const pdfItems = inv.items ?? [];
+        const reqItems = pdfItems.filter((i: any) => !i.isOptional);
+        const optItems = pdfItems.filter((i: any) => i.isOptional);
+        const pdfNet = reqItems.reduce((s: number, i: any) => s + parseFloat(i.lineTotalNet ?? 0), 0);
+        const pdfTax = reqItems.reduce((s: number, i: any) => s + parseFloat(i.lineTax ?? 0), 0);
+        const pdfGross = pdfNet + pdfTax;
+        const pdfOptNet = optItems.reduce((s: number, i: any) => s + parseFloat(i.lineTotalNet ?? 0), 0);
+        const pdfOptGross = optItems.reduce((s: number, i: any) => s + parseFloat(i.lineTotalGross ?? 0), 0);
+        const pdfDiscount = pdfItems.reduce((s: number, i: any) => s + parseFloat(i.discountedNet ?? 0), 0);
+        const fmt = (n: number) => n.toLocaleString('de-DE', { minimumFractionDigits: 2 }) + ' €';
+        return [
+          pdfDiscount > 0 ? `<tr style="color:#d97706;"><td>Rabatt gesamt:</td><td style="text-align:right">-${fmt(pdfDiscount)}</td></tr>` : '',
+          `<tr><td>Nettobetrag:</td><td style="text-align:right">${fmt(pdfNet)}</td></tr>`,
+          `<tr><td>MwSt:</td><td style="text-align:right">${fmt(pdfTax)}</td></tr>`,
+          `<tr><td><strong>Gesamtbetrag:</strong></td><td style="text-align:right"><strong>${fmt(pdfGross)}</strong></td></tr>`,
+          optItems.length > 0 ? `<tr style="font-size:10px;color:#888;border-top:1px dashed #ccc;"><td colspan="2" style="padding-top:8px;">zzgl. optionale Pos. (${optItems.length}): ${fmt(pdfOptGross)} brutto</td></tr>` : '',
+        ].join('');
+      })()}
     </table>
     ${taxModeNote}
     ${inv.paymentTerms ? '<p style="margin-top:24px;">' + inv.paymentTerms + '</p>' : ''}
@@ -881,10 +910,22 @@ export default function Invoices() {
               </div>
               {/* Summen */}
               <div className="flex justify-end">
-                <div className="text-sm space-y-1 min-w-[220px]">
-                  <div className="flex justify-between text-muted-foreground"><span>Netto:</span><span>{formatEur(totals.subtotalNet)}</span></div>
+                <div className="text-sm space-y-1 min-w-[260px]">
+                  {parseFloat(totals.totalDiscount) > 0 && (
+                    <div className="flex justify-between text-amber-400">
+                      <span>Rabatt gesamt:</span>
+                      <span>-{formatEur(totals.totalDiscount)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-muted-foreground"><span>Netto (Pflichtpositionen):</span><span>{formatEur(totals.subtotalNet)}</span></div>
                   <div className="flex justify-between text-muted-foreground"><span>MwSt:</span><span>{formatEur(totals.taxAmount)}</span></div>
                   <div className="flex justify-between font-bold text-lg border-t border-border pt-1"><span>Gesamt:</span><span className="text-green-400">{formatEur(totals.totalGross)}</span></div>
+                  {totals.hasOptional && (
+                    <div className="flex justify-between text-muted-foreground text-xs pt-1 border-t border-dashed border-border/50">
+                      <span>zzgl. optionale Pos. ({totals.optionalCount}):</span>
+                      <span>{formatEur(totals.optionalNet)}</span>
+                    </div>
+                  )}
                   {form.taxMode === 'kleinunternehmer' && (
                     <p className="text-xs text-muted-foreground mt-2">Gemäß §19 UStG wird keine Umsatzsteuer berechnet.</p>
                   )}
