@@ -799,13 +799,13 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
       .input(z.object({
         noteId: z.number(),
         label: z.string().optional(),
-        remindAt: z.string(), // ISO string
+        remindAt: z.string(), // datetime-local string (YYYY-MM-DDTHH:MM) oder ISO
       }))
       .mutation(async ({ input }) => {
         await addNoteReminder({
           noteId: input.noteId,
           label: input.label,
-          remindAt: new Date(input.remindAt),
+          remindAt: input.remindAt, // String direkt übergeben, keine UTC-Konvertierung
         });
         return { success: true };
       }),

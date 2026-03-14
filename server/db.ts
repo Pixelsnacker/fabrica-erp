@@ -674,7 +674,18 @@ export async function getNoteReminders(noteId: number) {
 export async function addNoteReminder(data: { noteId: number; label?: string; remindAt: Date | string }) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
-  const remindAt = typeof data.remindAt === 'string' ? data.remindAt : data.remindAt.toISOString().slice(0, 19).replace('T', ' ');
+  // Speichere als MySQL-kompatiblen String ohne Timezone-Konvertierung
+  // Input kann sein: 'YYYY-MM-DDTHH:MM' (datetime-local) oder ISO-String
+  let remindAt: string;
+  if (typeof data.remindAt === 'string') {
+    // Entferne Z-Suffix falls vorhanden, ersetze T durch Leerzeichen für MySQL
+    remindAt = data.remindAt.replace('Z', '').replace('T', ' ').slice(0, 19);
+  } else {
+    // Date-Objekt: als lokale Zeit speichern (nicht UTC)
+    const d = data.remindAt;
+    const pad = (n: number) => String(n).padStart(2, '0');
+    remindAt = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  }
   await db.insert(noteReminders).values({
     noteId: data.noteId,
     label: data.label ?? null,

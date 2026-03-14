@@ -183,7 +183,7 @@ function ReminderItem({
   reminder: { id: number; label: string | null; remindAt: Date | string; isSent: boolean | number };
   onDelete: (id: number) => void;
 }) {
-  const isPast = new Date(reminder.remindAt as string) < new Date();
+  const isPast = parseDatePreserveLocal(reminder.remindAt as string) < new Date();
   return (
     <div className="flex items-center gap-2 p-2 rounded-lg bg-white/5 border border-white/10 group">
       <Bell className={`w-4 h-4 shrink-0 ${reminder.isSent ? "text-slate-500" : isPast ? "text-orange-400" : "text-yellow-400"}`} />
@@ -428,13 +428,15 @@ function NoteDialog({
   const handleAddReminder = async () => {
     if (!newReminderDate || !noteId) return;
     const granted = await requestNotificationPermission();
-    const remindAt = new Date(newReminderDate);
+    // Sende den datetime-local String direkt (YYYY-MM-DDTHH:MM) ohne UTC-Konvertierung
+    // Das Backend speichert ihn als lokale Zeit in der DB
     await addReminder.mutateAsync({
       noteId,
       label: newReminderLabel || undefined,
-      remindAt: remindAt.toISOString(),
+      remindAt: newReminderDate, // z.B. '2026-03-14T15:44' - keine UTC-Konvertierung!
     });
     if (granted) {
+      const remindAt = parseDatePreserveLocal(newReminderDate);
       scheduleLocalNotification(newReminderLabel || title, remindAt);
     }
   };
