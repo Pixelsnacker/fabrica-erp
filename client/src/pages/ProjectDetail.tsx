@@ -15,7 +15,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   ArrowLeft, Plus, Trash2, Package, Truck, FileCode2, MessageSquare,
   ExternalLink, Bell, StickyNote, Clock, Paperclip, CheckCircle2, Circle,
-  AlertCircle, Zap, Upload, FileText, Image, X, Edit2, Save, AlertTriangle,
+  AlertCircle, Upload, FileText, Image, X, Edit2, Save, AlertTriangle,
   ShieldAlert, Receipt, BookOpen, Loader2, Printer, ChevronDown, ChevronUp,
   Download,
 } from "lucide-react";
@@ -37,10 +37,7 @@ const PRIORITY_CONFIG: Record<string, { label: string; color: string }> = {
   normal: { label: "Normal", color: "text-muted-foreground" },
   hoch: { label: "Hoch", color: "text-red-400" },
 };
-const SOURCE_LABELS: Record<string, string> = {
-  whatsapp: "WhatsApp", telefon: "Telefon", persoenlich: "Persönlich",
-  email: "E-Mail", sonstiges: "Sonstiges",
-};
+
 const COMPLAINT_STATUS: Record<string, { label: string; color: string }> = {
   open: { label: "Offen", color: "text-red-400" },
   in_progress: { label: "In Bearbeitung", color: "text-yellow-400" },
@@ -155,7 +152,7 @@ export default function ProjectDetail() {
   const [docSupplierFilter, setDocSupplierFilter] = useState<string>("all");
   const { data: consultations = [] } = trpc.consultation.list.useQuery({ projectId: id });
   const { data: projectNotes = [] } = trpc.notes.list.useQuery({ projectId: id });
-  const { data: projectQuickNotes = [] } = trpc.quickNotes.list.useQuery({ projectId: id });
+
   const { data: complaints = [] } = trpc.complaints.list.useQuery({ projectId: id });
 
   const [showAddItem, setShowAddItem] = useState(false);
@@ -225,9 +222,7 @@ export default function ProjectDetail() {
   const deleteNote = trpc.notes.delete.useMutation({
     onSuccess: () => { utils.notes.list.invalidate({ projectId: id }); toast.success("Notiz gelöscht"); },
   });
-  const deleteQuickNote = trpc.quickNotes.delete.useMutation({
-    onSuccess: () => { utils.quickNotes.list.invalidate({ projectId: id }); toast.success("Schnellnotiz gelöscht"); },
-  });
+
   const createComplaint = trpc.complaints.create.useMutation({
     onSuccess: () => { utils.complaints.list.invalidate({ projectId: id }); setShowAddComplaint(false); setComplaintForm({ title: "", description: "", status: "open", priority: "normal" }); toast.success("Reklamation angelegt"); },
     onError: () => toast.error("Fehler beim Anlegen"),
@@ -244,7 +239,7 @@ export default function ProjectDetail() {
     onError: () => toast.error("Fehler beim Löschen"),
   });
 
-  const totalNotesCount = projectNotes.length + projectQuickNotes.length;
+  const totalNotesCount = projectNotes.length;
 
   if (isLoading) return <div className="p-6 text-muted-foreground">Lade Projekt...</div>;
   if (!project) return <div className="p-6 text-muted-foreground">Projekt nicht gefunden</div>;
@@ -470,7 +465,7 @@ export default function ProjectDetail() {
         {/* ── Notizen & Erinnerungen ── */}
         <TabsContent value="notes" className="mt-4 space-y-3">
           <div className="flex items-center justify-between">
-            <p className="text-xs text-muted-foreground">{projectNotes.length} Notiz{projectNotes.length !== 1 ? "en" : ""} · {projectQuickNotes.length} Schnellnotiz{projectQuickNotes.length !== 1 ? "en" : ""}</p>
+            <p className="text-xs text-muted-foreground">{projectNotes.length} Notiz{projectNotes.length !== 1 ? "en" : ""}</p>
             <Button size="sm" onClick={() => setShowAddNote(true)} className="gap-2">
               <Plus className="h-4 w-4" />Notiz hinzufügen
             </Button>
@@ -495,31 +490,7 @@ export default function ProjectDetail() {
             </div>
           )}
 
-          {projectQuickNotes.length > 0 && (
-            <div className="space-y-2">
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                <Zap className="h-3.5 w-3.5 text-yellow-400" /> Schnellnotizen
-              </h3>
-              {projectQuickNotes.map((qn: any) => (
-                <div key={qn.id} className="p-3 rounded-lg bg-card border border-border">
-                  <div className="flex items-start gap-2">
-                    <Zap className="h-3.5 w-3.5 text-yellow-400 mt-0.5 shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm">{qn.text}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs text-muted-foreground">{SOURCE_LABELS[qn.source] ?? qn.source}</span>
-                        <span className="text-xs text-muted-foreground">·</span>
-                        <span className="text-xs text-muted-foreground">{new Date(qn.createdAt).toLocaleDateString("de-DE")}</span>
-                      </div>
-                    </div>
-                    <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive h-7 w-7 p-0 shrink-0" title="Löschen" onClick={() => deleteQuickNote.mutate({ id: qn.id })}>
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+
 
           {totalNotesCount === 0 && (
             <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground">

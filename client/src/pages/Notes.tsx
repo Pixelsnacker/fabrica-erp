@@ -50,8 +50,26 @@ import {
   Download,
 } from "lucide-react";
 
+
 type Priority = "niedrig" | "normal" | "hoch";
 type Status = "offen" | "erledigt";
+type Source = "whatsapp" | "telefon" | "email" | "persoenlich" | "sonstiges";
+
+const SOURCE_LABELS: Record<Source, string> = {
+  whatsapp: "WhatsApp",
+  telefon: "Telefon",
+  email: "E-Mail",
+  persoenlich: "Persönlich",
+  sonstiges: "Sonstiges",
+};
+
+const SOURCE_COLORS: Record<Source, string> = {
+  whatsapp: "bg-green-500/20 text-green-300 border-green-500/30",
+  telefon: "bg-blue-500/20 text-blue-300 border-blue-500/30",
+  email: "bg-purple-500/20 text-purple-300 border-purple-500/30",
+  persoenlich: "bg-orange-500/20 text-orange-300 border-orange-500/30",
+  sonstiges: "bg-slate-500/20 text-slate-300 border-slate-500/30",
+};
 
 const PRIORITY_COLORS: Record<Priority, string> = {
   niedrig: "bg-slate-500/20 text-slate-300 border-slate-500/30",
@@ -189,6 +207,7 @@ function NoteCard({
     content: string | null;
     status: Status;
     priority: Priority;
+    source?: Source | null;
     projectId: number | null;
     createdAt: Date | string;
   };
@@ -214,7 +233,7 @@ function NoteCard({
             {isDone && <Check className="w-3 h-3" />}
           </button>
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-2 flex-wrap">
               <h3 className={`font-medium text-sm leading-tight ${isDone ? "line-through text-slate-500" : "text-slate-100"}`}>
                 {note.title}
               </h3>
@@ -224,6 +243,14 @@ function NoteCard({
               >
                 {PRIORITY_LABELS[note.priority]}
               </Badge>
+              {note.source && note.source !== "sonstiges" && (
+                <Badge
+                  variant="outline"
+                  className={`text-xs px-1.5 py-0 ${SOURCE_COLORS[note.source]}`}
+                >
+                  {SOURCE_LABELS[note.source]}
+                </Badge>
+              )}
             </div>
             <p className="text-xs text-slate-500 mt-0.5">{formatDateTime(note.createdAt as string)}</p>
           </div>
@@ -283,6 +310,7 @@ function NoteDialog({
   const [content, setContent] = useState("");
   const [projectId, setProjectId] = useState<string>("none");
   const [priority, setPriority] = useState<Priority>("normal");
+  const [source, setSource] = useState<Source>("sonstiges");
   const [newReminderLabel, setNewReminderLabel] = useState("");
   const [newReminderDate, setNewReminderDate] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -335,11 +363,13 @@ function NoteDialog({
       setContent(noteData.content ?? "");
       setProjectId(noteData.projectId ? String(noteData.projectId) : "none");
       setPriority(noteData.priority as Priority);
+      setSource((noteData as any).source as Source ?? "sonstiges");
     } else if (!noteId) {
       setTitle("");
       setContent("");
       setProjectId("none");
       setPriority("normal");
+      setSource("sonstiges");
     }
   }, [noteData, noteId]);
 
@@ -347,9 +377,9 @@ function NoteDialog({
     if (!title.trim()) return;
     const pid = projectId !== "none" ? parseInt(projectId) : null;
     if (noteId) {
-      await updateNote.mutateAsync({ id: noteId, title, content, priority });
+      await updateNote.mutateAsync({ id: noteId, title, content, priority, source });
     } else {
-      await createNote.mutateAsync({ title, content, projectId: pid, priority });
+      await createNote.mutateAsync({ title, content, projectId: pid, priority, source });
       onClose();
     }
   };
@@ -429,6 +459,23 @@ function NoteDialog({
               rows={5}
               className="bg-white/5 border-white/10 text-slate-100 resize-none"
             />
+          </div>
+
+          {/* Source + Priority + Project */}
+          <div>
+            <label className="text-xs text-slate-400 mb-1 block">Quelle</label>
+            <Select value={source} onValueChange={(v) => setSource(v as Source)}>
+              <SelectTrigger className="bg-white/5 border-white/10 text-slate-100">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                <SelectItem value="telefon">Telefon</SelectItem>
+                <SelectItem value="email">E-Mail</SelectItem>
+                <SelectItem value="persoenlich">Persönlich</SelectItem>
+                <SelectItem value="sonstiges">Sonstiges</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Priority + Project */}
@@ -592,6 +639,19 @@ export default function Notes() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [notifPermission, setNotifPermission] = useState<NotificationPermission>("default");
+
+  // Auto-open create dialog when ?new=1 is in URL (from Schnellnotiz button)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("new") === "1") {
+      setEditingId(null);
+      setDialogOpen(true);
+      // Remove the query param without reloading
+      const url = new URL(window.location.href);
+      url.searchParams.delete("new");
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, []);
 
   const { data: notes = [], isLoading } = trpc.notes.list.useQuery(
     filter === "alle" ? {} : { status: filter }

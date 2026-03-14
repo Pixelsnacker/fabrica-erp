@@ -614,7 +614,7 @@ export async function getNoteById(id: number) {
   return result[0];
 }
 
-export async function createNote(data: { title: string; content?: string; projectId?: number | null; priority?: string }) {
+export async function createNote(data: { title: string; content?: string; projectId?: number | null; priority?: string; source?: string }) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
   await db.insert(notes).values({
@@ -622,10 +622,11 @@ export async function createNote(data: { title: string; content?: string; projec
     content: data.content ?? null,
     projectId: data.projectId ?? null,
     priority: (data.priority as any) ?? "normal",
+    source: (data.source as any) ?? "sonstiges",
   });
 }
 
-export async function updateNote(id: number, data: { title?: string; content?: string; status?: string; priority?: string }) {
+export async function updateNote(id: number, data: { title?: string; content?: string; status?: string; priority?: string; source?: string | null }) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
   await db.update(notes).set(data as any).where(eq(notes.id, id));

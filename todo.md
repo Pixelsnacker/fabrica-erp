@@ -460,3 +460,21 @@
 - [x] Bug: Schnellnotiz-Dialog wird abgeschnitten / überlappt falsch (z-index / Portal-Problem)
 - [x] Bug: EditQuickNoteDialog öffnet sich nicht beim Klick auf Stift-Button in Schnellnotizen-Liste
 - [x] Verbesserung: Schnellnotiz-Dialog saubereres Design
+
+## Phase 55: Notizen ausbauen + Schnellnotizen entfernen
+- [ ] DB: notes-Tabelle um source-Feld (whatsapp, telefon, email, persoenlich, sonstiges) erweitern
+- [ ] Backend: notes.create, update, delete Procedures um source-Feld erweitern
+- [ ] Frontend: Notizen-Seite mit Quelle-Dropdown, Bearbeiten und Löschen
+- [ ] Frontend: Schnellnotizen-Bereich aus Einstellungen entfernen
+- [ ] Frontend: Gelber "Schnellnotiz"-Button im Header → öffnet Notizen-Formular direkt
+- [ ] Frontend: QuickNoteModal und EditQuickNoteDialog entfernen
+
+## Phase 55: Notizen ausbauen + Schnellnotizen entfernen (ABGESCHLOSSEN)
+- [x] DB: notes-Tabelle hat bereits source-Feld (whatsapp, telefon, email, persoenlich, sonstiges)
+- [x] Backend: notes.create, update Procedures haben source-Feld
+- [x] Frontend: Notizen-Seite mit Quelle-Dropdown, Bearbeiten und Löschen (bereits vorhanden)
+- [x] Frontend: Schnellnotizen-Bereich aus Einstellungen entfernt
+- [x] Frontend: Gelber "Schnellnotiz"-Button im Header → navigiert zu /notes?new=1
+- [x] Frontend: QuickNoteModal und EditQuickNoteDialog entfernt
+- [x] Frontend: ProjectDetail.tsx - Schnellnotizen-Sektion entfernt
+- [x] 219 Tests grün, 0 TypeScript-Fehler

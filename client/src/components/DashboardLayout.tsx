@@ -1,4 +1,3 @@
-
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -6,10 +5,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import {
   Sidebar,
@@ -26,109 +21,13 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, Users, Building2, Truck, BookOpen, Image, Bot, Layers, TrendingUp, MessageSquare, FolderKanban, Zap, MessageCircle, Phone, UserCheck, Mail, MoreHorizontal, Bell, AlertTriangle, Receipt, CalendarDays, Package } from "lucide-react";
-import { CSSProperties, useCallback, useEffect, useRef, useState } from "react";
+import { LayoutDashboard, LogOut, PanelLeft, Users, Building2, Truck, BookOpen, Image, Bot, Layers, TrendingUp, MessageSquare, FolderKanban, Zap, MoreHorizontal, Bell, AlertTriangle, Receipt, CalendarDays, Package } from "lucide-react";
+import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
 
 import { useAuth } from "@/_core/hooks/useAuth";
-
-const SOURCE_OPTIONS = [
-  { value: "whatsapp", label: "WhatsApp", icon: MessageCircle },
-  { value: "telefon", label: "Telefon", icon: Phone },
-  { value: "persoenlich", label: "Persönlich", icon: UserCheck },
-  { value: "email", label: "E-Mail", icon: Mail },
-  { value: "sonstiges", label: "Sonstiges", icon: MoreHorizontal },
-];
-
-function QuickNoteModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const [text, setText] = useState("");
-  const [source, setSource] = useState("whatsapp");
-  const [projectId, setProjectId] = useState<string>("none");
-  const { data: projects } = trpc.projects.list.useQuery();
-  const utils = trpc.useUtils();
-  const createNote = trpc.quickNotes.create.useMutation({
-    onSuccess: () => {
-      toast.success("Notiz gespeichert");
-      setText("");
-      setSource("whatsapp");
-      setProjectId("none");
-      utils.quickNotes.list.invalidate();
-      utils.dashboard.stats.invalidate();
-      onClose();
-    },
-    onError: () => toast.error("Fehler beim Speichern"),
-  });
-  const handleSave = () => {
-    if (!text.trim()) return;
-    createNote.mutate({
-      text: text.trim(),
-      source: source as any,
-      projectId: projectId !== "none" ? parseInt(projectId) : null,
-    });
-  };
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) handleSave();
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [open, text, source, projectId]);
-  return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Zap className="h-4 w-4 text-yellow-400" />
-            Schnellnotiz
-          </DialogTitle>
-        </DialogHeader>
-        <div className="space-y-3">
-          <Textarea
-            autoFocus
-            placeholder="Was wurde besprochen? (WhatsApp, Telefon, persönlich...)"
-            value={text}
-            onChange={e => setText(e.target.value)}
-            className="min-h-[100px] resize-none"
-          />
-          <div className="flex gap-2">
-            <Select value={source} onValueChange={setSource}>
-              <SelectTrigger className="w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {SOURCE_OPTIONS.map(o => (
-                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={projectId} onValueChange={setProjectId}>
-              <SelectTrigger className="flex-1">
-                <SelectValue placeholder="Projekt zuordnen (optional)" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Kein Projekt</SelectItem>
-                {(projects ?? []).map((p: any) => (
-                  <SelectItem key={p.id} value={String(p.id)}>{p.title}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <p className="text-xs text-muted-foreground">Tipp: Strg+Enter zum schnellen Speichern</p>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Abbrechen</Button>
-          <Button onClick={handleSave} disabled={!text.trim() || createNote.isPending}>
-            {createNote.isPending ? "Speichern..." : "Speichern"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
@@ -228,37 +127,9 @@ function DashboardLayoutContent({
   const { state, toggleSidebar } = useSidebar();
   const isCollapsed = state === "collapsed";
   const [isResizing, setIsResizing] = useState(false);
-  const [quickNoteOpen, setQuickNoteOpen] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const activeMenuItem = menuItems.find(item => item.path === location);
   const isMobile = useIsMobile();
-  const utils = trpc.useUtils();
-  const markReminderSent = trpc.quickNotes.markReminderSent.useMutation();
-
-  // Erinnerungs-Polling: alle 60s fällige Kurznotiz-Erinnerungen prüfen
-  useEffect(() => {
-    if (!user) return;
-    const checkReminders = async () => {
-      try {
-        const due = await utils.quickNotes.dueReminders.fetch();
-        if (due && due.length > 0) {
-          for (const note of due) {
-            const label = (note as any).remindLabel || (note as any).text?.slice(0, 60);
-            toast(`⏰ Erinnerung: ${label}`, {
-              description: (note as any).text?.length > 60 ? (note as any).text.slice(0, 120) + "..." : undefined,
-              duration: 12000,
-              action: { label: "OK", onClick: () => markReminderSent.mutate({ id: (note as any).id }) },
-            });
-            markReminderSent.mutate({ id: (note as any).id });
-          }
-          utils.quickNotes.list.invalidate();
-        }
-      } catch {}
-    };
-    checkReminders();
-    const interval = setInterval(checkReminders, 60000);
-    return () => clearInterval(interval);
-  }, [user]);
 
   useEffect(() => {
     if (isCollapsed) {
@@ -402,7 +273,7 @@ function DashboardLayoutContent({
             size="sm"
             variant="outline"
             className="gap-1.5 text-yellow-400 border-yellow-400/30 hover:bg-yellow-400/10 hover:text-yellow-300 text-xs md:text-sm px-2 md:px-3"
-            onClick={() => setQuickNoteOpen(true)}
+            onClick={() => setLocation("/notes?new=1")}
           >
             <Zap className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Schnellnotiz</span>
@@ -411,7 +282,6 @@ function DashboardLayoutContent({
         </div>
         <main className="flex-1 p-3 md:p-6">{children}</main>
       </SidebarInset>
-      <QuickNoteModal open={quickNoteOpen} onClose={() => setQuickNoteOpen(false)} />
     </>
   );
 }

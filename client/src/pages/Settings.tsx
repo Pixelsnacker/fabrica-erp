@@ -10,132 +10,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { trpc } from "@/lib/trpc";
 import {
-  Download, Trash2, MessageCircle, Phone, UserCheck, Mail, MoreHorizontal,
-  Zap, Database, Shield, Building2, Upload, X, Loader2, FileText, Table2, Code2, CheckSquare, Square, FolderOpen, FileJson,
-  Pencil, Bell
+  Download, Trash2,
+  Database, Shield, Building2, Upload, X, Loader2, FileText, Table2, Code2, CheckSquare, Square, FolderOpen, FileJson,
 } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { useState, useEffect, useRef } from "react";
 
-type QuickNoteForEdit = { id: number; text: string; source?: string; remindAt?: string | null; remindLabel?: string | null };
-const SOURCE_OPTIONS_EDIT = [
-  { value: "whatsapp", label: "WhatsApp" },
-  { value: "telefon", label: "Telefon" },
-  { value: "persoenlich", label: "Persönlich" },
-  { value: "email", label: "E-Mail" },
-  { value: "sonstiges", label: "Sonstiges" },
-];
-
-function EditQuickNoteDialog({ note, onClose }: { note: QuickNoteForEdit | null; onClose: () => void }) {
-  const utils = trpc.useUtils();
-  const [text, setText] = useState("");
-  const [source, setSource] = useState("sonstiges");
-  const [remindAt, setRemindAt] = useState("");
-  const [remindLabel, setRemindLabel] = useState("");
-
-  useEffect(() => {
-    if (note) {
-      setText(note.text);
-      setSource(note.source ?? "sonstiges");
-      setRemindLabel(note.remindLabel ?? "");
-      if (note.remindAt) {
-        const d = new Date(note.remindAt);
-        const pad = (n: number) => String(n).padStart(2, "0");
-        setRemindAt(`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`);
-      } else {
-        setRemindAt("");
-      }
-    }
-  }, [note]);
-
-  const updateMutation = trpc.quickNotes.update.useMutation({
-    onSuccess: () => { utils.quickNotes.list.invalidate(); toast.success("Notiz aktualisiert"); onClose(); },
-    onError: (e) => toast.error("Fehler: " + e.message),
-  });
-
-  return (
-    <Dialog open={!!note} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Pencil className="h-4 w-4" /> Schnellnotiz bearbeiten
-          </DialogTitle>
-        </DialogHeader>
-        <div className="space-y-3">
-          <div className="space-y-1.5">
-            <Label>Notiztext</Label>
-            <Textarea value={text} onChange={(e) => setText(e.target.value)} rows={4} className="resize-none" />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Quelle</Label>
-            <Select value={source} onValueChange={setSource}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {SOURCE_OPTIONS_EDIT.map(o => (
-                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label className="flex items-center gap-1.5">
-              <Bell className="h-3.5 w-3.5 text-yellow-400" /> Erinnerung (optional)
-            </Label>
-            <input
-              type="datetime-local"
-              value={remindAt}
-              onChange={(e) => setRemindAt(e.target.value)}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
-          </div>
-          {remindAt && (
-            <div className="space-y-1.5">
-              <Label>Erinnerungstext (optional)</Label>
-              <Input placeholder="z.B. Angebot nachfassen" value={remindLabel} onChange={(e) => setRemindLabel(e.target.value)} />
-            </div>
-          )}
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Abbrechen</Button>
-          <Button
-            onClick={() => note && updateMutation.mutate({ id: note.id, text: text.trim(), source: source as any, remindAt: remindAt ? new Date(remindAt).toISOString() : null, remindLabel: remindLabel.trim() || null })}
-            disabled={!text.trim() || updateMutation.isPending}
-          >
-            {updateMutation.isPending ? "Speichern..." : "Speichern"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-const SOURCE_ICONS: Record<string, React.ElementType> = {
-  whatsapp: MessageCircle,
-  telefon: Phone,
-  persoenlich: UserCheck,
-  email: Mail,
-  sonstiges: MoreHorizontal,
-};
-
-const SOURCE_LABELS: Record<string, string> = {
-  whatsapp: "WhatsApp",
-  telefon: "Telefon",
-  persoenlich: "Persönlich",
-  email: "E-Mail",
-  sonstiges: "Sonstiges",
-};
-
-const SOURCE_COLORS: Record<string, string> = {
-  whatsapp: "bg-green-500/10 text-green-400 border-green-500/20",
-  telefon: "bg-blue-500/10 text-blue-400 border-blue-500/20",
-  persoenlich: "bg-purple-500/10 text-purple-400 border-purple-500/20",
-  email: "bg-orange-500/10 text-orange-400 border-border",
-  sonstiges: "bg-muted text-muted-foreground border-border",
-};
 
 export default function Settings() {
   const [isExporting, setIsExporting] = useState(false);
@@ -193,8 +73,6 @@ export default function Settings() {
   });
 
   const { data: companyData, isLoading: isLoadingCompany } = trpc.companySettings.get.useQuery();
-  const { data: quickNotesList, isLoading } = trpc.quickNotes.list.useQuery();
-  const [editNote, setEditNote] = useState<QuickNoteForEdit | null>(null);
   const utils = trpc.useUtils();
 
   const updateCompany = trpc.companySettings.update.useMutation({
@@ -216,14 +94,6 @@ export default function Settings() {
       utils.companySettings.get.invalidate();
     },
     onError: () => toast.error("Fehler beim Logo-Upload"),
-  });
-
-  const deleteNote = trpc.quickNotes.delete.useMutation({
-    onSuccess: () => {
-      toast.success("Notiz gelöscht");
-      utils.quickNotes.list.invalidate();
-    },
-    onError: () => toast.error("Fehler beim Löschen"),
   });
 
   // Populate form when data loads
@@ -371,7 +241,7 @@ export default function Settings() {
       <div className="max-w-3xl mx-auto space-y-6">
         <div>
           <h1 className="text-2xl font-semibold">Einstellungen</h1>
-          <p className="text-muted-foreground mt-1">Firmendaten, Datensicherung und Schnellnotizen</p>
+          <p className="text-muted-foreground mt-1">Firmendaten und Datensicherung</p>
         </div>
 
         <Tabs defaultValue="company">
@@ -384,10 +254,7 @@ export default function Settings() {
               <Shield className="h-4 w-4 mr-2" />
               Datensicherung
             </TabsTrigger>
-            <TabsTrigger value="quicknotes" className="flex-1">
-              <Zap className="h-4 w-4 mr-2" />
-              Schnellnotizen
-            </TabsTrigger>
+
           </TabsList>
 
           {/* ─── Firmendaten Tab ─── */}
@@ -908,69 +775,8 @@ export default function Settings() {
             </Card>
           </TabsContent>
 
-          {/* ─── Schnellnotizen Tab ─── */}
-          <TabsContent value="quicknotes" className="mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Zap className="h-5 w-5 text-yellow-400" />
-                  Schnellnotizen
-                </CardTitle>
-                <CardDescription>
-                  Alle gespeicherten Schnellnotizen aus WhatsApp, Telefon und persönlichen Gesprächen.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {isLoading ? (
-                  <div className="text-center py-8 text-muted-foreground">Lade Notizen...</div>
-                ) : !quickNotesList || quickNotesList.length === 0 ? (
-                  <div className="text-center py-12 space-y-3">
-                    <Zap className="h-10 w-10 text-muted-foreground/30 mx-auto" />
-                    <p className="text-muted-foreground">Noch keine Schnellnotizen vorhanden.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {quickNotesList.map((note: any) => {
-                      const SourceIcon = SOURCE_ICONS[note.source] ?? MoreHorizontal;
-                      return (
-                        <div key={note.id} className="flex items-start gap-3 p-3 rounded-lg border bg-muted/20 hover:bg-muted/40 transition-colors group">
-                          <SourceIcon className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm leading-relaxed">{note.text}</p>
-                            <div className="flex items-center gap-2 mt-1.5">
-                              <span className={`text-xs px-2 py-0.5 rounded-full border ${SOURCE_COLORS[note.source] ?? "bg-muted text-muted-foreground border-border"}`}>
-                                {SOURCE_LABELS[note.source] ?? note.source}
-                              </span>
-                              {note.projectId && <span className="text-xs text-muted-foreground">Projekt #{note.projectId}</span>}
-                              <span className="text-xs text-muted-foreground">
-                                {new Date(note.createdAt).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-1 shrink-0">
-                            {note.remindAt && (
-                              <span className="text-xs text-yellow-400 flex items-center gap-0.5 mr-1">
-                                <Bell className="h-3 w-3" />
-                                {new Date(note.remindAt).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
-                              </span>
-                            )}
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => setEditNote({ id: Number(note.id), text: note.text ?? "", source: note.source ?? "sonstiges", remindAt: note.remindAt ?? null, remindLabel: note.remindLabel ?? null })}>
-                              <Pencil className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => deleteNote.mutate({ id: note.id })}>
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
         </Tabs>
-        <EditQuickNoteDialog note={editNote} onClose={() => setEditNote(null)} />
+
       </div>
     </DashboardLayout>
   );

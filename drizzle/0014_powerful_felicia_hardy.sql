@@ -1,0 +1,1 @@
+ALTER TABLE `notes` ADD `source` enum('whatsapp','telefon','email','persoenlich','sonstiges') DEFAULT 'sonstiges';

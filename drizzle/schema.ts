@@ -142,6 +142,7 @@ export const notes = mysqlTable("notes", {
 	title: varchar({ length: 255 }).notNull(),
 	content: text(),
 	projectId: int("project_id"),
+	source: mysqlEnum(['whatsapp','telefon','email','persoenlich','sonstiges']).default('sonstiges'),
 	status: mysqlEnum(['offen','erledigt']).default('offen').notNull(),
 	priority: mysqlEnum(['niedrig','normal','hoch']).default('normal').notNull(),
 	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),

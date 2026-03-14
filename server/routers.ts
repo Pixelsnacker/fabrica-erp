@@ -732,12 +732,12 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
         content: z.string().optional(),
         projectId: z.number().optional().nullable(),
         priority: z.enum(["niedrig", "normal", "hoch"]).default("normal"),
+        source: z.enum(["whatsapp", "telefon", "email", "persoenlich", "sonstiges"]).optional(),
       }))
       .mutation(async ({ input }) => {
         await createNote(input);
         return { success: true };
       }),
-
     update: protectedProcedure
       .input(z.object({
         id: z.number(),
@@ -745,6 +745,7 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
         content: z.string().optional(),
         status: z.enum(["offen", "erledigt"]).optional(),
         priority: z.enum(["niedrig", "normal", "hoch"]).optional(),
+        source: z.enum(["whatsapp", "telefon", "email", "persoenlich", "sonstiges"]).optional().nullable(),
       }))
       .mutation(async ({ input }) => {
         const { id, ...data } = input;
