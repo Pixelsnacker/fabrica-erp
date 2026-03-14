@@ -515,3 +515,16 @@
 - [x] sendOrderConfirmation: PDF wird generiert und als Anhang mitgesendet
 - [x] PDF-Fehler ist nicht kritisch – E-Mail wird auch ohne Anhang gesendet
 - [x] 219 Tests grün, 0 TypeScript-Fehler
+
+## Phase 60: AB-PDF-Download + E-Mail als Option
+
+- [ ] AB Print-Ansicht (wie Angebote) implementieren – direkter PDF-Download
+- [ ] AB-Dialog: Download-Button primär, E-Mail als optionaler zweiter Schritt
+
+## Phase 61: Mahnungsmodul
+
+- [ ] DB: reminders Tabelle (id, invoice_id, level, sent_at, due_date, fee, notes)
+- [ ] tRPC: reminders.list, create, send (E-Mail + PDF), markPaid
+- [ ] Mahnungs-PDF-Template (DIN A4, Firmenlogo, Fußzeile, Mahngebühr)
+- [ ] Frontend: Mahnungs-Tab in Rechnungen oder eigene Seite
+- [ ] Mahnungs-Level: 1. Mahnung, 2. Mahnung, Letzte Mahnung

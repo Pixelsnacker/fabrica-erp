@@ -180,6 +180,7 @@ export default function ProjectDetail() {
   });
   const [generatedDatasheet, setGeneratedDatasheet] = useState('');
   const [showDsEntrySelector, setShowDsEntrySelector] = useState(false);
+  const { data: companySettings } = trpc.companySettings.get.useQuery();
   const { data: knowledgeEntries = [] } = trpc.knowledge.list.useQuery({});
   const generateDsMut = trpc.knowledge.generateDatasheet.useMutation({
     onSuccess: (data) => {
@@ -194,6 +195,82 @@ export default function ProjectDetail() {
   const [consultForm, setConsultForm] = useState({ title: "", content: "", type: "general", outcome: "" });
   const [noteForm, setNoteForm] = useState({ title: "", content: "", priority: "normal" });
   const [complaintForm, setComplaintForm] = useState({ title: "", description: "", status: "open", priority: "normal" });
+
+  // Print-Funktion für Auftragsbestätigung (wie Angebote)
+  function printOrderConfirmation() {
+    if (!project || !companySettings) return;
+    const cs = companySettings as any;
+    const fmt = (n: number) => n.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' \u20ac';
+    const nl2br = (s: string) => (s ?? '').replace(/\n/g, '<br>');
+    const logoHtml = cs.logoUrl ? `<img src="${cs.logoUrl}" style="max-height:70px;max-width:200px;object-fit:contain;" />` : `<strong style="font-size:20px">${cs.name ?? 'Fabrica GmbH'}</strong>`;
+    const buildFooter = () => {
+      const cols = [cs.footerCol1, cs.footerCol2, cs.footerCol3, cs.footerCol4].filter(Boolean);
+      if (!cols.length) return '';
+      return `<div class="page-footer" style="position:fixed;bottom:0;left:1cm;right:1cm;border-top:1px solid #ccc;padding-top:6px;display:grid;grid-template-columns:repeat(${cols.length},1fr);gap:8px;font-size:8px;color:#666;">${cols.map((c: string) => `<div>${nl2br(c)}</div>`).join('')}</div>`;
+    };
+    const allItems = items as any[];
+    const taxRate = cs.kleinunternehmer ? 0 : 0.19;
+    const netAmount = allItems.reduce((s, i) => s + parseFloat(i.totalVk ?? 0), 0);
+    const taxAmount = netAmount * taxRate;
+    const grossAmount = netAmount + taxAmount;
+    const today = new Date().toLocaleDateString('de-DE');
+    const projNum = (project as any).projectNumber ?? `#${project.id}`;
+    const customer = (project as any).customer;
+    const custAddr = customer ? [
+      customer.company || customer.name,
+      customer.street,
+      customer.zip && customer.city ? `${customer.zip} ${customer.city}` : (customer.city ?? ''),
+      customer.country && customer.country !== 'Deutschland' ? customer.country : '',
+    ].filter(Boolean).join('<br>') : '';
+    const rowsHtml = allItems.map((item, idx) => `
+      <tr>
+        <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:center">${idx + 1}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #eee">${item.name ?? ''}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:center">${item.quantity ?? 1}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:center">Stk.</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right">${fmt(parseFloat(item.unitVk ?? 0))}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right"><strong>${fmt(parseFloat(item.totalVk ?? 0))}</strong></td>
+      </tr>`).join('');
+    const html = `<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8">
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body { font-family: Arial, sans-serif; font-size: 10pt; color: #222; padding: 1cm; }
+      .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+      .sender-block { margin-top: 12px; }
+      .sender-block strong { font-size: 10pt; }
+      .sender-block p { font-size: 9pt; color: #444; line-height: 1.5; }
+      .meta-block { text-align: right; font-size: 9pt; color: #444; line-height: 1.8; }
+      .address-line { font-size: 8pt; color: #888; border-bottom: 1px solid #ddd; padding-bottom: 4px; margin-bottom: 10px; }
+      .recipient { font-size: 10pt; line-height: 1.7; margin-bottom: 24px; }
+      h1 { font-size: 18pt; font-weight: bold; margin-bottom: 6px; border-bottom: 2px solid #222; padding-bottom: 6px; }
+      .project-ref { font-size: 9pt; color: #555; margin-bottom: 16px; }
+      .intro { font-size: 10pt; margin-bottom: 16px; }
+      table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+      thead tr { background: #f5f5f5; }
+      th { padding: 7px 8px; text-align: left; font-size: 9pt; border-bottom: 2px solid #ccc; }
+      .totals { margin-left: auto; width: 260px; margin-top: 8px; }
+      .totals table { border-top: 2px solid #222; }
+      .totals td { padding: 4px 8px; font-size: 10pt; }
+      .totals td:last-child { text-align: right; }
+      @media print { button { display: none } .page-footer { position: fixed; bottom: 0; } }
+    </style></head><body>
+    <div class="header">
+      <div>${logoHtml}<div class="sender-block"><strong>${cs.name ?? ''}</strong><p>${nl2br([cs.street, cs.zip && cs.city ? cs.zip + ' ' + cs.city : cs.city, cs.phone, cs.email].filter(Boolean).join('\n'))}</p></div></div>
+      <div class="meta-block"><strong>Datum:</strong> ${today}<br><strong>Projekt-Nr.:</strong> ${projNum}<br>${cs.vatId ? `<strong>USt.-ID:</strong> ${cs.vatId}<br>` : ''}${cs.taxNumber ? `<strong>Steuer-Nr.:</strong> ${cs.taxNumber}` : ''}</div>
+    </div>
+    ${custAddr ? `<div class="address-line">${cs.name} \u00b7 ${cs.street} \u00b7 ${cs.zip} ${cs.city}</div><div class="recipient">${custAddr}</div>` : ''}
+    <h1>Auftragsbest\u00e4tigung</h1>
+    <p class="project-ref"><strong>Projekt:</strong> ${project.title}</p>
+    <p class="intro">Sehr geehrte Damen und Herren,</p>
+    <p class="intro">wir best\u00e4tigen hiermit Ihren Auftrag mit folgendem Leistungsumfang:</p>
+    <table><thead><tr><th>#</th><th>Bezeichnung</th><th style="text-align:center">Menge</th><th style="text-align:center">Einh.</th><th style="text-align:right">Einzelpreis</th><th style="text-align:right">Gesamt</th></tr></thead><tbody>${rowsHtml}</tbody></table>
+    <div class="totals"><table>${taxRate > 0 ? `<tr><td>Nettobetrag:</td><td>${fmt(netAmount)}</td></tr><tr><td>MwSt. 19%:</td><td>${fmt(taxAmount)}</td></tr>` : ''}<tr><td><strong>Gesamtbetrag:</strong></td><td><strong>${fmt(grossAmount)}</strong></td></tr></table></div>
+    ${buildFooter()}
+    <div style="margin-bottom:3cm"></div>
+    <script>window.onload=()=>window.print();</script></body></html>`;
+    const w = window.open('', '_blank');
+    if (w) { w.document.write(html); w.document.close(); }
+  }
 
   const sendOrderConfirmation = trpc.projects.sendOrderConfirmation.useMutation({
     onSuccess: () => { setShowOrderConfirmation(false); toast.success('Auftragsbestätigung erfolgreich gesendet'); },
@@ -299,13 +376,13 @@ export default function ProjectDetail() {
             variant="outline"
             size="sm"
             className="gap-2 text-amber-400 border-amber-400/30 hover:bg-amber-400/10"
-            title="Auftragsbestätigung per E-Mail senden"
+            title="Auftragsbestätigung (PDF/E-Mail)"
             onClick={() => {
               const customer = (project as any).customer;
               setOcForm({
                 to: customer?.email ?? '',
                 cc: '',
-                subject: `Auftragsbestätigung – ${project.title} (${project.projectNumber ?? project.id})`,
+                subject: `Auftragsbestätigung \u2013 ${project.title} (${project.projectNumber ?? project.id})`,
                 body: `Sehr geehrte Damen und Herren,\n\nvielen Dank für Ihren Auftrag. Wir bestätigen hiermit den Eingang und die Annahme Ihres Auftrags.\n\nWir werden Ihren Auftrag mit größter Sorgfalt bearbeiten und Sie über den Fortschritt informieren.\n\nBei Fragen stehen wir Ihnen jederzeit zur Verfügung.\n\nMit freundlichen Grüßen\nDaniel Rincón\nFabrica GmbH`,
               });
               setShowOrderConfirmation(true);
@@ -1092,63 +1169,61 @@ export default function ProjectDetail() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5 text-amber-400" />
-              Auftragsbestätigung senden
+              Auftragsbestätigung
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <Label className="text-xs text-muted-foreground">An (E-Mail) *</Label>
-              <Input
-                value={ocForm.to}
-                onChange={e => setOcForm(f => ({ ...f, to: e.target.value }))}
-                placeholder="kunde@beispiel.de"
-                className="mt-1"
-              />
+          <div className="space-y-4">
+            {/* Primär: PDF-Download */}
+            <div className="rounded-lg border border-amber-400/20 bg-amber-400/5 p-4">
+              <p className="text-sm font-medium mb-1">PDF herunterladen</p>
+              <p className="text-xs text-muted-foreground mb-3">Öffnet die Auftragsbestätigung als druckbares PDF im Browser.</p>
+              <Button
+                className="gap-2 bg-amber-500 hover:bg-amber-600 text-white w-full"
+                onClick={() => { printOrderConfirmation(); setShowOrderConfirmation(false); }}
+                disabled={!companySettings}
+              >
+                <Printer className="h-4 w-4" />
+                PDF öffnen / Drucken
+              </Button>
             </div>
-            <div>
-              <Label className="text-xs text-muted-foreground">CC (optional)</Label>
-              <Input
-                value={ocForm.cc}
-                onChange={e => setOcForm(f => ({ ...f, cc: e.target.value }))}
-                placeholder="cc@beispiel.de"
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label className="text-xs text-muted-foreground">Betreff</Label>
-              <Input
-                value={ocForm.subject}
-                onChange={e => setOcForm(f => ({ ...f, subject: e.target.value }))}
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label className="text-xs text-muted-foreground">Nachricht</Label>
-              <Textarea
-                value={ocForm.body}
-                onChange={e => setOcForm(f => ({ ...f, body: e.target.value }))}
-                rows={7}
-                className="mt-1 text-sm"
-              />
-            </div>
-            <p className="text-xs text-muted-foreground">Die E-Mail enthält automatisch eine Positionsübersicht mit allen Preisen (Netto, MwSt., Brutto).</p>
+            {/* Sekundär: E-Mail senden */}
+            <details className="group">
+              <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground flex items-center gap-2 list-none">
+                <ChevronDown className="h-4 w-4 group-open:rotate-180 transition-transform" />
+                Per E-Mail senden (optional)
+              </summary>
+              <div className="mt-3 space-y-3">
+                <div>
+                  <Label className="text-xs text-muted-foreground">An (E-Mail) *</Label>
+                  <Input value={ocForm.to} onChange={e => setOcForm(f => ({ ...f, to: e.target.value }))} placeholder="kunde@beispiel.de" className="mt-1" />
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">CC (optional)</Label>
+                  <Input value={ocForm.cc} onChange={e => setOcForm(f => ({ ...f, cc: e.target.value }))} placeholder="cc@beispiel.de" className="mt-1" />
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Betreff</Label>
+                  <Input value={ocForm.subject} onChange={e => setOcForm(f => ({ ...f, subject: e.target.value }))} className="mt-1" />
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Nachricht</Label>
+                  <Textarea value={ocForm.body} onChange={e => setOcForm(f => ({ ...f, body: e.target.value }))} rows={5} className="mt-1 text-sm" />
+                </div>
+                <p className="text-xs text-muted-foreground">Die E-Mail enthält automatisch eine Positionsübersicht + PDF-Anhang.</p>
+                <Button
+                  className="gap-2 w-full"
+                  variant="outline"
+                  disabled={!ocForm.to || sendOrderConfirmation.isPending}
+                  onClick={() => sendOrderConfirmation.mutate({ projectId: id, to: ocForm.to, cc: ocForm.cc || undefined, subject: ocForm.subject, body: ocForm.body })}
+                >
+                  {sendOrderConfirmation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+                  E-Mail senden
+                </Button>
+              </div>
+            </details>
           </div>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setShowOrderConfirmation(false)}>Abbrechen</Button>
-            <Button
-              className="gap-2 bg-amber-500 hover:bg-amber-600 text-white"
-              disabled={!ocForm.to || sendOrderConfirmation.isPending}
-              onClick={() => sendOrderConfirmation.mutate({
-                projectId: id,
-                to: ocForm.to,
-                cc: ocForm.cc || undefined,
-                subject: ocForm.subject,
-                body: ocForm.body,
-              })}
-            >
-              {sendOrderConfirmation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
-              Auftragsbestätigung senden
-            </Button>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowOrderConfirmation(false)}>Schließen</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
