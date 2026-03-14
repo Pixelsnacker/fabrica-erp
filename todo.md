@@ -485,3 +485,8 @@
 - [x] Cron-Job in server/_core/index.ts (jede Minute fällige Erinnerungen prüfen)
 - [x] notifyOwner mit Notiz-Titel und Inhalt aufrufen
 - [x] Erinnerung nach Versand als isSent markieren
+
+## Phase 57: Projekt direkt als Auftrag anlegen (Startstatus wählbar)
+
+- [x] Status-Dropdown im "Neues Projekt"-Dialog hinzufügen
+- [x] Backend: projects.create Startstatus-Parameter unterstützen (war bereits vorhanden)

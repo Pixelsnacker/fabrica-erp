@@ -30,7 +30,7 @@ export default function Projects() {
   const [viewMode, setViewMode] = useState<"kanban" | "list">("list");
   const [showCreate, setShowCreate] = useState(false);
   const [isBackingUp, setIsBackingUp] = useState(false);
-  const [form, setForm] = useState({ title: "", projectNumber: "", type: "other", notes: "" });
+  const [form, setForm] = useState({ title: "", projectNumber: "", type: "other", notes: "", status: "inquiry", customerId: "" });
 
   const handleFullBackup = async () => {
     setIsBackingUp(true);
@@ -60,7 +60,7 @@ export default function Projects() {
   const { data: customers = [] } = trpc.customers.list.useQuery();
   const { data: leadSources = [] } = trpc.leadSources.list.useQuery();
   const createMutation = trpc.projects.create.useMutation({
-    onSuccess: () => { utils.projects.list.invalidate(); setShowCreate(false); setForm({ title: "", projectNumber: "", type: "other", notes: "" }); toast.success("Projekt angelegt"); },
+    onSuccess: () => { utils.projects.list.invalidate(); setShowCreate(false); setForm({ title: "", projectNumber: "", type: "other", notes: "", status: "inquiry", customerId: "" }); toast.success("Projekt angelegt"); },
     onError: () => toast.error("Fehler beim Anlegen"),
   });
 
@@ -199,13 +199,36 @@ export default function Projects() {
               </Select>
             </div>
             <div className="space-y-1.5">
+              <Label>Startstatus</Label>
+              <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {STATUS_ORDER.filter(s => s !== 'cancelled').map(s => (
+                    <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Kunde (optional)</Label>
+              <Select value={form.customerId || "none"} onValueChange={v => setForm(f => ({ ...f, customerId: v === 'none' ? '' : v }))}>
+                <SelectTrigger><SelectValue placeholder="Kein Kunde" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Kein Kunde</SelectItem>
+                  {customers.map((c: any) => (
+                    <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
               <Label>Notizen</Label>
               <Textarea placeholder="Interne Notizen..." value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={3} />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCreate(false)}>Abbrechen</Button>
-            <Button onClick={() => createMutation.mutate({ title: form.title, projectNumber: form.projectNumber || undefined, type: form.type as any, notes: form.notes || undefined })} disabled={!form.title || createMutation.isPending}>
+            <Button onClick={() => createMutation.mutate({ title: form.title, projectNumber: form.projectNumber || undefined, type: form.type as any, notes: form.notes || undefined, status: form.status as any, customerId: form.customerId ? parseInt(form.customerId) : undefined })} disabled={!form.title || createMutation.isPending}>
               {createMutation.isPending ? "Wird angelegt..." : "Anlegen"}
             </Button>
           </DialogFooter>
