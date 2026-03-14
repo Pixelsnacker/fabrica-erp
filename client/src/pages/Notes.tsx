@@ -83,21 +83,34 @@ const PRIORITY_LABELS: Record<Priority, string> = {
   hoch: "Hoch",
 };
 
+function parseDatePreserveLocal(date: Date | string): Date {
+  if (date instanceof Date) return date;
+  let str = date;
+  // MySQL-Format "YYYY-MM-DD HH:MM:SS" → kein Timezone-Suffix → Browser würde UTC annehmen
+  // Wir parsen es manuell als lokale Zeit
+  if (str.includes(" ") && !str.includes("T")) {
+    str = str.replace(" ", "T");
+  }
+  // Kein Z und kein Offset → lokale Zeit manuell parsen
+  const hasTimezone = str.endsWith("Z") || /[+-]\d{2}:\d{2}$/.test(str);
+  if (hasTimezone) return new Date(str);
+  // Manuell parsen: YYYY-MM-DDTHH:MM[:SS]
+  const [datePart, timePart] = str.split("T");
+  const [year, month, day] = datePart.split("-").map(Number);
+  const [hours, minutes, seconds] = (timePart || "00:00:00").split(":").map(Number);
+  return new Date(year, month - 1, day, hours, minutes, seconds || 0);
+}
+
 function formatDateTime(date: Date | string | null | undefined): string {
   if (!date) return "";
-  const d = new Date(date as string);
-  return d.toLocaleString("de-DE", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const d = parseDatePreserveLocal(date);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}, ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 function toLocalDatetimeInput(date?: Date | string | null): string {
   if (!date) return "";
-  const d = new Date(date as string);
+  const d = parseDatePreserveLocal(date as string);
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
