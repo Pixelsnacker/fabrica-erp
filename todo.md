@@ -478,3 +478,10 @@
 - [x] Frontend: QuickNoteModal und EditQuickNoteDialog entfernt
 - [x] Frontend: ProjectDetail.tsx - Schnellnotizen-Sektion entfernt
 - [x] 219 Tests grün, 0 TypeScript-Fehler
+
+## Phase 56: Erinnerungen via Manus Push-Benachrichtigung (Mobile + Web)
+
+- [x] getDueNoteReminders und markNoteReminderSent in db.ts
+- [x] Cron-Job in server/_core/index.ts (jede Minute fällige Erinnerungen prüfen)
+- [x] notifyOwner mit Notiz-Titel und Inhalt aufrufen
+- [x] Erinnerung nach Versand als isSent markieren

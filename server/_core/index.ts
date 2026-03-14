@@ -8,6 +8,8 @@ import { registerExportRoutes } from "../exportZip";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { getDueNoteReminders, markReminderSent } from "../db";
+import { notifyOwner } from "./notification";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -66,3 +68,30 @@ async function startServer() {
 }
 
 startServer().catch(console.error);
+
+// ─── Cron-Job: Fällige Erinnerungen prüfen und via Manus Push senden ──────────
+// Läuft jede Minute, sendet Push-Benachrichtigung an Manus Mobile App + Web
+setInterval(async () => {
+  try {
+    const due = await getDueNoteReminders();
+    for (const reminder of due) {
+      const title = reminder.label
+        ? `🔔 ${reminder.label}`
+        : `🔔 Erinnerung: ${reminder.noteTitle}`;
+      const content = [
+        `Notiz: ${reminder.noteTitle}`,
+        reminder.noteContent ? reminder.noteContent.slice(0, 400) : "",
+      ].filter(Boolean).join("\n\n");
+      const sent = await notifyOwner({
+        title,
+        content: content || `Erinnerung für Notiz: ${reminder.noteTitle}`,
+      });
+      if (sent) {
+        await markReminderSent(reminder.id);
+        console.log(`[Reminder] Push gesendet für #${reminder.id}: ${title}`);
+      }
+    }
+  } catch (err) {
+    console.error("[Reminder] Fehler beim Prüfen fälliger Erinnerungen:", err);
+  }
+}, 60 * 1000); // jede Minute

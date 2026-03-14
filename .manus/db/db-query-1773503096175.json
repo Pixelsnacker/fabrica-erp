@@ -1,0 +1,17 @@
+{
+  "query": "SELECT smtp_host, smtp_port, smtp_user, smtp_from, smtp_secure FROM company_settings LIMIT 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 9NNjvn7NV7enobv.7ea640e70a8c --database YMZow7uQxpBVyBGbmbpvvd --execute SELECT smtp_host, smtp_port, smtp_user, smtp_from, smtp_secure FROM company_settings LIMIT 1;",
+  "rows": [
+    {
+      "smtp_host": "",
+      "smtp_port": "587",
+      "smtp_user": "",
+      "smtp_from": "",
+      "smtp_secure": "0"
+    }
+  ],
+  "messages": [],
+  "stdout": "smtp_host\tsmtp_port\tsmtp_user\tsmtp_from\tsmtp_secure\n\t587\t\t\t0\n",
+  "stderr": "",
+  "execution_time_ms": 97
+}

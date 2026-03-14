@@ -706,6 +706,32 @@ export async function getPendingReminders() {
     .where(eq(noteReminders.isSent, 0 as any));
 }
 
+/**
+ * Gibt alle fälligen Erinnerungen zurück (remindAt <= jetzt, isSent = 0)
+ * inkl. Notiz-Titel für die Benachrichtigung
+ */
+export async function getDueNoteReminders() {
+  const db = await getDb();
+  if (!db) return [];
+  // Verwende MySQL NOW() für korrekten UTC-Zeitzonenvergleich
+  const rows = await db
+    .select({
+      id: noteReminders.id,
+      label: noteReminders.label,
+      remindAt: noteReminders.remindAt,
+      noteId: noteReminders.noteId,
+      noteTitle: notes.title,
+      noteContent: notes.content,
+    })
+    .from(noteReminders)
+    .innerJoin(notes, eq(noteReminders.noteId, notes.id))
+    .where(and(
+      eq(noteReminders.isSent, 0 as any),
+      sql`${noteReminders.remindAt} <= NOW()`,
+    ));
+  return rows;
+}
+
 export async function markReminderSent(id: number) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
