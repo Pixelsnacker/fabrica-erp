@@ -1,0 +1,306 @@
+{
+  "query": "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'company_settings' ORDER BY ordinal_position;\nSELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'customers' ORDER BY ordinal_position;\nSELECT * FROM company_settings LIMIT 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 9NNjvn7NV7enobv.7ea640e70a8c --database YMZow7uQxpBVyBGbmbpvvd --execute SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'company_settings' ORDER BY ordinal_position;\nSELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'customers' ORDER BY ordinal_position;\nSELECT * FROM company_settings LIMIT 1;",
+  "rows": [
+    {
+      "column_name": "id",
+      "data_type": "int"
+    },
+    {
+      "column_name": "name",
+      "data_type": "varchar"
+    },
+    {
+      "column_name": "legal_form",
+      "data_type": "varchar"
+    },
+    {
+      "column_name": "street",
+      "data_type": "varchar"
+    },
+    {
+      "column_name": "zip",
+      "data_type": "varchar"
+    },
+    {
+      "column_name": "city",
+      "data_type": "varchar"
+    },
+    {
+      "column_name": "country",
+      "data_type": "varchar"
+    },
+    {
+      "column_name": "phone",
+      "data_type": "varchar"
+    },
+    {
+      "column_name": "email",
+      "data_type": "varchar"
+    },
+    {
+      "column_name": "website",
+      "data_type": "varchar"
+    },
+    {
+      "column_name": "tax_number",
+      "data_type": "varchar"
+    },
+    {
+      "column_name": "vat_id",
+      "data_type": "varchar"
+    },
+    {
+      "column_name": "iban",
+      "data_type": "varchar"
+    },
+    {
+      "column_name": "bic",
+      "data_type": "varchar"
+    },
+    {
+      "column_name": "bank_name",
+      "data_type": "varchar"
+    },
+    {
+      "column_name": "logo_url",
+      "data_type": "text"
+    },
+    {
+      "column_name": "logo_key",
+      "data_type": "text"
+    },
+    {
+      "column_name": "invoice_footer",
+      "data_type": "text"
+    },
+    {
+      "column_name": "kleinunternehmer",
+      "data_type": "tinyint"
+    },
+    {
+      "column_name": "created_at",
+      "data_type": "bigint"
+    },
+    {
+      "column_name": "updated_at",
+      "data_type": "bigint"
+    },
+    {
+      "column_name": "offer_prefix",
+      "data_type": "varchar"
+    },
+    {
+      "column_name": "invoice_prefix",
+      "data_type": "varchar"
+    },
+    {
+      "column_name": "credit_note_prefix",
+      "data_type": "varchar"
+    },
+    {
+      "column_name": "number_separator",
+      "data_type": "varchar"
+    },
+    {
+      "column_name": "number_padding",
+      "data_type": "int"
+    },
+    {
+      "column_name": "include_year",
+      "data_type": "tinyint"
+    },
+    {
+      "column_name": "offer_start_number",
+      "data_type": "int"
+    },
+    {
+      "column_name": "invoice_start_number",
+      "data_type": "int"
+    },
+    {
+      "column_name": "credit_note_start_number",
+      "data_type": "int"
+    },
+    {
+      "column_name": "footer_col1",
+      "data_type": "text"
+    },
+    {
+      "column_name": "footer_col2",
+      "data_type": "text"
+    },
+    {
+      "column_name": "footer_col3",
+      "data_type": "text"
+    },
+    {
+      "column_name": "footer_col4",
+      "data_type": "text"
+    },
+    {
+      "column_name": "agb_text",
+      "data_type": "text"
+    },
+    {
+      "column_name": "smtp_host",
+      "data_type": "varchar"
+    },
+    {
+      "column_name": "smtp_port",
+      "data_type": "int"
+    },
+    {
+      "column_name": "smtp_user",
+      "data_type": "varchar"
+    },
+    {
+      "column_name": "smtp_pass",
+      "data_type": "varchar"
+    },
+    {
+      "column_name": "smtp_from",
+      "data_type": "varchar"
+    },
+    {
+      "column_name": "smtp_secure",
+      "data_type": "tinyint"
+    },
+    {
+      "column_name": "email_signature",
+      "data_type": "text"
+    },
+    {
+      "column_name": "column_name",
+      "data_type": "data_type"
+    },
+    {
+      "column_name": "id",
+      "data_type": "int"
+    },
+    {
+      "column_name": "name",
+      "data_type": "varchar"
+    },
+    {
+      "column_name": "company",
+      "data_type": "varchar"
+    },
+    {
+      "column_name": "type",
+      "data_type": "enum"
+    },
+    {
+      "column_name": "email",
+      "data_type": "varchar"
+    },
+    {
+      "column_name": "phone",
+      "data_type": "varchar"
+    },
+    {
+      "column_name": "address",
+      "data_type": "text"
+    },
+    {
+      "column_name": "notes",
+      "data_type": "text"
+    },
+    {
+      "column_name": "sevdesk_id",
+      "data_type": "varchar"
+    },
+    {
+      "column_name": "is_active",
+      "data_type": "tinyint"
+    },
+    {
+      "column_name": "createdAt",
+      "data_type": "timestamp"
+    },
+    {
+      "column_name": "updatedAt",
+      "data_type": "timestamp"
+    },
+    {
+      "column_name": "email2",
+      "data_type": "varchar"
+    },
+    {
+      "column_name": "email3",
+      "data_type": "varchar"
+    },
+    {
+      "column_name": "contact2",
+      "data_type": "varchar"
+    },
+    {
+      "column_name": "contact3",
+      "data_type": "varchar"
+    },
+    {
+      "column_name": "street",
+      "data_type": "varchar"
+    },
+    {
+      "column_name": "zip",
+      "data_type": "varchar"
+    },
+    {
+      "column_name": "city",
+      "data_type": "varchar"
+    },
+    {
+      "column_name": "country",
+      "data_type": "varchar"
+    },
+    {
+      "column_name": "Deutschland",
+      "data_type": "Tel. 02273-9529429"
+    },
+    {
+      "column_name": "www.fabrica3d.de",
+      "data_type": "Amtsgericht Köln"
+    },
+    {
+      "column_name": "GF:Daniel Rincon",
+      "data_type": "Bank Kreissparkasse Köln"
+    }
+  ],
+  "messages": [
+    "id\tname\tlegal_form\tstreet\tzip\tcity\tcountry\tphone\temail\twebsite\ttax_number\tvat_id\tiban\tbic\tbank_name\tlogo_url\tlogo_key\tinvoice_footer\tkleinunternehmer\tcreated_at\tupdated_at\toffer_prefix\tinvoice_prefix\tcredit_note_prefix\tnumber_separator\tnumber_padding\tinclude_year\toffer_start_number\tinvoice_start_number\tcredit_note_start_number\tfooter_col1\tfooter_col2\tfooter_col3\tfooter_col4\tagb_text\tsmtp_host\tsmtp_port\tsmtp_user\tsmtp_pass\tsmtp_from\tsmtp_secure\temail_signature",
+    "1\tFabrica GmbH\tGmbH\tHüttenstraße 205\t50170\tKerpen\tDeutschland\t+49(0)2273-9529429\tkontakt@fabrica3d.eu\twww.fabrica3d.de\t203/5741/0780\tDE295059929\tDE40 3705 0299 0000 4241 65\tCOKSDE33XXX\tKreissparkasse Köln\thttps://d2xsxph8kpxj0f.cloudfront.net/310419663031764330/YMZow7uQxpBVyBGbmbpvvd/company/logo-1773149398720.png\tcompany/logo-1773149398720.png\tAmtsgericht Köln",
+    "HR-Nr. 81094",
+    "USt.-ID DE295059929",
+    "Steuer-Nr. 203/5741/0780",
+    "Geschäftsführung Daniel Rincon\t0\t1773149025532\t1773503389657\tAN\tRE\tGS\t-\t4\t1\t1852\t1\t1\tFabrica GmbH",
+    "Hüttenstraße 205",
+    "50170 Kerpen",
+    "Fax. 0221790760092",
+    "kontakt@fabrica3d.eu",
+    "HR-Nr. 81094",
+    "USt.-ID DE295059929",
+    "Steuer-Nr. 203/5741/0780",
+    "IBAN DE40 3705 0299 0000 4241 65",
+    "BIC COKSDE33XXX\t \tmail.infomaniak.com\t587\tkontakt@fabrica3d.eu\t/O.#%5{3RFYl79b0/\tkontakt@fabrica3d.eu\t1\tMit freundlichen Grüßen / Best Regards / Cordialement / Cordiali saluti / 诚挚候",
+    "Daniel Rincón",
+    "Fabrica GmbH",
+    "Hüttenstraße 205",
+    "50170 Kerpen-Sindorf",
+    "Tel.: +49(0)2273-9529429",
+    "Mobil: +49(0)170/8342238",
+    "d.rincon@fabrica3d.eu",
+    "www.fabrica3d.de",
+    "Diese Nachricht ist ausschließlich für den oben bezeichneten Adressaten bestimmt und enthält möglicherweise vertrauliche Informationen. ",
+    "Sollten Sie nicht der oben bezeichnete Adressat sein oder diese Nachricht irrtümlich erhalten haben,",
+    "ersuchen wir Sie diese Nachricht nicht weiterzugeben, zu kopieren oder im Vertrauen darauf zu handeln,",
+    "sondern uns unter kontakt@farbica3d.eu zu verständigen und diese Nachricht samt allfälliger Angaben sofort zu löschen.",
+    "Wir gehen davon aus, dass der/die Empfänger die Informationen sofort nach Eingang auf Richtigkeit und Korrektheit überprüft. ",
+    "Sollte der/die Empfänger nicht binnen 3 Tagen schriftlich widersprochen haben, gilt der gesamte Inhalt,",
+    "die Maßnahmen und Folgen daraus von den Empfängern als Akzeptiert und genehmigt.",
+    "Vielen Dank."
+  ],
+  "stdout": "column_name\tdata_type\nid\tint\nname\tvarchar\nlegal_form\tvarchar\nstreet\tvarchar\nzip\tvarchar\ncity\tvarchar\ncountry\tvarchar\nphone\tvarchar\nemail\tvarchar\nwebsite\tvarchar\ntax_number\tvarchar\nvat_id\tvarchar\niban\tvarchar\nbic\tvarchar\nbank_name\tvarchar\nlogo_url\ttext\nlogo_key\ttext\ninvoice_footer\ttext\nkleinunternehmer\ttinyint\ncreated_at\tbigint\nupdated_at\tbigint\noffer_prefix\tvarchar\ninvoice_prefix\tvarchar\ncredit_note_prefix\tvarchar\nnumber_separator\tvarchar\nnumber_padding\tint\ninclude_year\ttinyint\noffer_start_number\tint\ninvoice_start_number\tint\ncredit_note_start_number\tint\nfooter_col1\ttext\nfooter_col2\ttext\nfooter_col3\ttext\nfooter_col4\ttext\nagb_text\ttext\nsmtp_host\tvarchar\nsmtp_port\tint\nsmtp_user\tvarchar\nsmtp_pass\tvarchar\nsmtp_from\tvarchar\nsmtp_secure\ttinyint\nemail_signature\ttext\ncolumn_name\tdata_type\nid\tint\nname\tvarchar\ncompany\tvarchar\ntype\tenum\nemail\tvarchar\nphone\tvarchar\naddress\ttext\nnotes\ttext\nsevdesk_id\tvarchar\nis_active\ttinyint\ncreatedAt\ttimestamp\nupdatedAt\ttimestamp\nemail2\tvarchar\nemail3\tvarchar\ncontact2\tvarchar\ncontact3\tvarchar\nstreet\tvarchar\nzip\tvarchar\ncity\tvarchar\ncountry\tvarchar\nid\tname\tlegal_form\tstreet\tzip\tcity\tcountry\tphone\temail\twebsite\ttax_number\tvat_id\tiban\tbic\tbank_name\tlogo_url\tlogo_key\tinvoice_footer\tkleinunternehmer\tcreated_at\tupdated_at\toffer_prefix\tinvoice_prefix\tcredit_note_prefix\tnumber_separator\tnumber_padding\tinclude_year\toffer_start_number\tinvoice_start_number\tcredit_note_start_number\tfooter_col1\tfooter_col2\tfooter_col3\tfooter_col4\tagb_text\tsmtp_host\tsmtp_port\tsmtp_user\tsmtp_pass\tsmtp_from\tsmtp_secure\temail_signature\n1\tFabrica GmbH\tGmbH\tHüttenstraße 205\t50170\tKerpen\tDeutschland\t+49(0)2273-9529429\tkontakt@fabrica3d.eu\twww.fabrica3d.de\t203/5741/0780\tDE295059929\tDE40 3705 0299 0000 4241 65\tCOKSDE33XXX\tKreissparkasse Köln\thttps://d2xsxph8kpxj0f.cloudfront.net/310419663031764330/YMZow7uQxpBVyBGbmbpvvd/company/logo-1773149398720.png\tcompany/logo-1773149398720.png\tAmtsgericht Köln\nHR-Nr. 81094\nUSt.-ID DE295059929\nSteuer-Nr. 203/5741/0780\nGeschäftsführung Daniel Rincon\t0\t1773149025532\t1773503389657\tAN\tRE\tGS\t-\t4\t1\t1852\t1\t1\tFabrica GmbH\nHüttenstraße 205\n50170 Kerpen\nDeutschland\tTel. 02273-9529429\nFax. 0221790760092\nkontakt@fabrica3d.eu\nwww.fabrica3d.de\tAmtsgericht Köln\nHR-Nr. 81094\nUSt.-ID DE295059929\nSteuer-Nr. 203/5741/0780\nGF:Daniel Rincon\tBank Kreissparkasse Köln\nIBAN DE40 3705 0299 0000 4241 65\nBIC COKSDE33XXX\t \tmail.infomaniak.com\t587\tkontakt@fabrica3d.eu\t/O.#%5{3RFYl79b0/\tkontakt@fabrica3d.eu\t1\tMit freundlichen Grüßen / Best Regards / Cordialement / Cordiali saluti / 诚挚候\n \n\nDaniel Rincón\n\nFabrica GmbH\nHüttenstraße 205\n50170 Kerpen-Sindorf\n\nTel.: +49(0)2273-9529429\nMobil: +49(0)170/8342238\nd.rincon@fabrica3d.eu\nwww.fabrica3d.de\n\n\nDiese Nachricht ist ausschließlich für den oben bezeichneten Adressaten bestimmt und enthält möglicherweise vertrauliche Informationen. \nSollten Sie nicht der oben bezeichnete Adressat sein oder diese Nachricht irrtümlich erhalten haben,\nersuchen wir Sie diese Nachricht nicht weiterzugeben, zu kopieren oder im Vertrauen darauf zu handeln,\nsondern uns unter kontakt@farbica3d.eu zu verständigen und diese Nachricht samt allfälliger Angaben sofort zu löschen.\nWir gehen davon aus, dass der/die Empfänger die Informationen sofort nach Eingang auf Richtigkeit und Korrektheit überprüft. \nSollte der/die Empfänger nicht binnen 3 Tagen schriftlich widersprochen haben, gilt der gesamte Inhalt,\ndie Maßnahmen und Folgen daraus von den Empfängern als Akzeptiert und genehmigt.\nVielen Dank.\n",
+  "stderr": "",
+  "execution_time_ms": 95
+}

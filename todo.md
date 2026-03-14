@@ -490,3 +490,12 @@
 
 - [x] Status-Dropdown im "Neues Projekt"-Dialog hinzufügen
 - [x] Backend: projects.create Startstatus-Parameter unterstützen (war bereits vorhanden)
+
+## Phase 58: Auftragsbestätigung (PDF + E-Mail) (ABGESCHLOSSEN)
+
+- [x] Firmen- und Kundendaten-Struktur analysiert (alles vorhanden)
+- [x] E-Mail-Versand via SMTP (Nodemailer, Infomaniak-Zugangsdaten aus company_settings)
+- [x] HTML-E-Mail mit Positionsübersicht (Netto, MwSt., Brutto) als strukturierte Tabelle
+- [x] Button "AB" (amber) im Projektdetail-Header
+- [x] Dialog: An, CC, Betreff, Nachricht editierbar, Positionstabelle automatisch angehängt
+- [x] 219 Tests grün, 0 TypeScript-Fehler

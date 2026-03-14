@@ -165,6 +165,8 @@ export default function ProjectDetail() {
   const [showEditComplaint, setShowEditComplaint] = useState<number | null>(null);
   const [showOfferUpload, setShowOfferUpload] = useState<number | null>(null);
   const [showDocUpload, setShowDocUpload] = useState(false);
+  const [showOrderConfirmation, setShowOrderConfirmation] = useState(false);
+  const [ocForm, setOcForm] = useState({ to: '', cc: '', subject: '', body: '' });
 
   // Datenblatt-Generator State
   const [dsForm, setDsForm] = useState({
@@ -193,6 +195,10 @@ export default function ProjectDetail() {
   const [noteForm, setNoteForm] = useState({ title: "", content: "", priority: "normal" });
   const [complaintForm, setComplaintForm] = useState({ title: "", description: "", status: "open", priority: "normal" });
 
+  const sendOrderConfirmation = trpc.projects.sendOrderConfirmation.useMutation({
+    onSuccess: () => { setShowOrderConfirmation(false); toast.success('Auftragsbestätigung erfolgreich gesendet'); },
+    onError: (e) => toast.error(`Fehler: ${e.message}`),
+  });
   const changeStatus = trpc.projects.changeStatus.useMutation({
     onSuccess: () => { utils.projects.byId.invalidate({ id }); toast.success("Status aktualisiert"); },
   });
@@ -288,6 +294,25 @@ export default function ProjectDetail() {
           >
             <Receipt className="h-4 w-4" />
             <span className="hidden sm:inline">Angebot</span>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 text-amber-400 border-amber-400/30 hover:bg-amber-400/10"
+            title="Auftragsbestätigung per E-Mail senden"
+            onClick={() => {
+              const customer = (project as any).customer;
+              setOcForm({
+                to: customer?.email ?? '',
+                cc: '',
+                subject: `Auftragsbestätigung – ${project.title} (${project.projectNumber ?? project.id})`,
+                body: `Sehr geehrte Damen und Herren,\n\nvielen Dank für Ihren Auftrag. Wir bestätigen hiermit den Eingang und die Annahme Ihres Auftrags.\n\nWir werden Ihren Auftrag mit größter Sorgfalt bearbeiten und Sie über den Fortschritt informieren.\n\nBei Fragen stehen wir Ihnen jederzeit zur Verfügung.\n\nMit freundlichen Grüßen\nDaniel Rincón\nFabrica GmbH`,
+              });
+              setShowOrderConfirmation(true);
+            }}
+          >
+            <FileText className="h-4 w-4" />
+            <span className="hidden sm:inline">AB</span>
           </Button>
           <Button
             variant="outline"
@@ -1060,6 +1085,73 @@ export default function ProjectDetail() {
           onSuccess={() => { utils.projectItems.list.invalidate({ projectId: id }); setShowOfferUpload(null); }}
         />
       )}
+
+      {/* Auftragsbestätigung Dialog */}
+      <Dialog open={showOrderConfirmation} onOpenChange={setShowOrderConfirmation}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-amber-400" />
+              Auftragsbestätigung senden
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs text-muted-foreground">An (E-Mail) *</Label>
+              <Input
+                value={ocForm.to}
+                onChange={e => setOcForm(f => ({ ...f, to: e.target.value }))}
+                placeholder="kunde@beispiel.de"
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground">CC (optional)</Label>
+              <Input
+                value={ocForm.cc}
+                onChange={e => setOcForm(f => ({ ...f, cc: e.target.value }))}
+                placeholder="cc@beispiel.de"
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground">Betreff</Label>
+              <Input
+                value={ocForm.subject}
+                onChange={e => setOcForm(f => ({ ...f, subject: e.target.value }))}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground">Nachricht</Label>
+              <Textarea
+                value={ocForm.body}
+                onChange={e => setOcForm(f => ({ ...f, body: e.target.value }))}
+                rows={7}
+                className="mt-1 text-sm"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">Die E-Mail enthält automatisch eine Positionsübersicht mit allen Preisen (Netto, MwSt., Brutto).</p>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowOrderConfirmation(false)}>Abbrechen</Button>
+            <Button
+              className="gap-2 bg-amber-500 hover:bg-amber-600 text-white"
+              disabled={!ocForm.to || sendOrderConfirmation.isPending}
+              onClick={() => sendOrderConfirmation.mutate({
+                projectId: id,
+                to: ocForm.to,
+                cc: ocForm.cc || undefined,
+                subject: ocForm.subject,
+                body: ocForm.body,
+              })}
+            >
+              {sendOrderConfirmation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+              Auftragsbestätigung senden
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

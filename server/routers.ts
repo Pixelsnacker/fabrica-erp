@@ -233,6 +233,108 @@ export const appRouter = router({
       id: z.number(),
       status: z.enum(["inquiry", "calculation", "offer", "order", "production", "shipping", "completed", "cancelled"]),
     })).mutation(async ({ input }) => { await updateProject(input.id, { status: input.status }); return { success: true }; }),
+    // Auftragsbestätigung per E-Mail senden
+    sendOrderConfirmation: protectedProcedure
+      .input(z.object({
+        projectId: z.number(),
+        to: z.string().email(),
+        cc: z.string().optional(),
+        subject: z.string(),
+        body: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        const { getCompanySettings, getProjectById, getProjectItems, getCustomerById } = await import('./db');
+        const { sendEmail } = await import('./email');
+        const cs = await getCompanySettings();
+        if (!cs?.smtpHost || !cs?.smtpUser || !cs?.smtpPass) {
+          throw new Error('SMTP nicht konfiguriert. Bitte SMTP-Einstellungen in den Firmen-Einstellungen hinterlegen.');
+        }
+        const project = await getProjectById(input.projectId);
+        if (!project) throw new Error('Projekt nicht gefunden');
+        const items = await getProjectItems(input.projectId);
+        const customer = project.customerId ? await getCustomerById(project.customerId) : null;
+        // Positionen-Tabelle HTML
+        const itemRows = items.map((it: any, i: number) => {
+          const qty = parseFloat(it.quantity ?? 1);
+          const unitVk = parseFloat(it.unitVk ?? 0);
+          const totalVk = parseFloat(it.totalVk ?? (qty * unitVk));
+          return `<tr>
+            <td style="padding:6px 8px;border-bottom:1px solid #eee;">${i + 1}</td>
+            <td style="padding:6px 8px;border-bottom:1px solid #eee;">${it.name ?? it.description ?? ''}</td>
+            <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;">${qty.toLocaleString('de-DE')}</td>
+            <td style="padding:6px 8px;border-bottom:1px solid #eee;">Stk.</td>
+            <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;">${unitVk.toLocaleString('de-DE', { minimumFractionDigits: 2 })} €</td>
+            <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;font-weight:600;">${totalVk.toLocaleString('de-DE', { minimumFractionDigits: 2 })} €</td>
+          </tr>`;
+        }).join('');
+        const totalVkSum = items.reduce((s: number, it: any) => s + parseFloat(it.totalVk ?? 0), 0);
+        const taxRate = 0.19;
+        const net = totalVkSum / (1 + taxRate);
+        const tax = totalVkSum - net;
+        const logoUrl = cs.logoUrl ?? '';
+        const issueDate = new Date().toLocaleDateString('de-DE');
+        const customerAddr = customer ? [
+          customer.company || customer.name,
+          customer.street,
+          `${customer.zip ?? ''} ${customer.city ?? ''}`.trim(),
+          customer.country !== 'Deutschland' ? customer.country : '',
+        ].filter(Boolean).join('<br>') : '';
+        const signatureHtml = cs.emailSignature
+          ? `<div style="margin-top:32px;padding-top:16px;border-top:1px solid #e5e7eb;font-size:11px;color:#6b7280;white-space:pre-wrap;">${cs.emailSignature}</div>`
+          : '';
+        const html = `<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"></head>
+<body style="font-family:Arial,sans-serif;font-size:13px;color:#111;max-width:700px;margin:0 auto;padding:24px;">
+  <table style="width:100%;margin-bottom:24px;"><tr>
+    <td style="vertical-align:top;width:50%;">
+      ${logoUrl ? `<img src="${logoUrl}" alt="Logo" style="max-height:70px;max-width:200px;object-fit:contain;margin-bottom:8px;display:block;">` : ''}
+      <strong>${cs.name ?? 'Fabrica GmbH'}</strong><br>
+      ${cs.street ?? ''}<br>${cs.zip ?? ''} ${cs.city ?? ''}<br>
+      ${cs.phone ?? ''}<br>${cs.email ?? ''}
+    </td>
+    <td style="vertical-align:top;text-align:right;">
+      <p style="margin:0;font-size:11px;color:#6b7280;">Datum: ${issueDate}</p>
+      <p style="margin:4px 0 0;font-size:11px;color:#6b7280;">Projekt-Nr.: ${project.projectNumber ?? project.id}</p>
+    </td>
+  </tr></table>
+  ${customerAddr ? `<div style="margin-bottom:24px;">${customerAddr}</div>` : ''}
+  <h2 style="font-size:18px;border-bottom:2px solid #111;padding-bottom:8px;margin-bottom:16px;">Auftragsbestätigung</h2>
+  <p style="margin-bottom:8px;"><strong>Projekt:</strong> ${project.title}</p>
+  <div style="white-space:pre-wrap;margin-bottom:20px;line-height:1.6;">${input.body}</div>
+  <table style="width:100%;border-collapse:collapse;margin-bottom:16px;">
+    <thead><tr style="background:#f5f5f5;">
+      <th style="padding:6px 8px;border-bottom:2px solid #ddd;text-align:left;">#</th>
+      <th style="padding:6px 8px;border-bottom:2px solid #ddd;text-align:left;">Bezeichnung</th>
+      <th style="padding:6px 8px;border-bottom:2px solid #ddd;text-align:right;">Menge</th>
+      <th style="padding:6px 8px;border-bottom:2px solid #ddd;">Einheit</th>
+      <th style="padding:6px 8px;border-bottom:2px solid #ddd;text-align:right;">Einzelpreis</th>
+      <th style="padding:6px 8px;border-bottom:2px solid #ddd;text-align:right;">Gesamt</th>
+    </tr></thead>
+    <tbody>${itemRows}</tbody>
+    <tfoot>
+      <tr><td colspan="5" style="padding:4px 8px;text-align:right;">Nettobetrag:</td><td style="padding:4px 8px;text-align:right;">${net.toLocaleString('de-DE', { minimumFractionDigits: 2 })} €</td></tr>
+      <tr><td colspan="5" style="padding:4px 8px;text-align:right;">MwSt. 19%:</td><td style="padding:4px 8px;text-align:right;">${tax.toLocaleString('de-DE', { minimumFractionDigits: 2 })} €</td></tr>
+      <tr style="font-weight:700;font-size:15px;border-top:2px solid #111;"><td colspan="5" style="padding:6px 8px;text-align:right;">Gesamtbetrag:</td><td style="padding:6px 8px;text-align:right;">${totalVkSum.toLocaleString('de-DE', { minimumFractionDigits: 2 })} €</td></tr>
+    </tfoot>
+  </table>
+  <p style="font-size:11px;color:#6b7280;margin-top:8px;">USt.-ID: ${cs.vatId ?? ''} | Steuer-Nr.: ${cs.taxNumber ?? ''}</p>
+  <p style="font-size:11px;color:#6b7280;">IBAN: ${cs.iban ?? ''} | BIC: ${cs.bic ?? ''} | ${cs.bankName ?? ''}</p>
+  ${signatureHtml}
+</body></html>`;
+        const result = await sendEmail({
+          smtpHost: cs.smtpHost,
+          smtpPort: cs.smtpPort ?? 587,
+          smtpUser: cs.smtpUser,
+          smtpPass: cs.smtpPass,
+          smtpFrom: cs.smtpFrom ?? cs.smtpUser,
+          smtpSecure: Boolean(cs.smtpSecure),
+          to: input.to,
+          cc: input.cc,
+          subject: input.subject,
+          html,
+        });
+        if (!result.success) throw new Error(result.error ?? 'E-Mail-Versand fehlgeschlagen');
+        return { success: true, messageId: result.messageId };
+      }),
   }),
 
   // ─── Project Items ───────────────────────────────────────────────────────────
