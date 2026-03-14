@@ -245,6 +245,7 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         const { getCompanySettings, getProjectById, getProjectItems, getCustomerById } = await import('./db');
         const { sendEmail } = await import('./email');
+        const { generateOrderConfirmationPdf } = await import('./pdfGenerator');
         const cs = await getCompanySettings();
         if (!cs?.smtpHost || !cs?.smtpUser || !cs?.smtpPass) {
           throw new Error('SMTP nicht konfiguriert. Bitte SMTP-Einstellungen in den Firmen-Einstellungen hinterlegen.');
@@ -320,6 +321,53 @@ export const appRouter = router({
   <p style="font-size:11px;color:#6b7280;">IBAN: ${cs.iban ?? ''} | BIC: ${cs.bic ?? ''} | ${cs.bankName ?? ''}</p>
   ${signatureHtml}
 </body></html>`;
+        // PDF generieren
+        let pdfBuffer: Buffer | undefined;
+        try {
+          const pdfData = {
+            companyName: cs.name ?? 'Fabrica GmbH',
+            companyStreet: cs.street ?? '',
+            companyZip: cs.zip ?? '',
+            companyCity: cs.city ?? '',
+            companyPhone: cs.phone ?? '',
+            companyEmail: cs.email ?? '',
+            companyWebsite: cs.website ?? '',
+            companyLogoUrl: cs.logoUrl ?? '',
+            vatId: cs.vatId ?? '',
+            taxNumber: cs.taxNumber ?? '',
+            iban: cs.iban ?? '',
+            bic: cs.bic ?? '',
+            bankName: cs.bankName ?? '',
+            footerCol1: cs.footerCol1 ?? '',
+            footerCol2: cs.footerCol2 ?? '',
+            footerCol3: cs.footerCol3 ?? '',
+            footerCol4: cs.footerCol4 ?? '',
+            customerName: customer ? (customer.company || customer.name) : '',
+            customerStreet: customer?.street ?? undefined,
+            customerZip: customer?.zip ?? undefined,
+            customerCity: customer?.city ?? undefined,
+            customerCountry: customer?.country ?? undefined,
+            projectTitle: project.title,
+            projectNumber: String(project.projectNumber ?? project.id),
+            issueDate: new Date().toLocaleDateString('de-DE'),
+            bodyText: input.body,
+            items: items.map((it: any) => ({
+              name: it.name ?? it.description ?? '',
+              quantity: parseFloat(it.quantity ?? 1),
+              unitVk: parseFloat(it.unitVk ?? 0),
+              totalVk: parseFloat(it.totalVk ?? 0),
+            })),
+            netAmount: net,
+            taxAmount: tax,
+            grossAmount: totalVkSum,
+            taxRate: 19,
+            kleinunternehmer: Boolean(cs.kleinunternehmer),
+          };
+          pdfBuffer = await generateOrderConfirmationPdf(pdfData);
+        } catch (pdfErr: any) {
+          console.error('[PDF] Fehler bei PDF-Generierung:', pdfErr.message);
+          // PDF-Fehler ist nicht kritisch – E-Mail wird trotzdem ohne Anhang gesendet
+        }
         const result = await sendEmail({
           smtpHost: cs.smtpHost,
           smtpPort: cs.smtpPort ?? 587,
@@ -331,13 +379,17 @@ export const appRouter = router({
           cc: input.cc,
           subject: input.subject,
           html,
+          attachments: pdfBuffer ? [{
+            filename: `Auftragsbestaetigung_${String(project.projectNumber ?? project.id).replace(/[^a-zA-Z0-9-]/g, '_')}.pdf`,
+            content: pdfBuffer,
+            contentType: 'application/pdf',
+          }] : undefined,
         });
         if (!result.success) throw new Error(result.error ?? 'E-Mail-Versand fehlgeschlagen');
-        return { success: true, messageId: result.messageId };
+        return { success: true, messageId: result.messageId, hasPdf: !!pdfBuffer };
       }),
   }),
-
-  // ─── Project Items ───────────────────────────────────────────────────────────
+  // ─── Project Items ────────────────────────────────────────────────────────────
   projectItems: router({
     list: protectedProcedure.input(z.object({ projectId: z.number() })).query(async ({ input }) => getProjectItems(input.projectId)),
     create: protectedProcedure.input(z.object({

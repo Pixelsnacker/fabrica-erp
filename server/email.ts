@@ -4,6 +4,12 @@
  */
 import nodemailer from 'nodemailer';
 
+export interface SendEmailAttachment {
+  filename: string;
+  content: Buffer;
+  contentType: string;
+}
+
 export interface SendEmailOptions {
   smtpHost: string;
   smtpPort: number;
@@ -16,6 +22,7 @@ export interface SendEmailOptions {
   subject: string;
   html: string;
   text?: string;
+  attachments?: SendEmailAttachment[];
 }
 
 export async function sendEmail(opts: SendEmailOptions): Promise<{ success: boolean; messageId?: string; error?: string }> {
@@ -40,6 +47,11 @@ export async function sendEmail(opts: SendEmailOptions): Promise<{ success: bool
       subject: opts.subject,
       html: opts.html,
       text: opts.text || opts.html.replace(/<[^>]+>/g, ''),
+      attachments: opts.attachments?.map(a => ({
+        filename: a.filename,
+        content: a.content,
+        contentType: a.contentType,
+      })),
     });
 
     return { success: true, messageId: info.messageId };

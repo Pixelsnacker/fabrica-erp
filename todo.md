@@ -499,3 +499,19 @@
 - [x] Button "AB" (amber) im Projektdetail-Header
 - [x] Dialog: An, CC, Betreff, Nachricht editierbar, Positionstabelle automatisch angehängt
 - [x] 219 Tests grün, 0 TypeScript-Fehler
+
+## Phase 59: PDF-Anhang für Auftragsbestätigung
+
+- [ ] PDF-Generator-Strategie festlegen (Puppeteer vs. html-pdf-node vs. pdfkit)
+- [ ] HTML-Template für AB-PDF (Firmenlogo, Absender, Empfänger, Positionen, Fußzeile)
+- [ ] Backend: PDF generieren und als E-Mail-Anhang hinzufügen
+- [ ] Tests und Checkpoint
+
+## Phase 59: PDF-Anhang für Auftragsbestätigung (ABGESCHLOSSEN)
+
+- [x] WeasyPrint-Verfügbarkeit geprüft (Python, kein zusätzliches Paket nötig)
+- [x] pdfGenerator.ts mit professionellem DIN-A4-Template (Logo, Empfänger, Positionen, Fußzeile)
+- [x] email.ts um attachments-Parameter erweitert (Nodemailer)
+- [x] sendOrderConfirmation: PDF wird generiert und als Anhang mitgesendet
+- [x] PDF-Fehler ist nicht kritisch – E-Mail wird auch ohne Anhang gesendet
+- [x] 219 Tests grün, 0 TypeScript-Fehler
