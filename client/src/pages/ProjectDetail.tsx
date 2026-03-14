@@ -428,7 +428,7 @@ export default function ProjectDetail() {
                       </div>
                       <div className="ml-auto text-right">
                         <div className="text-muted-foreground">EK ges: <span className="text-yellow-400">{parseFloat(item.totalEk ?? "0").toFixed(2)} €</span></div>
-                        <div className="text-muted-foreground">VK ges: <span className="text-primary">{parseFloat(item.totalVk ?? "0").toFixed(2)} €</span></div>
+                        <div className="text-muted-foreground">VK ges: <span className="text-foreground">{parseFloat(item.totalVk ?? "0").toFixed(2)} €</span></div>
                         <div className="text-green-400">{parseFloat(item.marginPercent ?? "0").toFixed(1)}%</div>
                       </div>
                     </div>
