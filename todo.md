@@ -624,3 +624,12 @@
 
 ## Phase 73: IBAN bei Bestellungen entfernen
 - [x] IBAN bei Bestellungen im PDF nicht anzeigen (beide Stellen: printInvoice + downloadPDF)
+
+## Phase 74: PDF-Bugs - Positionen fehlen + AGB-Seite leer + IBAN in Fußzeile
+- [x] Bug: downloadPDF aus der Liste nutzt inv.items=undefined (list-Query hat keine items) → Positionen fehlen
+- [x] Bug: AGB-Seite 2 erscheint leer obwohl kein AGB-Text vorhanden (leere Seite)
+- [x] Bug: IBAN erscheint noch in der Fußzeile (footerCol4) bei Bestellungen
+- [x] Fix: downloadPDF ruft jetzt immer getById auf wenn items fehlen/leer sind
+- [x] Fix: agbText.trim() verhindert Whitespace-only AGB-Seite
+- [x] Fix: footerCol4 (Bankdaten) bei purchase_order leer gesetzt (beide: printInvoice + downloadPDF)
+- [x] Fix: min-height:1063px aus downloadPDF-HTML entfernt → kein leerer Überlauf mehr

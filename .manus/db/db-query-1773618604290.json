@@ -1,0 +1,19 @@
+{
+  "query": "SELECT id, name, agb_text, footer_col4 FROM company_settings LIMIT 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 9NNjvn7NV7enobv.7ea640e70a8c --database YMZow7uQxpBVyBGbmbpvvd --execute SELECT id, name, agb_text, footer_col4 FROM company_settings LIMIT 1;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "Fabrica GmbH",
+      "agb_text": " ",
+      "footer_col4": "Bank Kreissparkasse Köln"
+    }
+  ],
+  "messages": [
+    "IBAN DE40 3705 0299 0000 4241 65",
+    "BIC COKSDE33XXX"
+  ],
+  "stdout": "id\tname\tagb_text\tfooter_col4\n1\tFabrica GmbH\t \tBank Kreissparkasse Köln\nIBAN DE40 3705 0299 0000 4241 65\nBIC COKSDE33XXX\n",
+  "stderr": "",
+  "execution_time_ms": 54
+}

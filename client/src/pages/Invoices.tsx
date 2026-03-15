@@ -618,7 +618,7 @@ export default function Invoices() {
 
   function printInvoice(inv: any) {
     const cs = companySettings as any;
-    const agbText: string = cs?.agbText ?? '';
+    const agbText: string = (cs?.agbText ?? '').trim();
     const logoUrl: string = cs?.logoUrl ?? '';
     const isPurchaseOrder = inv.type === 'purchase_order';
 
@@ -658,7 +658,10 @@ export default function Invoices() {
     const fmt = (n: number) => n.toLocaleString('de-DE', { minimumFractionDigits: 2 }) + ' €';
 
     // Fußzeile aus companySettings (4 Spalten) - als normaler Fließtext, KEIN position:fixed
-    const footerCols = [cs?.footerCol1 ?? '', cs?.footerCol2 ?? '', cs?.footerCol3 ?? '', cs?.footerCol4 ?? ''];
+    // Bei Bestellungen: footerCol4 (Bankdaten/IBAN) nicht anzeigen
+    const footerCols = isPurchaseOrder
+      ? [cs?.footerCol1 ?? '', cs?.footerCol2 ?? '', cs?.footerCol3 ?? '', '']
+      : [cs?.footerCol1 ?? '', cs?.footerCol2 ?? '', cs?.footerCol3 ?? '', cs?.footerCol4 ?? ''];
     const hasFooterCols = footerCols.some(c => c.trim());
     const renderCol = (text: string) => text.split('\n')
       .map((l: string) => `<span>${l.replace(/https?:\/\//, '')}</span>`)
@@ -840,9 +843,17 @@ ${agbText ? `<div class="agb-page">
     if (w) { w.document.write(html); w.document.close(); }
   }
 
-  async function downloadPDF(inv: any) {
+  async function downloadPDF(invOrId: any) {
     const toastId = toast.loading('PDF wird erstellt...');
     try {
+      // Sicherstellen dass wir vollständige Daten inkl. items haben
+      // Die list-Query gibt keine items zurück, daher immer getById aufrufen
+      let inv = invOrId;
+      if (!inv.items || inv.items.length === 0) {
+        const fullData = await utils.invoices.getById.fetch({ id: inv.id });
+        if (fullData) inv = fullData;
+      }
+
       // HTML-Inhalt in einem versteckten iframe rendern
       const iframe = document.createElement('iframe');
       iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;height:1123px;border:none;';
@@ -850,7 +861,7 @@ ${agbText ? `<div class="agb-page">
 
       // printInvoice HTML generieren (ohne window.print)
       const cs = companySettings as any;
-      const agbText: string = cs?.agbText ?? '';
+      const agbText: string = (cs?.agbText ?? '').trim();
       const logoUrl: string = cs?.logoUrl ?? '';
       const isPurchaseOrder = inv.type === 'purchase_order';
       const taxModeNote = inv.taxMode === 'kleinunternehmer'
@@ -868,7 +879,10 @@ ${agbText ? `<div class="agb-page">
       const pdfTax = reqItems.reduce((s: number, i: any) => s + parseFloat(i.lineTax ?? 0), 0);
       const pdfGross = pdfNet + pdfTax;
       const fmt = (n: number) => n.toLocaleString('de-DE', { minimumFractionDigits: 2 }) + ' €';
-      const footerCols = [cs?.footerCol1 ?? '', cs?.footerCol2 ?? '', cs?.footerCol3 ?? '', cs?.footerCol4 ?? ''];
+       // Bei Bestellungen: footerCol4 (Bankdaten) nicht anzeigen
+      const footerCols = isPurchaseOrder
+        ? [cs?.footerCol1 ?? '', cs?.footerCol2 ?? '', cs?.footerCol3 ?? '', '']
+        : [cs?.footerCol1 ?? '', cs?.footerCol2 ?? '', cs?.footerCol3 ?? '', cs?.footerCol4 ?? ''];
       const hasFooterCols = footerCols.some(c => c.trim());
       const renderCol = (text: string) => text.split('\n').map((l: string) => `<span>${l.replace(/https?:\/\//, '')}</span>`).join('<br/>');
       const recipientLabel = isPurchaseOrder ? 'LIEFERANT' : 'EMPFÄNGER';
@@ -876,8 +890,7 @@ ${agbText ? `<div class="agb-page">
 
       const htmlContent = `<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #111; line-height: 1.5; background: #fff; padding: 40px; min-height: 1063px; display: flex; flex-direction: column; }
-        .main { flex: 1; }
+        body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #111; line-height: 1.5; background: #fff; padding: 40px; }
         table { width: 100%; border-collapse: collapse; }
         .doc-header { display: flex; justify-content: space-between; margin-bottom: 24px; }
         .doc-title { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
@@ -888,8 +901,7 @@ ${agbText ? `<div class="agb-page">
         .footer-area { margin-top: 24px; padding-top: 8px; border-top: 1.5px solid #bbb; font-size: 9px; color: #555; }
         .footer-area table td { padding: 0 8px 0 0; vertical-align: top; font-size: 9px; }
       </style></head><body>
-      <div class="main">
-        <div class="doc-header">
+      <div class="doc-header">
           <div>${logoUrl ? `<img src="${logoUrl}" style="max-height:60px;max-width:180px;object-fit:contain;margin-bottom:8px;display:block;">` : ''}<div style="font-size:13px;font-weight:700;">${inv.senderName || ''}</div><div style="font-size:10px;color:#444;line-height:1.6;">${inv.senderStreet ?? ''}<br>${(inv.senderZip ?? '') + ' ' + (inv.senderCity ?? '')}<br>${inv.senderEmail ?? ''}<br>${inv.senderPhone ? 'Tel. ' + inv.senderPhone : ''}</div></div>
           <div style="text-align:right;"><div class="doc-title">${docTitle}</div><div style="font-size:11px;color:#333;line-height:1.8;"><strong>Nr. ${inv.invoiceNumber}</strong><br>Datum: ${formatDateDE(inv.issueDate)}<br>${inv.dueDate ? 'Fälligkeit: ' + formatDateDE(inv.dueDate) + '<br>' : ''}${inv.deliveryDate ? 'Lieferdatum: ' + formatDateDE(inv.deliveryDate) : ''}</div></div>
         </div>
@@ -901,7 +913,6 @@ ${agbText ? `<div class="agb-page">
         ${taxModeNote}
         <div style="font-size:10px;color:#333;margin-top:8px;">${inv.type !== 'purchase_order' && inv.paymentTerms ? inv.paymentTerms : ''}${inv.type !== 'purchase_order' && inv.senderIban ? '<br>IBAN: ' + inv.senderIban : ''}</div>
         ${inv.notes ? `<div style="font-size:10px;color:#555;margin-top:8px;">${inv.notes}</div>` : ''}
-      </div>
       ${hasFooterCols ? `<div class="footer-area"><table><tr>${footerCols.map(c => `<td style="width:25%;">${renderCol(c)}</td>`).join('')}</tr></table></div>` : ''}
       ${agbText ? `<div style="page-break-before:always;padding-top:8px;"><h2 style="font-size:15px;margin-bottom:14px;border-bottom:2px solid #333;padding-bottom:8px;">Allgemeine Geschäftsbedingungen</h2><div style="white-space:pre-wrap;line-height:1.6;font-size:11px;">${agbText}</div></div>` : ''}
       </body></html>`;

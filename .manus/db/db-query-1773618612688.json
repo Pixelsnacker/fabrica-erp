@@ -1,0 +1,13 @@
+{
+  "query": "SELECT COUNT(*) as cnt FROM company_settings;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 9NNjvn7NV7enobv.7ea640e70a8c --database YMZow7uQxpBVyBGbmbpvvd --execute SELECT COUNT(*) as cnt FROM company_settings;",
+  "rows": [
+    {
+      "cnt": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "cnt\n1\n",
+  "stderr": "",
+  "execution_time_ms": 55
+}
