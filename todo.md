@@ -621,3 +621,6 @@
 - [x] Zahlungsbedingungen bei Bestellungen im Formular ausblenden
 - [x] Zahlungsbedingungen bei Bestellungen im PDF ausblenden (printInvoice + downloadPDF)
 - [x] Drucken-Button entfernt, nur PDF-Download-Button bleibt
+
+## Phase 73: IBAN bei Bestellungen entfernen
+- [x] IBAN bei Bestellungen im PDF nicht anzeigen (beide Stellen: printInvoice + downloadPDF)

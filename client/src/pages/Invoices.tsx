@@ -814,7 +814,7 @@ ${taxModeNote}
 <!-- ZAHLUNGSINFOS -->
 <div class="payment-info">
   ${inv.type !== 'purchase_order' && inv.paymentTerms ? inv.paymentTerms + '<br>' : ''}
-  ${inv.senderIban ? 'IBAN: ' + inv.senderIban + (inv.senderBic ? ' | BIC: ' + inv.senderBic : '') : ''}
+  ${inv.type !== 'purchase_order' && inv.senderIban ? 'IBAN: ' + inv.senderIban + (inv.senderBic ? ' | BIC: ' + inv.senderBic : '') : ''}
 </div>
 ${inv.notes ? `<div class="notes">${inv.notes}</div>` : ''}
 ${inv.footerText ? `<p style="margin-top:16px;font-size:9px;color:#888;">${inv.footerText}</p>` : ''}
@@ -899,7 +899,7 @@ ${agbText ? `<div class="agb-page">
         <table class="items-table" style="margin-bottom:12px;"><thead><tr><th style="width:4%;">#</th><th>Beschreibung</th><th style="text-align:right;width:8%;">Menge</th><th style="width:7%;">Einheit</th><th style="text-align:right;width:11%;">EP netto</th><th style="text-align:right;width:8%;">MwSt</th><th style="text-align:right;width:12%;">Gesamt brutto</th></tr></thead><tbody>${itemRows}</tbody></table>
         <table class="totals-table" style="margin-bottom:12px;"><tr><td style="color:#555;">Nettobetrag:</td><td style="text-align:right">${fmt(pdfNet)}</td></tr><tr><td style="color:#555;">MwSt:</td><td style="text-align:right">${fmt(pdfTax)}</td></tr><tr class="total-row"><td>Gesamtbetrag:</td><td style="text-align:right">${fmt(pdfGross)}</td></tr></table>
         ${taxModeNote}
-        <div style="font-size:10px;color:#333;margin-top:8px;">${inv.type !== 'purchase_order' && inv.paymentTerms ? inv.paymentTerms : ''}${inv.senderIban ? '<br>IBAN: ' + inv.senderIban : ''}</div>
+        <div style="font-size:10px;color:#333;margin-top:8px;">${inv.type !== 'purchase_order' && inv.paymentTerms ? inv.paymentTerms : ''}${inv.type !== 'purchase_order' && inv.senderIban ? '<br>IBAN: ' + inv.senderIban : ''}</div>
         ${inv.notes ? `<div style="font-size:10px;color:#555;margin-top:8px;">${inv.notes}</div>` : ''}
       </div>
       ${hasFooterCols ? `<div class="footer-area"><table><tr>${footerCols.map(c => `<td style="width:25%;">${renderCol(c)}</td>`).join('')}</tr></table></div>` : ''}
