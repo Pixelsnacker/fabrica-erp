@@ -562,3 +562,8 @@
 - [x] Fußzeile fixed am unteren Rand (position:fixed, bottom:0), auf jeder Seite
 - [x] Seiteninhalt hat genug Abstand zur Fußzeile (@page margin-bottom: 3.5cm)
 - [x] Beschreibungs-Zeilenumbrüche im PDF korrekt dargestellt (white-space:pre-wrap)
+
+## Phase 61: Kritische Bugs beheben
+- [x] BUG: Positionen werden nach Speichern nicht gespeichert (openEdit lädt jetzt via getById)
+- [x] Detailbeschreibung als Textarea (Zeilenumbruch per Enter, wächst automatisch)
+- [x] PDF: Fußzeile nur auf der ersten/letzten Seite (kein position:fixed mehr)

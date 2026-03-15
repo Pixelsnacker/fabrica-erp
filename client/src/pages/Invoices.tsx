@@ -401,47 +401,59 @@ export default function Invoices() {
     }
   }, [pendingProjectItems]);
 
+  const [pendingEditId, setPendingEditId] = useState<number | null>(null);
+  const { data: editDetailData } = trpc.invoices.getById.useQuery(
+    { id: pendingEditId! }, { enabled: pendingEditId !== null }
+  );
+  useEffect(() => {
+    if (pendingEditId !== null && editDetailData) {
+      const inv = editDetailData as any;
+      setEditId(inv.id);
+      setForm({
+        type: inv.type, customerId: inv.customerId ?? undefined, supplierId: inv.supplierId ?? undefined, projectId: inv.projectId ?? undefined,
+        senderName: inv.senderName ?? DEFAULT_SENDER.senderName,
+        senderStreet: inv.senderStreet ?? DEFAULT_SENDER.senderStreet,
+        senderZip: inv.senderZip ?? DEFAULT_SENDER.senderZip,
+        senderCity: inv.senderCity ?? DEFAULT_SENDER.senderCity,
+        senderTaxId: inv.senderTaxId ?? '',
+        senderVatId: inv.senderVatId ?? '',
+        senderEmail: inv.senderEmail ?? DEFAULT_SENDER.senderEmail,
+        senderPhone: inv.senderPhone ?? DEFAULT_SENDER.senderPhone,
+        senderIban: inv.senderIban ?? '',
+        senderBic: inv.senderBic ?? '',
+        recipientName: inv.recipientName ?? '',
+        recipientCompany: inv.recipientCompany ?? '',
+        recipientStreet: inv.recipientStreet ?? '',
+        recipientZip: inv.recipientZip ?? '',
+        recipientCity: inv.recipientCity ?? '',
+        recipientEmail: inv.recipientEmail ?? '',
+        issueDate: inv.issueDate ?? new Date().toISOString().slice(0, 10),
+        dueDate: inv.dueDate ?? '',
+        deliveryDate: inv.deliveryDate ?? '',
+        paymentTerms: inv.paymentTerms ?? 'Zahlbar innerhalb von 14 Tagen ohne Abzug.',
+        taxMode: inv.taxMode ?? 'standard',
+        introText: inv.introText ?? '',
+        notes: inv.notes ?? '',
+        footerText: inv.footerText ?? '',
+      });
+      setItems((inv.items ?? []).map((it: any) => ({
+        position: it.position, description: it.description,
+        longDescription: it.longDescription ?? '',
+        isOptional: !!it.isOptional,
+        discount: it.discount ?? '0',
+        discountedNet: it.discountedNet ?? '0.00',
+        quantity: it.quantity ?? '1', unit: it.unit ?? 'Stk.',
+        unitPriceNet: it.unitPriceNet ?? '0.00', taxRate: it.taxRate ?? '19',
+        lineTotalNet: it.lineTotalNet ?? '0.00', lineTax: it.lineTax ?? '0.00',
+        lineTotalGross: it.lineTotalGross ?? '0.00',
+      })));
+      setPendingEditId(null);
+      setShowForm(true);
+    }
+  }, [editDetailData, pendingEditId]);
+
   function openEdit(inv: any) {
-    setEditId(inv.id);
-    setForm({
-      type: inv.type, customerId: inv.customerId ?? undefined, supplierId: inv.supplierId ?? undefined, projectId: inv.projectId ?? undefined,
-      senderName: inv.senderName ?? DEFAULT_SENDER.senderName,
-      senderStreet: inv.senderStreet ?? DEFAULT_SENDER.senderStreet,
-      senderZip: inv.senderZip ?? DEFAULT_SENDER.senderZip,
-      senderCity: inv.senderCity ?? DEFAULT_SENDER.senderCity,
-      senderTaxId: inv.senderTaxId ?? '',
-      senderVatId: inv.senderVatId ?? '',
-      senderEmail: inv.senderEmail ?? DEFAULT_SENDER.senderEmail,
-      senderPhone: inv.senderPhone ?? DEFAULT_SENDER.senderPhone,
-      senderIban: inv.senderIban ?? '',
-      senderBic: inv.senderBic ?? '',
-      recipientName: inv.recipientName ?? '',
-      recipientCompany: inv.recipientCompany ?? '',
-      recipientStreet: inv.recipientStreet ?? '',
-      recipientZip: inv.recipientZip ?? '',
-      recipientCity: inv.recipientCity ?? '',
-      recipientEmail: inv.recipientEmail ?? '',
-      issueDate: inv.issueDate ?? new Date().toISOString().slice(0, 10),
-      dueDate: inv.dueDate ?? '',
-      deliveryDate: inv.deliveryDate ?? '',
-      paymentTerms: inv.paymentTerms ?? 'Zahlbar innerhalb von 14 Tagen ohne Abzug.',
-      taxMode: inv.taxMode ?? 'standard',
-      introText: inv.introText ?? '',
-      notes: inv.notes ?? '',
-      footerText: inv.footerText ?? '',
-    });
-    setItems((inv.items ?? []).map((it: any) => ({
-      position: it.position, description: it.description,
-      longDescription: it.longDescription ?? '',
-      isOptional: !!it.isOptional,
-      discount: it.discount ?? '0',
-      discountedNet: it.discountedNet ?? '0.00',
-      quantity: it.quantity ?? '1', unit: it.unit ?? 'Stk.',
-      unitPriceNet: it.unitPriceNet ?? '0.00', taxRate: it.taxRate ?? '19',
-      lineTotalNet: it.lineTotalNet ?? '0.00', lineTax: it.lineTax ?? '0.00',
-      lineTotalGross: it.lineTotalGross ?? '0.00',
-    })));
-    setShowForm(true);
+    setPendingEditId(inv.id);
   }
 
   // Kunde auswählen → Empfänger vorausfüllen
@@ -579,7 +591,7 @@ export default function Invoices() {
 
     const html = `<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><title>${inv.invoiceNumber}</title>
     <style>
-      @page { margin: 1.5cm 1cm 3.5cm 1cm; }
+      @page { margin: 1.5cm 1cm 2cm 1cm; }
       * { box-sizing: border-box; }
       body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; margin: 0; padding: 0; color: #111; line-height: 1.4; }
       h1, h2, h3 { margin: 0; }
@@ -590,8 +602,7 @@ export default function Invoices() {
       .totals-table td { padding: 3px 6px; font-size: 11px; }
       .totals-table tr.total-row td { font-weight: 700; font-size: 13px; border-top: 2px solid #111; padding-top: 6px; }
       .section-divider { border: none; border-top: 1px solid #ddd; margin: 16px 0; }
-      .page-footer { position: fixed; bottom: 0; left: 0; right: 0; padding: 6px 1cm 8px 1cm; background: #fff; }
-      @media print { button { display: none; } .page-footer { position: fixed; bottom: 0; left: 0; right: 0; padding: 6px 1cm 8px 1cm; background: #fff; } }
+      @media print { button { display: none; } }
     </style></head><body>
 
     <!-- KOPFZEILE: Logo + Absender links, Dokumenttitel rechts -->
@@ -682,8 +693,8 @@ export default function Invoices() {
     ${inv.footerText ? `<p style="margin:16px 0 0 0;font-size:9px;color:#888;">${inv.footerText}</p>` : ''}
     <p style="margin:12px 0 0 0;font-size:8px;color:#bbb;">SHA-256: ${inv.contentHash ?? 'noch nicht finalisiert'}</p>
 
-    <!-- FUSSZEILE (4 Spalten) - fixed am unteren Rand -->
-    ${hasFooterCols ? `<div class="page-footer">
+    <!-- FUSSZEILE (4 Spalten) - am Ende der Seite 1 -->  
+    ${hasFooterCols ? `<div style="margin-top:24px;">
       <table style="width:100%;border-top:1.5px solid #bbb;padding-top:6px;font-size:9px;color:#555;">
         <tr>
           ${footerCols.map(c => `<td style="width:25%;vertical-align:top;padding-right:8px;">${renderCol(c)}</td>`).join('')}
@@ -1059,10 +1070,15 @@ export default function Invoices() {
                     </div>
                     {/* Zeile 2: Langbeschreibung + Optional-Toggle */}
                     <div className="flex items-start gap-3 pl-7">
-                      <Input
-                        className="h-7 text-xs flex-1 text-muted-foreground"
+                      <Textarea
+                        className="text-xs flex-1 text-muted-foreground min-h-[28px] resize-none overflow-hidden py-1 px-3"
                         value={it.longDescription ?? ''}
-                        onChange={e => updateItem(idx, 'longDescription', e.target.value)}
+                        rows={1}
+                        onChange={e => {
+                          updateItem(idx, 'longDescription', e.target.value);
+                          e.target.style.height = 'auto';
+                          e.target.style.height = e.target.scrollHeight + 'px';
+                        }}
                         placeholder="Detailbeschreibung (optional, erscheint im PDF)"
                       />
                       <label className="flex items-center gap-1.5 cursor-pointer shrink-0 mt-0.5">
