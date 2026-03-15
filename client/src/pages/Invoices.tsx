@@ -670,12 +670,21 @@ export default function Invoices() {
     }
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100%;
+  }
   body {
     font-family: Arial, Helvetica, sans-serif;
     font-size: 11px;
     color: #111;
     line-height: 1.5;
     background: #fff;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  .main-content {
+    flex: 1;
   }
   table { width: 100%; border-collapse: collapse; }
   .doc-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
@@ -724,6 +733,7 @@ export default function Invoices() {
 </head>
 <body>
 
+<div class="main-content">
 <!-- KOPF -->
 <div class="doc-header">
   <div class="doc-header-left">
@@ -797,8 +807,9 @@ ${taxModeNote}
 </div>
 ${inv.notes ? `<div class="notes">${inv.notes}</div>` : ''}
 ${inv.footerText ? `<p style="margin-top:16px;font-size:9px;color:#888;">${inv.footerText}</p>` : ''}
+</div><!-- end main-content -->
 
-<!-- FUSSZEILE als normaler Fließtext am Ende des Inhalts -->
+<!-- Fußzeile immer unten -->
 ${hasFooterCols ? `<div class="footer-area">
   <table><tr>
     ${footerCols.map(c => `<td style="width:25%;">${renderCol(c)}</td>`).join('')}
