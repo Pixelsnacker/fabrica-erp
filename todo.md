@@ -567,3 +567,8 @@
 - [x] BUG: Positionen werden nach Speichern nicht gespeichert (openEdit lädt jetzt via getById)
 - [x] Detailbeschreibung als Textarea (Zeilenumbruch per Enter, wächst automatisch)
 - [x] PDF: Fußzeile nur auf der ersten/letzten Seite (kein position:fixed mehr)
+
+## Phase 62: taxRate Typ-Bug
+- [x] BUG: taxRate kommt als Zahl aus Artikeldatenbank, Backend erwartet String
+- [x] Alle Artikel-Einfüge-Stellen: String-Konvertierung für taxRate, quantity, unitPriceNet
+- [x] handleSave: sanitizedItems konvertiert alle numerischen Felder zu String vor dem Senden

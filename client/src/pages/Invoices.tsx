@@ -510,7 +510,19 @@ export default function Invoices() {
 
   // Speichern
   async function handleSave() {
-    const payload = { ...form, ...totals, items };
+    // Alle numerischen Felder in Items als String sicherstellen (Zod-Validierung erwartet strings)
+    const sanitizedItems = items.map(it => ({
+      ...it,
+      quantity: String(it.quantity ?? '1'),
+      unitPriceNet: String(it.unitPriceNet ?? '0.00'),
+      taxRate: String(it.taxRate ?? '19'),
+      lineTotalNet: String(it.lineTotalNet ?? '0.00'),
+      lineTax: String(it.lineTax ?? '0.00'),
+      lineTotalGross: String(it.lineTotalGross ?? '0.00'),
+      discount: String(it.discount ?? '0'),
+      discountedNet: String(it.discountedNet ?? '0.00'),
+    }));
+    const payload = { ...form, ...totals, items: sanitizedItems };
     if (editId) {
       updateMut.mutate({ id: editId, ...payload });
     } else {
@@ -1227,7 +1239,7 @@ export default function Invoices() {
                         quantity: '1',
                         unit: a.unit ?? 'Stk.',
                         unitPriceNet: String(net.toFixed(2)),
-                        taxRate: a.taxRate ?? 19,
+                        taxRate: String(a.taxRate ?? 19),
                         discount: '0',
                         isOptional: false,
                         lineTotalNet: String(net.toFixed(2)),
