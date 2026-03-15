@@ -606,3 +606,9 @@
 - [x] quantity in DB als decimal(10,3) -> zeigt immer 3 Nachkommastellen
 - [x] Frontend: quantity-Wert beim Laden trimmen (parseFloat -> trailing zeros weg)
 - [x] Frontend: quantity beim Speichern und in allen Mapping-Stellen bereinigt
+
+## Phase 70: PDF komplett neu schreiben
+- [x] printInvoice komplett neu geschrieben - kein position:fixed mehr
+- [x] Fußzeile als normaler Fließtext am Ende des Inhalts (stabil, kein Überlappen)
+- [x] Seite 2 (AGB) nur wenn AGB-Text vorhanden
+- [x] Sauberes Layout mit flexbox header, klare Struktur

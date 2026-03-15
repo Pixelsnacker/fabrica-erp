@@ -610,25 +610,22 @@ export default function Invoices() {
     const agbText: string = cs?.agbText ?? '';
     const logoUrl: string = cs?.logoUrl ?? '';
     const isPurchaseOrder = inv.type === 'purchase_order';
+
     const taxModeNote = inv.taxMode === 'kleinunternehmer'
       ? '<p style="margin-top:16px;font-size:11px;">Gemäß §19 UStG wird keine Umsatzsteuer berechnet.</p>' : '';
+
     const itemRows = (inv.items ?? []).map((it: any, i: number) => {
       const discountPct = parseFloat(it.discount ?? '0');
       const discountCell = discountPct > 0
-        ? `<span style="color:#d97706;font-size:10px;"> (${discountPct}% Rabatt)</span>`
-        : '';
+        ? `<span style="color:#d97706;font-size:10px;"> (${discountPct}% Rabatt)</span>` : '';
       const optionalBadge = it.isOptional
-        ? '<span style="background:#f3f4f6;color:#6b7280;font-size:9px;padding:1px 5px;border-radius:3px;margin-left:6px;">Optional</span>'
-        : '';
+        ? '<span style="background:#f3f4f6;color:#6b7280;font-size:9px;padding:1px 5px;border-radius:3px;margin-left:6px;">Optional</span>' : '';
       const longDesc = it.longDescription
-        ? `<div style="font-size:10px;color:#555;margin-top:3px;white-space:pre-wrap;">${it.longDescription}</div>`
-        : '';
-      return `
-      <tr style="${it.isOptional ? 'opacity:0.7;' : ''}">
+        ? `<div style="font-size:10px;color:#555;margin-top:3px;white-space:pre-wrap;">${it.longDescription}</div>` : '';
+      return `<tr style="${it.isOptional ? 'opacity:0.7;' : ''}">
         <td style="padding:5px 6px;border-bottom:1px solid #e8e8e8;vertical-align:top;">${i + 1}</td>
         <td style="padding:5px 6px;border-bottom:1px solid #e8e8e8;vertical-align:top;">
-          <span style="font-weight:500;white-space:pre-wrap;">${it.description}</span>${optionalBadge}${discountCell}
-          ${longDesc}
+          <span style="font-weight:500;white-space:pre-wrap;">${it.description}</span>${optionalBadge}${discountCell}${longDesc}
         </td>
         <td style="padding:5px 6px;border-bottom:1px solid #e8e8e8;text-align:right;vertical-align:top;white-space:nowrap;">${parseFloat(it.quantity ?? 1).toLocaleString('de-DE')}</td>
         <td style="padding:5px 6px;border-bottom:1px solid #e8e8e8;vertical-align:top;white-space:nowrap;">${it.unit ?? 'Stk.'}</td>
@@ -638,147 +635,185 @@ export default function Invoices() {
       </tr>`;
     }).join('');
 
-    // Fusszeile aus companySettings (4 Spalten)
-    const cs2 = companySettings as any;
-    const footerCols = [cs2?.footerCol1 ?? '', cs2?.footerCol2 ?? '', cs2?.footerCol3 ?? '', cs2?.footerCol4 ?? ''];
+    // Summen berechnen
+    const pdfItems = inv.items ?? [];
+    const reqItems = pdfItems.filter((i: any) => !i.isOptional);
+    const optItems = pdfItems.filter((i: any) => i.isOptional);
+    const pdfNet = reqItems.reduce((s: number, i: any) => s + parseFloat(i.lineTotalNet ?? 0), 0);
+    const pdfTax = reqItems.reduce((s: number, i: any) => s + parseFloat(i.lineTax ?? 0), 0);
+    const pdfGross = pdfNet + pdfTax;
+    const pdfOptGross = optItems.reduce((s: number, i: any) => s + parseFloat(i.lineTotalGross ?? 0), 0);
+    const pdfDiscount = pdfItems.reduce((s: number, i: any) => s + parseFloat(i.discountedNet ?? 0), 0);
+    const fmt = (n: number) => n.toLocaleString('de-DE', { minimumFractionDigits: 2 }) + ' €';
+
+    // Fußzeile aus companySettings (4 Spalten) - als normaler Fließtext, KEIN position:fixed
+    const footerCols = [cs?.footerCol1 ?? '', cs?.footerCol2 ?? '', cs?.footerCol3 ?? '', cs?.footerCol4 ?? ''];
     const hasFooterCols = footerCols.some(c => c.trim());
-    // HTTP-Links als Plain-Text darstellen (keine klickbaren Anker)
-    const renderCol = (text: string) => text.split('\n').map((l: string) => `<span>${l.replace(/https?:\/\/\S+/g, url => url.replace(/^https?:\/\//, ''))}</span>`).join('<br/>');
-    const footerHtml = hasFooterCols ? `
-      <table style="width:100%;border-top:1.5px solid #bbb;padding-top:6px;font-size:9px;color:#555;margin-top:8px;">
-        <tr>
-          ${footerCols.map(c => `<td style="width:25%;vertical-align:top;padding-right:8px;">${renderCol(c)}</td>`).join('')}
-        </tr>
-      </table>` : '';
+    const renderCol = (text: string) => text.split('\n')
+      .map((l: string) => `<span>${l.replace(/https?:\/\//, '')}</span>`)
+      .join('<br/>');
 
-    // AGB als zweite Seite (nur wenn vorhanden)
-    const agbPage = agbText ? `
-      <div style="page-break-before:always;padding:0;font-family:Arial,sans-serif;font-size:11px;color:#111;">
-        <h2 style="font-size:15px;margin:0 0 14px 0;border-bottom:2px solid #333;padding-bottom:8px;">Allgemeine Geschäftsbedingungen</h2>
-        <div style="white-space:pre-wrap;line-height:1.6;">${agbText}</div>
-      </div>` : '';
+    const recipientLabel = isPurchaseOrder ? 'LIEFERANT' : 'EMPFÄNGER';
+    const docTitle = TYPE_LABELS[inv.type as InvoiceType] ?? inv.type;
 
-    const recipientLabel = isPurchaseOrder ? 'Lieferant:' : 'Empfänger:';
+    const html = `<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>${inv.invoiceNumber}</title>
+<style>
+  @page {
+    size: A4;
+    margin: 1.5cm 1.5cm 2.5cm 1.5cm;
+    @bottom-center {
+      content: '';
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 11px;
+    color: #111;
+    line-height: 1.5;
+    background: #fff;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  .doc-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+  .doc-header-left { flex: 1; }
+  .doc-header-right { text-align: right; }
+  .doc-title { font-size: 24px; font-weight: 700; color: #111; margin-bottom: 8px; }
+  .doc-meta { font-size: 11px; color: #333; line-height: 1.8; }
+  .sender-name { font-size: 13px; font-weight: 700; margin-bottom: 3px; }
+  .sender-info { font-size: 10px; color: #444; line-height: 1.6; }
+  .recipient-label { font-size: 9px; color: #888; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+  .recipient-block { margin-bottom: 20px; }
+  .divider { border: none; border-top: 1px solid #ddd; margin: 16px 0; }
+  .items-table th {
+    background: #f0f0f0;
+    text-align: left;
+    padding: 6px;
+    border-bottom: 2px solid #ccc;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  .items-table td { padding: 5px 6px; border-bottom: 1px solid #e8e8e8; font-size: 11px; vertical-align: top; }
+  .totals-section { display: flex; justify-content: flex-end; margin: 16px 0; }
+  .totals-table { width: 280px; }
+  .totals-table td { padding: 3px 6px; font-size: 11px; }
+  .totals-table .total-row td { font-weight: 700; font-size: 13px; border-top: 2px solid #111; padding-top: 6px; }
+  .payment-info { font-size: 10px; color: #333; margin-top: 8px; line-height: 1.8; }
+  .notes { font-size: 10px; color: #555; margin-top: 12px; }
+  .footer-area {
+    margin-top: 32px;
+    padding-top: 8px;
+    border-top: 1.5px solid #bbb;
+    font-size: 9px;
+    color: #555;
+  }
+  .footer-area table td { padding: 0 8px 0 0; vertical-align: top; font-size: 9px; color: #555; }
+  .page-num { text-align: right; font-size: 9px; color: #999; margin-top: 4px; }
+  .agb-page { page-break-before: always; padding-top: 8px; }
+  .agb-page h2 { font-size: 15px; margin-bottom: 14px; border-bottom: 2px solid #333; padding-bottom: 8px; }
+  @media print {
+    a { text-decoration: none; color: inherit; }
+    button { display: none; }
+  }
+</style>
+</head>
+<body>
 
-    const html = `<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><title>${inv.invoiceNumber}</title>
-    <style>
-      @page { margin: 1.5cm 1cm 3.5cm 1cm; size: A4; }
-      * { box-sizing: border-box; }
-      body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; margin: 0; padding: 0; color: #111; line-height: 1.4; }
-      h1, h2, h3 { margin: 0; }
-      table { width: 100%; border-collapse: collapse; }
-      .header-table td { vertical-align: top; }
-      .items-table th { background: #f0f0f0; text-align: left; padding: 6px 6px; border-bottom: 2px solid #ccc; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
-      .items-table td { font-size: 11px; }
-      .totals-table td { padding: 3px 6px; font-size: 11px; }
-      .totals-table tr.total-row td { font-weight: 700; font-size: 13px; border-top: 2px solid #111; padding-top: 6px; }
-      .section-divider { border: none; border-top: 1px solid #ddd; margin: 16px 0; }
-      .footer-fixed { position: fixed; bottom: 0; left: 0; right: 0; height: 3cm; display: flex; align-items: flex-end; padding: 0 1cm 0.8cm 1cm; background: #fff; }
-      .footer-fixed table { margin: 0; }
-      .page-number::before { content: 'Seite ' counter(page) ' von ' counter(pages); }
-      @page { counter-increment: page; }
-      @media print { button { display: none; } a { text-decoration: none; color: inherit; } }
-    </style></head><body>
-
-    <!-- KOPFZEILE: Logo + Absender links, Dokumenttitel rechts -->
-    <table class="header-table" style="margin-bottom:20px;">
-      <tr>
-        <td style="width:55%;">
-          ${logoUrl ? `<img src="${logoUrl}" alt="Logo" style="max-height:60px;max-width:180px;object-fit:contain;margin-bottom:10px;display:block;">` : ''}
-          <div style="font-size:13px;font-weight:700;margin-bottom:2px;">${inv.senderName || ''}</div>
-          <div style="color:#444;font-size:10px;line-height:1.6;">
-            ${inv.senderStreet ?? ''}<br>
-            ${inv.senderZip ?? ''} ${inv.senderCity ?? ''}<br>
-            ${inv.senderEmail ? inv.senderEmail + '<br>' : ''}
-            ${inv.senderPhone ? 'Tel. ' + inv.senderPhone + '<br>' : ''}
-            ${inv.senderVatId ? 'USt-IdNr: ' + inv.senderVatId : ''}
-          </div>
-        </td>
-        <td style="width:45%;text-align:right;">
-          <div style="font-size:22px;font-weight:700;color:#111;margin-bottom:6px;">${TYPE_LABELS[inv.type as InvoiceType] ?? inv.type}</div>
-          <div style="font-size:11px;color:#333;line-height:1.8;">
-            <strong>Nr. ${inv.invoiceNumber}</strong><br>
-            Datum: ${inv.issueDate ?? ''}<br>
-            ${inv.dueDate ? 'Fälligkeit: ' + inv.dueDate + '<br>' : ''}
-            ${inv.deliveryDate ? 'Lieferdatum: ' + inv.deliveryDate : ''}
-          </div>
-        </td>
-      </tr>
-    </table>
-
-    <!-- EMPFAENGER -->
-    <div style="margin-bottom:20px;">
-      <div style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">${recipientLabel}</div>
-      <div style="font-size:11px;line-height:1.7;">
-        ${isPurchaseOrder
-          ? `${inv.recipientCompany ? `<strong>${inv.recipientCompany}</strong><br>` : ''}${inv.recipientStreet ? inv.recipientStreet + '<br>' : ''}${(inv.recipientZip || inv.recipientCity) ? (inv.recipientZip ?? '') + ' ' + (inv.recipientCity ?? '') + '<br>' : ''}${inv.recipientCountry && inv.recipientCountry !== 'Deutschland' ? inv.recipientCountry : ''}`
-          : `${inv.recipientCompany ? `<strong>${inv.recipientCompany}</strong><br>` : ''}${inv.recipientName && inv.recipientName !== inv.recipientCompany ? inv.recipientName + '<br>' : ''}${inv.recipientStreet ? inv.recipientStreet + '<br>' : ''}${(inv.recipientZip || inv.recipientCity) ? (inv.recipientZip ?? '') + ' ' + (inv.recipientCity ?? '') : ''}`
-        }
-      </div>
+<!-- KOPF -->
+<div class="doc-header">
+  <div class="doc-header-left">
+    ${logoUrl ? `<img src="${logoUrl}" alt="Logo" style="max-height:65px;max-width:200px;object-fit:contain;margin-bottom:10px;display:block;">` : ''}
+    <div class="sender-name">${inv.senderName || ''}</div>
+    <div class="sender-info">
+      ${inv.senderStreet ? inv.senderStreet + '<br>' : ''}
+      ${(inv.senderZip || inv.senderCity) ? (inv.senderZip ?? '') + ' ' + (inv.senderCity ?? '') + '<br>' : ''}
+      ${inv.senderEmail ? inv.senderEmail + '<br>' : ''}
+      ${inv.senderPhone ? 'Tel. ' + inv.senderPhone + '<br>' : ''}
+      ${inv.senderVatId ? 'USt-IdNr: ' + inv.senderVatId : ''}
     </div>
-
-    <hr class="section-divider">
-
-    ${inv.introText ? `<p style="margin:0 0 16px 0;font-size:11px;">${inv.introText}</p>` : ''}
-
-    <!-- POSITIONEN -->
-    <table class="items-table" style="margin-bottom:16px;">
-      <thead>
-        <tr>
-          <th style="width:4%;">#</th>
-          <th>Beschreibung</th>
-          <th style="text-align:right;width:8%;">Menge</th>
-          <th style="width:7%;">Einheit</th>
-          <th style="text-align:right;width:11%;">EP netto</th>
-          <th style="text-align:right;width:8%;">MwSt</th>
-          <th style="text-align:right;width:12%;">Gesamt brutto</th>
-        </tr>
-      </thead>
-      <tbody>${itemRows}</tbody>
-    </table>
-
-    <!-- SUMMEN -->
-    <table class="totals-table" style="width:280px;margin-left:auto;margin-bottom:20px;">
-      ${(() => {
-        const pdfItems = inv.items ?? [];
-        const reqItems = pdfItems.filter((i: any) => !i.isOptional);
-        const optItems = pdfItems.filter((i: any) => i.isOptional);
-        const pdfNet = reqItems.reduce((s: number, i: any) => s + parseFloat(i.lineTotalNet ?? 0), 0);
-        const pdfTax = reqItems.reduce((s: number, i: any) => s + parseFloat(i.lineTax ?? 0), 0);
-        const pdfGross = pdfNet + pdfTax;
-        const pdfOptGross = optItems.reduce((s: number, i: any) => s + parseFloat(i.lineTotalGross ?? 0), 0);
-        const pdfDiscount = pdfItems.reduce((s: number, i: any) => s + parseFloat(i.discountedNet ?? 0), 0);
-        const fmt = (n: number) => n.toLocaleString('de-DE', { minimumFractionDigits: 2 }) + ' €';
-        return [
-          pdfDiscount > 0 ? `<tr style="color:#c47a00;"><td>Rabatt gesamt:</td><td style="text-align:right">-${fmt(pdfDiscount)}</td></tr>` : '',
-          `<tr><td style="color:#555;">Nettobetrag:</td><td style="text-align:right">${fmt(pdfNet)}</td></tr>`,
-          `<tr><td style="color:#555;">MwSt:</td><td style="text-align:right">${fmt(pdfTax)}</td></tr>`,
-          `<tr class="total-row"><td>Gesamtbetrag:</td><td style="text-align:right">${fmt(pdfGross)}</td></tr>`,
-          optItems.length > 0 ? `<tr><td colspan="2" style="font-size:9px;color:#888;padding-top:6px;border-top:1px dashed #ccc;">zzgl. optionale Pos. (${optItems.length}): ${fmt(pdfOptGross)}</td></tr>` : '',
-        ].join('');
-      })()}
-    </table>
-
-    ${taxModeNote}
-
-    <!-- ZAHLUNGSINFOS -->
-    ${inv.paymentTerms ? `<p style="margin:0 0 6px 0;font-size:10px;color:#333;">${inv.paymentTerms}</p>` : ''}
-    ${inv.senderIban ? `<p style="margin:0 0 6px 0;font-size:10px;color:#333;">IBAN: ${inv.senderIban}${inv.senderBic ? ' | BIC: ' + inv.senderBic : ''}</p>` : ''}
-    ${inv.notes ? `<p style="margin:12px 0 0 0;font-size:10px;color:#555;">${inv.notes}</p>` : ''}
-    ${inv.footerText ? `<p style="margin:16px 0 0 0;font-size:9px;color:#888;">${inv.footerText}</p>` : ''}
-
-
-    ${agbPage}
-    <!-- FUSSZEILE fixed auf jeder Seite -->
-    <div class="footer-fixed">
-      ${hasFooterCols ? `<table style="width:100%;border-top:1.5px solid #bbb;padding-top:5px;font-size:9px;color:#555;">
-        <tr>
-          ${footerCols.map(c => `<td style="width:25%;vertical-align:top;padding-right:8px;">${renderCol(c)}</td>`).join('')}
-          <td style="width:15%;text-align:right;vertical-align:bottom;font-size:9px;color:#999;"><span class="page-number"></span></td>
-        </tr>
-      </table>` : `<div style="text-align:right;font-size:9px;color:#999;padding-top:5px;border-top:1px solid #ddd;"><span class="page-number"></span></div>`}
+  </div>
+  <div class="doc-header-right">
+    <div class="doc-title">${docTitle}</div>
+    <div class="doc-meta">
+      <strong>Nr. ${inv.invoiceNumber}</strong><br>
+      Datum: ${inv.issueDate ?? ''}<br>
+      ${inv.dueDate ? 'Fälligkeit: ' + inv.dueDate + '<br>' : ''}
+      ${inv.deliveryDate ? 'Lieferdatum: ' + inv.deliveryDate : ''}
     </div>
-    <script>window.onload=()=>window.print();</script></body></html>`;
+  </div>
+</div>
+
+<!-- EMPFÄNGER / LIEFERANT -->
+<div class="recipient-block">
+  <div class="recipient-label">${recipientLabel}</div>
+  <div style="font-size:11px;line-height:1.7;">
+    ${isPurchaseOrder
+      ? `${inv.recipientCompany ? `<strong>${inv.recipientCompany}</strong><br>` : ''}${inv.recipientStreet ? inv.recipientStreet + '<br>' : ''}${(inv.recipientZip || inv.recipientCity) ? (inv.recipientZip ?? '') + ' ' + (inv.recipientCity ?? '') + '<br>' : ''}${inv.recipientCountry && inv.recipientCountry !== 'Deutschland' ? inv.recipientCountry : ''}`
+      : `${inv.recipientCompany ? `<strong>${inv.recipientCompany}</strong><br>` : ''}${inv.recipientName && inv.recipientName !== inv.recipientCompany ? inv.recipientName + '<br>' : ''}${inv.recipientStreet ? inv.recipientStreet + '<br>' : ''}${(inv.recipientZip || inv.recipientCity) ? (inv.recipientZip ?? '') + ' ' + (inv.recipientCity ?? '') : ''}`
+    }
+  </div>
+</div>
+
+<hr class="divider">
+
+${inv.introText ? `<p style="margin-bottom:16px;font-size:11px;">${inv.introText}</p>` : ''}
+
+<!-- POSITIONEN -->
+<table class="items-table" style="margin-bottom:16px;">
+  <thead><tr>
+    <th style="width:4%;">#</th>
+    <th>Beschreibung</th>
+    <th style="text-align:right;width:8%;">Menge</th>
+    <th style="width:7%;">Einheit</th>
+    <th style="text-align:right;width:11%;">EP netto</th>
+    <th style="text-align:right;width:8%;">MwSt</th>
+    <th style="text-align:right;width:12%;">Gesamt brutto</th>
+  </tr></thead>
+  <tbody>${itemRows}</tbody>
+</table>
+
+<!-- SUMMEN -->
+<div class="totals-section">
+  <table class="totals-table">
+    ${pdfDiscount > 0 ? `<tr style="color:#c47a00;"><td>Rabatt gesamt:</td><td style="text-align:right">-${fmt(pdfDiscount)}</td></tr>` : ''}
+    <tr><td style="color:#555;">Nettobetrag:</td><td style="text-align:right">${fmt(pdfNet)}</td></tr>
+    <tr><td style="color:#555;">MwSt:</td><td style="text-align:right">${fmt(pdfTax)}</td></tr>
+    <tr class="total-row"><td>Gesamtbetrag:</td><td style="text-align:right">${fmt(pdfGross)}</td></tr>
+    ${optItems.length > 0 ? `<tr><td colspan="2" style="font-size:9px;color:#888;padding-top:6px;border-top:1px dashed #ccc;">zzgl. optionale Pos. (${optItems.length}): ${fmt(pdfOptGross)}</td></tr>` : ''}
+  </table>
+</div>
+
+${taxModeNote}
+
+<!-- ZAHLUNGSINFOS -->
+<div class="payment-info">
+  ${inv.paymentTerms ? inv.paymentTerms + '<br>' : ''}
+  ${inv.senderIban ? 'IBAN: ' + inv.senderIban + (inv.senderBic ? ' | BIC: ' + inv.senderBic : '') : ''}
+</div>
+${inv.notes ? `<div class="notes">${inv.notes}</div>` : ''}
+${inv.footerText ? `<p style="margin-top:16px;font-size:9px;color:#888;">${inv.footerText}</p>` : ''}
+
+<!-- FUSSZEILE als normaler Fließtext am Ende des Inhalts -->
+${hasFooterCols ? `<div class="footer-area">
+  <table><tr>
+    ${footerCols.map(c => `<td style="width:25%;">${renderCol(c)}</td>`).join('')}
+  </tr></table>
+</div>` : ''}
+
+${agbText ? `<div class="agb-page">
+  <h2>Allgemeine Geschäftsbedingungen</h2>
+  <div style="white-space:pre-wrap;line-height:1.6;font-size:11px;">${agbText}</div>
+</div>` : ''}
+
+<script>window.onload = () => window.print();</script>
+</body>
+</html>`;
+
     const w = window.open('', '_blank');
     if (w) { w.document.write(html); w.document.close(); }
   }
