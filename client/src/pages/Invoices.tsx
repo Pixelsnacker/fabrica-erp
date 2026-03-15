@@ -486,6 +486,16 @@ export default function Invoices() {
     setItems(prev => prev.filter((_, i) => i !== idx).map((it, i) => ({ ...it, position: i + 1 })));
   }
 
+  function moveItem(idx: number, dir: 'up' | 'down') {
+    setItems(prev => {
+      const arr = [...prev];
+      const swapIdx = dir === 'up' ? idx - 1 : idx + 1;
+      if (swapIdx < 0 || swapIdx >= arr.length) return prev;
+      [arr[idx], arr[swapIdx]] = [arr[swapIdx], arr[idx]];
+      return arr.map((it, i) => ({ ...it, position: i + 1 }));
+    });
+  }
+
   // Speichern
   async function handleSave() {
     const payload = { ...form, ...totals, items };
@@ -535,7 +545,7 @@ export default function Invoices() {
       <tr style="${it.isOptional ? 'opacity:0.7;' : ''}">
         <td style="padding:5px 6px;border-bottom:1px solid #e8e8e8;vertical-align:top;">${i + 1}</td>
         <td style="padding:5px 6px;border-bottom:1px solid #e8e8e8;vertical-align:top;">
-          <span style="font-weight:500;">${it.description}</span>${optionalBadge}${discountCell}
+          <span style="font-weight:500;white-space:pre-wrap;">${it.description}</span>${optionalBadge}${discountCell}
           ${longDesc}
         </td>
         <td style="padding:5px 6px;border-bottom:1px solid #e8e8e8;text-align:right;vertical-align:top;white-space:nowrap;">${parseFloat(it.quantity ?? 1).toLocaleString('de-DE')}</td>
@@ -979,9 +989,35 @@ export default function Invoices() {
                 {items.map((it, idx) => (
                   <div key={idx} className={`border rounded-lg p-3 space-y-2 ${it.isOptional ? 'border-dashed border-muted-foreground/40 bg-muted/20' : 'border-border'}`}>
                     {/* Zeile 1: #, Beschreibung, Menge, Einheit, EP, Rabatt, Gesamt, Löschen */}
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-muted-foreground text-xs w-5 shrink-0">{it.position}</span>
-                      <Input className="h-8 text-sm flex-1 min-w-[160px]" value={it.description} onChange={e => updateItem(idx, 'description', e.target.value)} placeholder="Leistungsbeschreibung *" />
+                    <div className="flex items-start gap-2 flex-wrap">
+                      {/* Pfeil-Buttons + Positionsnummer */}
+                      <div className="flex flex-col items-center gap-0.5 shrink-0 pt-1">
+                        <Button size="sm" variant="ghost" className="h-5 w-5 p-0 text-muted-foreground hover:text-primary" disabled={idx === 0} onClick={() => moveItem(idx, 'up')} title="Nach oben">
+                          <ChevronUp className="w-3 h-3" />
+                        </Button>
+                        <span className="text-muted-foreground text-xs leading-none">{it.position}</span>
+                        <Button size="sm" variant="ghost" className="h-5 w-5 p-0 text-muted-foreground hover:text-primary" disabled={idx === items.length - 1} onClick={() => moveItem(idx, 'down')} title="Nach unten">
+                          <ChevronDown className="w-3 h-3" />
+                        </Button>
+                      </div>
+                      <Textarea
+                        className="text-sm flex-1 min-w-[160px] min-h-[36px] resize-none overflow-hidden py-1.5 px-3"
+                        value={it.description}
+                        onChange={e => {
+                          updateItem(idx, 'description', e.target.value);
+                          // Auto-resize
+                          e.target.style.height = 'auto';
+                          e.target.style.height = e.target.scrollHeight + 'px';
+                        }}
+                        onKeyDown={e => {
+                          // Enter = Zeilenumbruch, Shift+Enter auch
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            // Standard Enter erlauben (kein preventDefault)
+                          }
+                        }}
+                        rows={1}
+                        placeholder="Leistungsbeschreibung *"
+                      />
                       <Input className="h-8 text-sm text-right w-16" value={it.quantity} onChange={e => updateItem(idx, 'quantity', e.target.value)} placeholder="Menge" />
                       {/* Einheit-Dropdown mit Freitext */}
                       <Select value={UNIT_OPTIONS.includes(it.unit) ? it.unit : '__custom'} onValueChange={v => { if (v !== '__custom') updateItem(idx, 'unit', v); }}>

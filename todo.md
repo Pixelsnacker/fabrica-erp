@@ -552,3 +552,8 @@
 - [x] Fußzeile auf Seite 1 korrekt positioniert (kein Überlappen mit AGB-Titel)
 - [x] Seite 2 nur anzeigen wenn AGB-Text vorhanden
 - [x] Allgemeines PDF-Layout aufgeräumt (Abstände, Schriften, Tabelle, Empfänger-Label)
+
+## Phase 59: Positionen verbessern
+- [x] Beschreibungsfeld als Textarea (Zeilenumbruch per Enter möglich)
+- [x] Pfeil-Buttons (hoch/runter) zum Verschieben von Positionen
+- [x] PDF: Zeilenumbrüche in Beschreibung korrekt darstellen (white-space:pre-wrap)
