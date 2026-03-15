@@ -344,6 +344,7 @@ export const invoices = mysqlTable("invoices", {
   type: mysqlEnum(['offer','invoice','credit_note','order_confirmation','purchase_order']).notNull().default('offer'),
   status: mysqlEnum(['draft','sent','accepted','invoiced','paid','cancelled','overdue']).notNull().default('draft'),
   customerId: int("customer_id"),
+  supplierId: int("supplier_id"),
   projectId: int("project_id"),
   // Absender-Snapshot
   senderName: varchar("sender_name", { length: 255 }),

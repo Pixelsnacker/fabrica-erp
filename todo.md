@@ -538,3 +538,11 @@
 - [x] Nummernkreis: AB-YYYY-NNNN und BE-YYYY-NNNN (bereits in db.ts implementiert)
 - [x] PDF-Druck funktioniert für alle Typen (printInvoice)
 - [x] 219 Tests grün, 0 TypeScript-Fehler
+
+## Phase 57: Lieferanten-Auswahl bei Bestellungen
+- [x] DB: supplierId-Spalte in invoices-Tabelle ergänzen
+- [x] Backend: supplierId in create/update/getById unterstützen
+- [x] Backend: suppliers.list für Dropdown bereitstellen (bereits vorhanden)
+- [x] Frontend: Lieferanten-Dropdown im Formular (nur bei purchase_order sichtbar)
+- [x] Frontend: Empfänger-Felder automatisch aus Lieferant befüllen
+- [x] Frontend: Lieferant in der Listenansicht anzeigen

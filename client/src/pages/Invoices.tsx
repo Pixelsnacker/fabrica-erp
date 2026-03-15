@@ -176,6 +176,7 @@ export default function Invoices() {
   const { data: invoiceList = [], isLoading } = trpc.invoices.list.useQuery(undefined);
   const { data: articleList = [] } = trpc.articles.list.useQuery({ search: articleSearchQuery || undefined, activeOnly: true });
   const { data: customers = [] } = trpc.customers.list.useQuery();
+  const { data: suppliers = [] } = trpc.suppliers.list.useQuery();
   const { data: projects = [] } = trpc.projects.list.useQuery();
   const { data: companySettings } = trpc.companySettings.get.useQuery();
   const { data: detailData } = trpc.invoices.getById.useQuery(
@@ -269,6 +270,7 @@ export default function Invoices() {
   const [form, setForm] = useState({
     type: 'offer' as InvoiceType,
     customerId: undefined as number | undefined,
+    supplierId: undefined as number | undefined,
     projectId: undefined as number | undefined,
     ...DEFAULT_SENDER,
     recipientName: '',
@@ -308,11 +310,27 @@ export default function Invoices() {
   }
 
   // Formular öffnen (neu oder bearbeiten)
+  function onSupplierSelect(id: string) {
+    const sid = parseInt(id);
+    const s = suppliers.find((x: any) => x.id === sid);
+    if (s) {
+      setForm(f => ({
+        ...f, supplierId: sid,
+        recipientName: (s as any).contact ?? (s as any).name ?? '',
+        recipientCompany: (s as any).name ?? '',
+        recipientStreet: (s as any).street ?? '',
+        recipientZip: (s as any).zip ?? '',
+        recipientCity: (s as any).city ?? '',
+        recipientEmail: (s as any).email ?? '',
+      }));
+    }
+  }
+
   function openNew(type: InvoiceType = 'offer', prefill?: { projectId?: number; customerId?: number; projectItems?: any[] }) {
     setEditId(null);
     const sender = buildSenderFromSettings();
     const footer = companySettings?.invoiceFooter ?? '';
-    setForm({ type, customerId: prefill?.customerId, projectId: prefill?.projectId, ...sender, recipientName: '', recipientCompany: '', recipientStreet: '', recipientZip: '', recipientCity: '', recipientEmail: '', issueDate: new Date().toISOString().slice(0, 10), dueDate: '', deliveryDate: '', paymentTerms: 'Zahlbar innerhalb von 14 Tagen ohne Abzug.', taxMode: companySettings?.kleinunternehmer ? 'kleinunternehmer' : 'standard', introText: '', notes: '', footerText: footer });
+    setForm({ type, customerId: prefill?.customerId, supplierId: undefined, projectId: prefill?.projectId, ...sender, recipientName: '', recipientCompany: '', recipientStreet: '', recipientZip: '', recipientCity: '', recipientEmail: '', issueDate: new Date().toISOString().slice(0, 10), dueDate: '', deliveryDate: '', paymentTerms: 'Zahlbar innerhalb von 14 Tagen ohne Abzug.', taxMode: companySettings?.kleinunternehmer ? 'kleinunternehmer' : 'standard', introText: '', notes: '', footerText: footer });
     // Wenn Projekt-Positionen mitgegeben werden, vorausfüllen
     if (prefill?.projectItems?.length) {
       const mapped = prefill.projectItems.map((it: any, idx: number) => ({
@@ -386,7 +404,7 @@ export default function Invoices() {
   function openEdit(inv: any) {
     setEditId(inv.id);
     setForm({
-      type: inv.type, customerId: inv.customerId ?? undefined, projectId: inv.projectId ?? undefined,
+      type: inv.type, customerId: inv.customerId ?? undefined, supplierId: inv.supplierId ?? undefined, projectId: inv.projectId ?? undefined,
       senderName: inv.senderName ?? DEFAULT_SENDER.senderName,
       senderStreet: inv.senderStreet ?? DEFAULT_SENDER.senderStreet,
       senderZip: inv.senderZip ?? DEFAULT_SENDER.senderZip,
@@ -715,7 +733,11 @@ export default function Invoices() {
                 </div>
               </div>
               <div className="mt-1 text-sm text-muted-foreground">
-                {[inv.recipientCompany, inv.recipientName].filter(Boolean).join(' — ')}
+                {inv.type === 'purchase_order' && inv.supplierId ? (
+                  <span className="text-orange-400/80">[Lieferant] {[inv.recipientCompany, inv.recipientName].filter(Boolean).join(' — ')}</span>
+                ) : (
+                  [inv.recipientCompany, inv.recipientName].filter(Boolean).join(' — ')
+                )}
                 {inv.dueDate && <span className="ml-3 text-xs">Fällig: {inv.dueDate}</span>}
               </div>
               {/* Aktionen */}
@@ -815,16 +837,29 @@ export default function Invoices() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="min-w-0">
-                <Label>Kunde</Label>
-                <Select value={form.customerId ? String(form.customerId) : 'none'} onValueChange={v => v !== 'none' ? onCustomerSelect(v) : setForm(f => ({ ...f, customerId: undefined }))}>
-                  <SelectTrigger className="w-full"><SelectValue placeholder="Kunde wählen" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Kein Kunde</SelectItem>
-                    {customers.map((c: any) => <SelectItem key={c.id} value={String(c.id)}>{c.company || c.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
+              {form.type === 'purchase_order' ? (
+                <div className="min-w-0">
+                  <Label>Lieferant</Label>
+                  <Select value={form.supplierId ? String(form.supplierId) : 'none'} onValueChange={v => v !== 'none' ? onSupplierSelect(v) : setForm(f => ({ ...f, supplierId: undefined }))}>
+                    <SelectTrigger className="w-full"><SelectValue placeholder="Lieferant wählen" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Kein Lieferant</SelectItem>
+                      {(suppliers as any[]).map((s: any) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : (
+                <div className="min-w-0">
+                  <Label>Kunde</Label>
+                  <Select value={form.customerId ? String(form.customerId) : 'none'} onValueChange={v => v !== 'none' ? onCustomerSelect(v) : setForm(f => ({ ...f, customerId: undefined }))}>
+                    <SelectTrigger className="w-full"><SelectValue placeholder="Kunde wählen" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Kein Kunde</SelectItem>
+                      {customers.map((c: any) => <SelectItem key={c.id} value={String(c.id)}>{c.company || c.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div className="min-w-0">
                 <Label>Projekt</Label>
                 <Select value={form.projectId ? String(form.projectId) : 'none'} onValueChange={v => setForm(f => ({ ...f, projectId: v !== 'none' ? parseInt(v) : undefined }))}>
@@ -858,7 +893,7 @@ export default function Invoices() {
 
               {/* Empfänger */}
               <div className="border border-border rounded-lg p-4 space-y-3">
-                <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Empfänger (Kunde)</h3>
+                <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">{form.type === 'purchase_order' ? 'Lieferant (Empfänger)' : 'Empfänger (Kunde)'}</h3>
                 <div className="grid grid-cols-2 gap-3">
                   <div><Label>Firma</Label><Input value={form.recipientCompany} onChange={e => setForm(f => ({ ...f, recipientCompany: e.target.value }))} /></div>
                   <div><Label>Ansprechpartner</Label><Input value={form.recipientName} onChange={e => setForm(f => ({ ...f, recipientName: e.target.value }))} /></div>

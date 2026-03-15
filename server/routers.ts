@@ -1059,6 +1059,7 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
     create: protectedProcedure.input(z.object({
       type: z.enum(['offer','invoice','credit_note','order_confirmation','purchase_order']).default('offer'),
       customerId: z.number().optional(),
+      supplierId: z.number().optional(),
       projectId: z.number().optional(),
       senderName: z.string().optional(),
       senderStreet: z.string().optional(),
@@ -1119,6 +1120,7 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
     update: protectedProcedure.input(z.object({
       id: z.number(),
       customerId: z.number().optional(),
+      supplierId: z.number().optional(),
       projectId: z.number().optional(),
       senderName: z.string().optional(),
       senderStreet: z.string().optional(),
