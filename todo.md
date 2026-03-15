@@ -601,3 +601,8 @@
 - [x] Bestätigungsdialog vor dem Löschen: "Löschen? Ja / Nein" direkt am Trash-Button
 - [x] Undo-Toast nach dem Löschen (10 Sekunden, "Rükgängig"-Button)
 - [x] Gelöschte Position wird im State zwischengespeichert für Undo
+
+## Phase 69: Mengenfeld "1.000" Bug
+- [x] quantity in DB als decimal(10,3) -> zeigt immer 3 Nachkommastellen
+- [x] Frontend: quantity-Wert beim Laden trimmen (parseFloat -> trailing zeros weg)
+- [x] Frontend: quantity beim Speichern und in allen Mapping-Stellen bereinigt

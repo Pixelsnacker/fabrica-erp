@@ -361,7 +361,7 @@ export default function Invoices() {
       const mapped = prefill.projectItems.map((it: any, idx: number) => ({
         position: idx + 1,
         description: [it.name, it.material].filter(Boolean).join(' – '),
-        quantity: String(it.quantity ?? 1),
+        quantity: it.quantity ? String(parseFloat(String(it.quantity))) : '1',
         unit: 'Stk.',
         unitPriceNet: parseFloat(it.unitVk ?? '0').toFixed(2),
         taxRate: '19',
@@ -467,7 +467,7 @@ export default function Invoices() {
         isOptional: !!it.isOptional,
         discount: it.discount ?? '0',
         discountedNet: it.discountedNet ?? '0.00',
-        quantity: it.quantity ?? '1', unit: it.unit ?? 'Stk.',
+        quantity: it.quantity ? String(parseFloat(it.quantity)) : '1', unit: it.unit ?? 'Stk.',
         unitPriceNet: it.unitPriceNet ?? '0.00', taxRate: it.taxRate ?? '19',
         lineTotalNet: it.lineTotalNet ?? '0.00', lineTax: it.lineTax ?? '0.00',
         lineTotalGross: it.lineTotalGross ?? '0.00',
@@ -571,7 +571,7 @@ export default function Invoices() {
     // Alle numerischen Felder in Items als String sicherstellen (Zod-Validierung erwartet strings)
     const sanitizedItems = items.map(it => ({
       ...it,
-      quantity: String(it.quantity ?? '1'),
+      quantity: it.quantity ? String(parseFloat(String(it.quantity))) : '1',
       unitPriceNet: String(it.unitPriceNet ?? '0.00'),
       taxRate: String(it.taxRate ?? '19'),
       lineTotalNet: String(it.lineTotalNet ?? '0.00'),
