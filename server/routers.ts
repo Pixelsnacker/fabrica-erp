@@ -1052,12 +1052,12 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
     getById: protectedProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
       return getInvoiceById(input.id);
     }),
-    nextNumber: protectedProcedure.input(z.object({ type: z.enum(['invoice','offer','credit_note']) })).query(async ({ input }) => {
+    nextNumber: protectedProcedure.input(z.object({ type: z.enum(['invoice','offer','credit_note','order_confirmation','purchase_order']) })).query(async ({ input }) => {
       // Nur Vorschau, keine Reservierung
       return { preview: true };
     }),
     create: protectedProcedure.input(z.object({
-      type: z.enum(['offer','invoice','credit_note']).default('offer'),
+      type: z.enum(['offer','invoice','credit_note','order_confirmation','purchase_order']).default('offer'),
       customerId: z.number().optional(),
       projectId: z.number().optional(),
       senderName: z.string().optional(),

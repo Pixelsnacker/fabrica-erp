@@ -528,3 +528,13 @@
 - [ ] Mahnungs-PDF-Template (DIN A4, Firmenlogo, Fußzeile, Mahngebühr)
 - [ ] Frontend: Mahnungs-Tab in Rechnungen oder eigene Seite
 - [ ] Mahnungs-Level: 1. Mahnung, 2. Mahnung, Letzte Mahnung
+
+## Phase 56: AB und Bestellung als vollständige Dokumenttypen
+- [x] Typ-Dropdown im Formular um "Auftragsbestätigung" und "Bestellung" erweitert
+- [x] Tabs in der Listenansicht um "AB" und "Bestellungen" erweitert
+- [x] Header-Buttons "AB" und "Bestellung" hinzugefügt
+- [x] E-Mail-Button für AB und Bestellung in Liste und Detail-Dialog
+- [x] Backend: create-Prozedur akzeptiert order_confirmation und purchase_order
+- [x] Nummernkreis: AB-YYYY-NNNN und BE-YYYY-NNNN (bereits in db.ts implementiert)
+- [x] PDF-Druck funktioniert für alle Typen (printInvoice)
+- [x] 219 Tests grün, 0 TypeScript-Fehler

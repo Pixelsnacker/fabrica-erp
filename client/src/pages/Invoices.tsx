@@ -641,6 +641,12 @@ export default function Invoices() {
             <Button variant="outline" size="sm" onClick={() => openNew('offer')}>
               <FileText className="w-4 h-4 mr-1" /> Angebot
             </Button>
+            <Button variant="outline" size="sm" onClick={() => openNew('order_confirmation')}>
+              <Package className="w-4 h-4 mr-1" /> AB
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => openNew('purchase_order')}>
+              <PackageSearch className="w-4 h-4 mr-1" /> Bestellung
+            </Button>
             <Button size="sm" onClick={() => openNew('invoice')}>
               <Plus className="w-4 h-4 mr-1" /> Rechnung
             </Button>
@@ -654,6 +660,8 @@ export default function Invoices() {
               <TabsTrigger value="all">Alle</TabsTrigger>
               <TabsTrigger value="offer">Angebote</TabsTrigger>
               <TabsTrigger value="invoice">Rechnungen</TabsTrigger>
+              <TabsTrigger value="order_confirmation">AB</TabsTrigger>
+              <TabsTrigger value="purchase_order">Bestellungen</TabsTrigger>
               <TabsTrigger value="credit_note">Gutschriften</TabsTrigger>
             </TabsList>
           </Tabs>
@@ -721,13 +729,14 @@ export default function Invoices() {
                 <Button size="sm" variant="outline" onClick={() => printInvoice(inv)}>
                   <Download className="w-3 h-3 mr-1" /> PDF
                 </Button>
-                {inv.type === 'offer' && (
+                {['offer','order_confirmation','purchase_order'].includes(inv.type) && (
                   <Button size="sm" variant="outline" className="text-blue-400 border-blue-400/30" onClick={() => {
+                    const typeLabel = TYPE_LABELS[inv.type as InvoiceType] ?? inv.type;
                     setEmailForm({
                       to: inv.recipientEmail ?? '',
                       cc: '',
-                      subject: `Angebot ${inv.invoiceNumber} von Fabrica GmbH`,
-                      body: `vielen Dank für Ihr Interesse.\n\nAnbei erhalten Sie unser Angebot ${inv.invoiceNumber}.\n\nBei Fragen stehen wir Ihnen gerne zur Verfügung.`,
+                      subject: `${typeLabel} ${inv.invoiceNumber} von Fabrica GmbH`,
+                      body: `vielen Dank für Ihr Interesse.\n\nAnbei erhalten Sie unsere ${typeLabel} ${inv.invoiceNumber}.\n\nBei Fragen stehen wir Ihnen gerne zur Verfügung.`,
                     });
                     setShowEmailDialog(inv.id);
                   }}>
@@ -800,6 +809,8 @@ export default function Invoices() {
                   <SelectContent>
                     <SelectItem value="offer">Angebot</SelectItem>
                     <SelectItem value="invoice">Rechnung</SelectItem>
+                    <SelectItem value="order_confirmation">Auftragsbestätigung</SelectItem>
+                    <SelectItem value="purchase_order">Bestellung</SelectItem>
                     <SelectItem value="credit_note">Gutschrift</SelectItem>
                   </SelectContent>
                 </Select>
@@ -1278,23 +1289,24 @@ export default function Invoices() {
               <div className="flex gap-2 flex-wrap">
                 <Button size="sm" onClick={() => printInvoice(detailData)}><Download className="w-3 h-3 mr-1" /> PDF drucken</Button>
                 {detailData.type === 'offer' && (
-                  <>
                     <Button size="sm" variant="outline" className="text-green-400 border-green-400/30 hover:bg-green-400/10" onClick={() => setShowConvertDialog(detailData.id)}>
                       <ArrowRight className="w-3 h-3 mr-1" /> Konvertieren
                     </Button>
+                  )}
+                  {['offer','order_confirmation','purchase_order'].includes(detailData.type) && (
                     <Button size="sm" variant="outline" className="text-blue-400 border-blue-400/30" onClick={() => {
+                      const typeLabel = TYPE_LABELS[detailData.type as InvoiceType] ?? detailData.type;
                       setEmailForm({
                         to: detailData.recipientEmail ?? '',
                         cc: '',
-                        subject: `Angebot ${detailData.invoiceNumber} von Fabrica GmbH`,
-                        body: `vielen Dank für Ihr Interesse.\n\nAnbei erhalten Sie unser Angebot ${detailData.invoiceNumber}.\n\nBei Fragen stehen wir Ihnen gerne zur Verfügung.`,
+                        subject: `${typeLabel} ${detailData.invoiceNumber} von Fabrica GmbH`,
+                        body: `vielen Dank für Ihr Interesse.\n\nAnbei erhalten Sie unsere ${typeLabel} ${detailData.invoiceNumber}.\n\nBei Fragen stehen wir Ihnen gerne zur Verfügung.`,
                       });
                       setShowEmailDialog(detailData.id);
                     }}>
                       <Send className="w-3 h-3 mr-1" /> Per E-Mail senden
                     </Button>
-                  </>
-                )}
+                  )}
               </div>
             </div>
           )}
