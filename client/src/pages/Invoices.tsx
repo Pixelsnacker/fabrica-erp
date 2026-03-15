@@ -813,7 +813,7 @@ ${taxModeNote}
 
 <!-- ZAHLUNGSINFOS -->
 <div class="payment-info">
-  ${inv.paymentTerms ? inv.paymentTerms + '<br>' : ''}
+  ${inv.type !== 'purchase_order' && inv.paymentTerms ? inv.paymentTerms + '<br>' : ''}
   ${inv.senderIban ? 'IBAN: ' + inv.senderIban + (inv.senderBic ? ' | BIC: ' + inv.senderBic : '') : ''}
 </div>
 ${inv.notes ? `<div class="notes">${inv.notes}</div>` : ''}
@@ -899,7 +899,7 @@ ${agbText ? `<div class="agb-page">
         <table class="items-table" style="margin-bottom:12px;"><thead><tr><th style="width:4%;">#</th><th>Beschreibung</th><th style="text-align:right;width:8%;">Menge</th><th style="width:7%;">Einheit</th><th style="text-align:right;width:11%;">EP netto</th><th style="text-align:right;width:8%;">MwSt</th><th style="text-align:right;width:12%;">Gesamt brutto</th></tr></thead><tbody>${itemRows}</tbody></table>
         <table class="totals-table" style="margin-bottom:12px;"><tr><td style="color:#555;">Nettobetrag:</td><td style="text-align:right">${fmt(pdfNet)}</td></tr><tr><td style="color:#555;">MwSt:</td><td style="text-align:right">${fmt(pdfTax)}</td></tr><tr class="total-row"><td>Gesamtbetrag:</td><td style="text-align:right">${fmt(pdfGross)}</td></tr></table>
         ${taxModeNote}
-        <div style="font-size:10px;color:#333;margin-top:8px;">${inv.paymentTerms ?? ''}${inv.senderIban ? '<br>IBAN: ' + inv.senderIban : ''}</div>
+        <div style="font-size:10px;color:#333;margin-top:8px;">${inv.type !== 'purchase_order' && inv.paymentTerms ? inv.paymentTerms : ''}${inv.senderIban ? '<br>IBAN: ' + inv.senderIban : ''}</div>
         ${inv.notes ? `<div style="font-size:10px;color:#555;margin-top:8px;">${inv.notes}</div>` : ''}
       </div>
       ${hasFooterCols ? `<div class="footer-area"><table><tr>${footerCols.map(c => `<td style="width:25%;">${renderCol(c)}</td>`).join('')}</tr></table></div>` : ''}
@@ -1065,9 +1065,7 @@ ${agbText ? `<div class="agb-page">
                 <Button size="sm" variant="outline" onClick={() => downloadPDF(inv)} title="PDF herunterladen">
                   <Download className="w-3 h-3 mr-1" /> PDF
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => printInvoice(inv)} title="PDF drucken">
-                  <Printer className="w-3 h-3 mr-1" /> Drucken
-                </Button>
+
                 {['offer','order_confirmation','purchase_order'].includes(inv.type) && (
                   <Button size="sm" variant="outline" className="text-blue-400 border-blue-400/30" onClick={() => {
                     const typeLabel = TYPE_LABELS[inv.type as InvoiceType] ?? inv.type;
@@ -1475,7 +1473,9 @@ ${agbText ? `<div class="agb-page">
             {/* Texte */}
             <div className="grid grid-cols-1 gap-3">
               <div><Label>Einleitungstext</Label><Textarea value={form.introText} onChange={e => setForm(f => ({ ...f, introText: e.target.value }))} rows={2} placeholder="z.B. Vielen Dank für Ihre Anfrage..." /></div>
-              <div><Label>Zahlungsbedingungen</Label><Input value={form.paymentTerms} onChange={e => setForm(f => ({ ...f, paymentTerms: e.target.value }))} /></div>
+              {form.type !== 'purchase_order' && (
+                <div><Label>Zahlungsbedingungen</Label><Input value={form.paymentTerms} onChange={e => setForm(f => ({ ...f, paymentTerms: e.target.value }))} /></div>
+              )}
               <div><Label>Interne Notiz</Label><Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} /></div>
               <div><Label>Fußzeile</Label><Input value={form.footerText} onChange={e => setForm(f => ({ ...f, footerText: e.target.value }))} placeholder="z.B. Handelsregister, Geschäftsführer..." /></div>
             </div>
@@ -1725,7 +1725,7 @@ ${agbText ? `<div class="agb-page">
               )}
               <div className="flex gap-2 flex-wrap">
                 <Button size="sm" variant="outline" onClick={() => downloadPDF(detailData)}><Download className="w-3 h-3 mr-1" /> PDF</Button>
-                <Button size="sm" onClick={() => printInvoice(detailData)}><Printer className="w-3 h-3 mr-1" /> Drucken</Button>
+
                 {detailData.type === 'offer' && (
                     <Button size="sm" variant="outline" className="text-green-400 border-green-400/30 hover:bg-green-400/10" onClick={() => setShowConvertDialog(detailData.id)}>
                       <ArrowRight className="w-3 h-3 mr-1" /> Konvertieren

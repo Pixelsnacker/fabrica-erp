@@ -616,3 +616,8 @@
 ## Phase 71: Datum deutsch + PDF-Download
 - [x] Datum im PDF deutsch formatieren (TT.MM.JJJJ) via formatDateDE()
 - [x] PDF-Download ohne Druckdialog (html2canvas + jsPDF, direkter Download als .pdf Datei)
+
+## Phase 72: Bestellung - Zahlungsbedingungen und Drucken-Button
+- [x] Zahlungsbedingungen bei Bestellungen im Formular ausblenden
+- [x] Zahlungsbedingungen bei Bestellungen im PDF ausblenden (printInvoice + downloadPDF)
+- [x] Drucken-Button entfernt, nur PDF-Download-Button bleibt
