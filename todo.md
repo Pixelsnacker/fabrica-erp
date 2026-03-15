@@ -612,3 +612,7 @@
 - [x] Fußzeile als normaler Fließtext am Ende des Inhalts (stabil, kein Überlappen)
 - [x] Seite 2 (AGB) nur wenn AGB-Text vorhanden
 - [x] Sauberes Layout mit flexbox header, klare Struktur
+
+## Phase 71: Datum deutsch + PDF-Download
+- [x] Datum im PDF deutsch formatieren (TT.MM.JJJJ) via formatDateDE()
+- [x] PDF-Download ohne Druckdialog (html2canvas + jsPDF, direkter Download als .pdf Datei)

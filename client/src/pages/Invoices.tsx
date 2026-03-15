@@ -20,6 +20,10 @@ import {
   PackageSearch, FolderOpen, Package, Copy, Sparkles, Check, X
 } from "lucide-react";
 
+// ─── PDF Download ───────────────────────────────────────────────────────────
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+
 // ─── Typen ───────────────────────────────────────────────────────────────────
 type TaxMode = 'standard' | 'reduced' | 'mixed' | 'tax_free' | 'kleinunternehmer';
 type InvoiceType = 'offer' | 'invoice' | 'credit_note' | 'order_confirmation' | 'purchase_order';
@@ -605,6 +609,13 @@ export default function Invoices() {
   // buildFooterHtml ist jetzt direkt in printInvoice integriert
 
   // PDF-Druckansicht (Browser-Print)
+  function formatDateDE(dateStr: string | null | undefined): string {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    if (parts.length === 3) return `${parts[2]}.${parts[1]}.${parts[0]}`;
+    return dateStr;
+  }
+
   function printInvoice(inv: any) {
     const cs = companySettings as any;
     const agbText: string = cs?.agbText ?? '';
@@ -751,9 +762,9 @@ export default function Invoices() {
     <div class="doc-title">${docTitle}</div>
     <div class="doc-meta">
       <strong>Nr. ${inv.invoiceNumber}</strong><br>
-      Datum: ${inv.issueDate ?? ''}<br>
-      ${inv.dueDate ? 'Fälligkeit: ' + inv.dueDate + '<br>' : ''}
-      ${inv.deliveryDate ? 'Lieferdatum: ' + inv.deliveryDate : ''}
+      Datum: ${formatDateDE(inv.issueDate)}<br>
+      ${inv.dueDate ? 'Fälligkeit: ' + formatDateDE(inv.dueDate) + '<br>' : ''}
+      ${inv.deliveryDate ? 'Lieferdatum: ' + formatDateDE(inv.deliveryDate) : ''}
     </div>
   </div>
 </div>
@@ -827,6 +838,120 @@ ${agbText ? `<div class="agb-page">
 
     const w = window.open('', '_blank');
     if (w) { w.document.write(html); w.document.close(); }
+  }
+
+  async function downloadPDF(inv: any) {
+    const toastId = toast.loading('PDF wird erstellt...');
+    try {
+      // HTML-Inhalt in einem versteckten iframe rendern
+      const iframe = document.createElement('iframe');
+      iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;height:1123px;border:none;';
+      document.body.appendChild(iframe);
+
+      // printInvoice HTML generieren (ohne window.print)
+      const cs = companySettings as any;
+      const agbText: string = cs?.agbText ?? '';
+      const logoUrl: string = cs?.logoUrl ?? '';
+      const isPurchaseOrder = inv.type === 'purchase_order';
+      const taxModeNote = inv.taxMode === 'kleinunternehmer'
+        ? '<p style="margin-top:16px;font-size:11px;">Gemäß §19 UStG wird keine Umsatzsteuer berechnet.</p>' : '';
+      const itemRows = (inv.items ?? []).map((it: any, i: number) => {
+        const discountPct = parseFloat(it.discount ?? '0');
+        const discountCell = discountPct > 0 ? `<span style="color:#d97706;font-size:10px;"> (${discountPct}% Rabatt)</span>` : '';
+        const optionalBadge = it.isOptional ? '<span style="background:#f3f4f6;color:#6b7280;font-size:9px;padding:1px 5px;border-radius:3px;margin-left:6px;">Optional</span>' : '';
+        const longDesc = it.longDescription ? `<div style="font-size:10px;color:#555;margin-top:3px;white-space:pre-wrap;">${it.longDescription}</div>` : '';
+        return `<tr><td style="padding:5px 6px;border-bottom:1px solid #e8e8e8;">${i + 1}</td><td style="padding:5px 6px;border-bottom:1px solid #e8e8e8;"><span style="font-weight:500;">${it.description}</span>${optionalBadge}${discountCell}${longDesc}</td><td style="padding:5px 6px;border-bottom:1px solid #e8e8e8;text-align:right;">${parseFloat(it.quantity ?? 1).toLocaleString('de-DE')}</td><td style="padding:5px 6px;border-bottom:1px solid #e8e8e8;">${it.unit ?? 'Stk.'}</td><td style="padding:5px 6px;border-bottom:1px solid #e8e8e8;text-align:right;">${parseFloat(it.unitPriceNet ?? 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })} €</td><td style="padding:5px 6px;border-bottom:1px solid #e8e8e8;text-align:right;">${it.taxRate ?? 19} %</td><td style="padding:5px 6px;border-bottom:1px solid #e8e8e8;text-align:right;font-weight:600;">${parseFloat(it.lineTotalGross ?? 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })} €</td></tr>`;
+      }).join('');
+      const pdfItems = inv.items ?? [];
+      const reqItems = pdfItems.filter((i: any) => !i.isOptional);
+      const pdfNet = reqItems.reduce((s: number, i: any) => s + parseFloat(i.lineTotalNet ?? 0), 0);
+      const pdfTax = reqItems.reduce((s: number, i: any) => s + parseFloat(i.lineTax ?? 0), 0);
+      const pdfGross = pdfNet + pdfTax;
+      const fmt = (n: number) => n.toLocaleString('de-DE', { minimumFractionDigits: 2 }) + ' €';
+      const footerCols = [cs?.footerCol1 ?? '', cs?.footerCol2 ?? '', cs?.footerCol3 ?? '', cs?.footerCol4 ?? ''];
+      const hasFooterCols = footerCols.some(c => c.trim());
+      const renderCol = (text: string) => text.split('\n').map((l: string) => `<span>${l.replace(/https?:\/\//, '')}</span>`).join('<br/>');
+      const recipientLabel = isPurchaseOrder ? 'LIEFERANT' : 'EMPFÄNGER';
+      const docTitle = TYPE_LABELS[inv.type as InvoiceType] ?? inv.type;
+
+      const htmlContent = `<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #111; line-height: 1.5; background: #fff; padding: 40px; min-height: 1063px; display: flex; flex-direction: column; }
+        .main { flex: 1; }
+        table { width: 100%; border-collapse: collapse; }
+        .doc-header { display: flex; justify-content: space-between; margin-bottom: 24px; }
+        .doc-title { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+        .items-table th { background: #f0f0f0; text-align: left; padding: 6px; border-bottom: 2px solid #ccc; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+        .totals-table { width: 280px; margin-left: auto; }
+        .totals-table td { padding: 3px 6px; }
+        .total-row td { font-weight: 700; font-size: 13px; border-top: 2px solid #111; padding-top: 6px; }
+        .footer-area { margin-top: 24px; padding-top: 8px; border-top: 1.5px solid #bbb; font-size: 9px; color: #555; }
+        .footer-area table td { padding: 0 8px 0 0; vertical-align: top; font-size: 9px; }
+      </style></head><body>
+      <div class="main">
+        <div class="doc-header">
+          <div>${logoUrl ? `<img src="${logoUrl}" style="max-height:60px;max-width:180px;object-fit:contain;margin-bottom:8px;display:block;">` : ''}<div style="font-size:13px;font-weight:700;">${inv.senderName || ''}</div><div style="font-size:10px;color:#444;line-height:1.6;">${inv.senderStreet ?? ''}<br>${(inv.senderZip ?? '') + ' ' + (inv.senderCity ?? '')}<br>${inv.senderEmail ?? ''}<br>${inv.senderPhone ? 'Tel. ' + inv.senderPhone : ''}</div></div>
+          <div style="text-align:right;"><div class="doc-title">${docTitle}</div><div style="font-size:11px;color:#333;line-height:1.8;"><strong>Nr. ${inv.invoiceNumber}</strong><br>Datum: ${formatDateDE(inv.issueDate)}<br>${inv.dueDate ? 'Fälligkeit: ' + formatDateDE(inv.dueDate) + '<br>' : ''}${inv.deliveryDate ? 'Lieferdatum: ' + formatDateDE(inv.deliveryDate) : ''}</div></div>
+        </div>
+        <div style="margin-bottom:16px;"><div style="font-size:9px;color:#888;text-transform:uppercase;margin-bottom:4px;">${recipientLabel}</div><div style="font-size:11px;line-height:1.7;">${isPurchaseOrder ? `${inv.recipientCompany ? `<strong>${inv.recipientCompany}</strong><br>` : ''}${inv.recipientStreet ? inv.recipientStreet + '<br>' : ''}${(inv.recipientZip ?? '') + ' ' + (inv.recipientCity ?? '')}` : `${inv.recipientCompany ? `<strong>${inv.recipientCompany}</strong><br>` : ''}${inv.recipientName && inv.recipientName !== inv.recipientCompany ? inv.recipientName + '<br>' : ''}${inv.recipientStreet ? inv.recipientStreet + '<br>' : ''}${(inv.recipientZip ?? '') + ' ' + (inv.recipientCity ?? '')}`}</div></div>
+        <hr style="border:none;border-top:1px solid #ddd;margin:12px 0;">
+        ${inv.introText ? `<p style="margin-bottom:12px;">${inv.introText}</p>` : ''}
+        <table class="items-table" style="margin-bottom:12px;"><thead><tr><th style="width:4%;">#</th><th>Beschreibung</th><th style="text-align:right;width:8%;">Menge</th><th style="width:7%;">Einheit</th><th style="text-align:right;width:11%;">EP netto</th><th style="text-align:right;width:8%;">MwSt</th><th style="text-align:right;width:12%;">Gesamt brutto</th></tr></thead><tbody>${itemRows}</tbody></table>
+        <table class="totals-table" style="margin-bottom:12px;"><tr><td style="color:#555;">Nettobetrag:</td><td style="text-align:right">${fmt(pdfNet)}</td></tr><tr><td style="color:#555;">MwSt:</td><td style="text-align:right">${fmt(pdfTax)}</td></tr><tr class="total-row"><td>Gesamtbetrag:</td><td style="text-align:right">${fmt(pdfGross)}</td></tr></table>
+        ${taxModeNote}
+        <div style="font-size:10px;color:#333;margin-top:8px;">${inv.paymentTerms ?? ''}${inv.senderIban ? '<br>IBAN: ' + inv.senderIban : ''}</div>
+        ${inv.notes ? `<div style="font-size:10px;color:#555;margin-top:8px;">${inv.notes}</div>` : ''}
+      </div>
+      ${hasFooterCols ? `<div class="footer-area"><table><tr>${footerCols.map(c => `<td style="width:25%;">${renderCol(c)}</td>`).join('')}</tr></table></div>` : ''}
+      ${agbText ? `<div style="page-break-before:always;padding-top:8px;"><h2 style="font-size:15px;margin-bottom:14px;border-bottom:2px solid #333;padding-bottom:8px;">Allgemeine Geschäftsbedingungen</h2><div style="white-space:pre-wrap;line-height:1.6;font-size:11px;">${agbText}</div></div>` : ''}
+      </body></html>`;
+
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!iframeDoc) throw new Error('iframe nicht verfügbar');
+      iframeDoc.open();
+      iframeDoc.write(htmlContent);
+      iframeDoc.close();
+
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      const canvas = await html2canvas(iframeDoc.body, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        width: 794,
+        windowWidth: 794,
+      });
+
+      document.body.removeChild(iframe);
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const imgH = (canvas.height * pageW) / canvas.width;
+
+      let yPos = 0;
+      let remaining = imgH;
+      let page = 0;
+      while (remaining > 0) {
+        if (page > 0) pdf.addPage();
+        const sliceH = Math.min(remaining, pageH);
+        pdf.addImage(imgData, 'JPEG', 0, -yPos, pageW, imgH);
+        yPos += pageH;
+        remaining -= sliceH;
+        page++;
+      }
+
+      pdf.save(`${inv.invoiceNumber}.pdf`);
+      toast.dismiss(toastId);
+      toast.success('PDF heruntergeladen');
+    } catch (err) {
+      document.querySelectorAll('iframe[style*="-9999px"]').forEach(el => el.remove());
+      toast.dismiss(toastId);
+      toast.error('PDF-Erstellung fehlgeschlagen');
+      console.error(err);
+    }
   }
 
   return (
@@ -937,8 +1062,11 @@ ${agbText ? `<div class="agb-page">
                 <Button size="sm" variant="outline" onClick={() => setShowDetail(inv.id)}>
                   <Eye className="w-3 h-3 mr-1" /> Ansicht
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => printInvoice(inv)}>
+                <Button size="sm" variant="outline" onClick={() => downloadPDF(inv)} title="PDF herunterladen">
                   <Download className="w-3 h-3 mr-1" /> PDF
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => printInvoice(inv)} title="PDF drucken">
+                  <Printer className="w-3 h-3 mr-1" /> Drucken
                 </Button>
                 {['offer','order_confirmation','purchase_order'].includes(inv.type) && (
                   <Button size="sm" variant="outline" className="text-blue-400 border-blue-400/30" onClick={() => {
@@ -1596,7 +1724,8 @@ ${agbText ? `<div class="agb-page">
                 <p className="text-xs text-muted-foreground break-all">SHA-256: {detailData.contentHash}</p>
               )}
               <div className="flex gap-2 flex-wrap">
-                <Button size="sm" onClick={() => printInvoice(detailData)}><Download className="w-3 h-3 mr-1" /> PDF drucken</Button>
+                <Button size="sm" variant="outline" onClick={() => downloadPDF(detailData)}><Download className="w-3 h-3 mr-1" /> PDF</Button>
+                <Button size="sm" onClick={() => printInvoice(detailData)}><Printer className="w-3 h-3 mr-1" /> Drucken</Button>
                 {detailData.type === 'offer' && (
                     <Button size="sm" variant="outline" className="text-green-400 border-green-400/30 hover:bg-green-400/10" onClick={() => setShowConvertDialog(detailData.id)}>
                       <ArrowRight className="w-3 h-3 mr-1" /> Konvertieren
