@@ -333,9 +333,10 @@ export default function Invoices() {
     const sid = parseInt(id);
     const s = suppliers.find((x: any) => x.id === sid);
     if (s) {
+      // Bei Bestellungen: recipientName leer lassen, damit im PDF nur der Firmenname erscheint
       setForm(f => ({
         ...f, supplierId: sid,
-        recipientName: (s as any).contact ?? (s as any).name ?? '',
+        recipientName: '',
         recipientCompany: (s as any).name ?? '',
         recipientStreet: (s as any).street ?? '',
         recipientZip: (s as any).zip ?? '',
@@ -623,7 +624,7 @@ export default function Invoices() {
 
     const html = `<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><title>${inv.invoiceNumber}</title>
     <style>
-      @page { margin: 1.5cm 1cm 4.5cm 1cm; }
+      @page { margin: 1.5cm 1cm 3.5cm 1cm; size: A4; }
       * { box-sizing: border-box; }
       body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; margin: 0; padding: 0; color: #111; line-height: 1.4; }
       h1, h2, h3 { margin: 0; }
@@ -634,10 +635,11 @@ export default function Invoices() {
       .totals-table td { padding: 3px 6px; font-size: 11px; }
       .totals-table tr.total-row td { font-weight: 700; font-size: 13px; border-top: 2px solid #111; padding-top: 6px; }
       .section-divider { border: none; border-top: 1px solid #ddd; margin: 16px 0; }
-      .footer-fixed { position: fixed; bottom: 0; left: 0; right: 0; padding: 0 1cm 0.5cm 1cm; background: #fff; }
+      .footer-fixed { position: fixed; bottom: 0; left: 0; right: 0; height: 3cm; display: flex; align-items: flex-end; padding: 0 1cm 0.8cm 1cm; background: #fff; }
+      .footer-fixed table { margin: 0; }
       .page-number::before { content: 'Seite ' counter(page) ' von ' counter(pages); }
       @page { counter-increment: page; }
-      @media print { button { display: none; } }
+      @media print { button { display: none; } a { text-decoration: none; color: inherit; } }
     </style></head><body>
 
     <!-- KOPFZEILE: Logo + Absender links, Dokumenttitel rechts -->
@@ -671,8 +673,8 @@ export default function Invoices() {
       <div style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">${recipientLabel}</div>
       <div style="font-size:11px;line-height:1.7;">
         ${isPurchaseOrder
-          ? `${inv.recipientCompany ? `<strong>${inv.recipientCompany}</strong><br>` : ''}${inv.recipientStreet ? inv.recipientStreet + '<br>' : ''}${inv.recipientZip || inv.recipientCity ? (inv.recipientZip ?? '') + ' ' + (inv.recipientCity ?? '') + '<br>' : ''}${inv.recipientCountry && inv.recipientCountry !== 'Deutschland' ? inv.recipientCountry : ''}`
-          : `${inv.recipientCompany ? `<strong>${inv.recipientCompany}</strong><br>` : ''}${inv.recipientName && inv.recipientName !== inv.recipientCompany ? inv.recipientName + '<br>' : ''}${inv.recipientStreet ? inv.recipientStreet + '<br>' : ''}${inv.recipientZip || inv.recipientCity ? (inv.recipientZip ?? '') + ' ' + (inv.recipientCity ?? '') : ''}`
+          ? `${inv.recipientCompany ? `<strong>${inv.recipientCompany}</strong><br>` : ''}${inv.recipientStreet ? inv.recipientStreet + '<br>' : ''}${(inv.recipientZip || inv.recipientCity) ? (inv.recipientZip ?? '') + ' ' + (inv.recipientCity ?? '') + '<br>' : ''}${inv.recipientCountry && inv.recipientCountry !== 'Deutschland' ? inv.recipientCountry : ''}`
+          : `${inv.recipientCompany ? `<strong>${inv.recipientCompany}</strong><br>` : ''}${inv.recipientName && inv.recipientName !== inv.recipientCompany ? inv.recipientName + '<br>' : ''}${inv.recipientStreet ? inv.recipientStreet + '<br>' : ''}${(inv.recipientZip || inv.recipientCity) ? (inv.recipientZip ?? '') + ' ' + (inv.recipientCity ?? '') : ''}`
         }
       </div>
     </div>
@@ -726,7 +728,7 @@ export default function Invoices() {
     ${inv.senderIban ? `<p style="margin:0 0 6px 0;font-size:10px;color:#333;">IBAN: ${inv.senderIban}${inv.senderBic ? ' | BIC: ' + inv.senderBic : ''}</p>` : ''}
     ${inv.notes ? `<p style="margin:12px 0 0 0;font-size:10px;color:#555;">${inv.notes}</p>` : ''}
     ${inv.footerText ? `<p style="margin:16px 0 0 0;font-size:9px;color:#888;">${inv.footerText}</p>` : ''}
-    <p style="margin:12px 0 0 0;font-size:8px;color:#bbb;">SHA-256: ${inv.contentHash ?? 'noch nicht finalisiert'}</p>
+
 
     ${agbPage}
     <!-- FUSSZEILE fixed auf jeder Seite -->

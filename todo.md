@@ -590,3 +590,9 @@
 
 ## Phase 66: Seitennummer in PDF-Fußzeile
 - [x] Seitennummer "Seite X von Y" rechts in der Fußzeile anzeigen (CSS counter)
+
+## Phase 67: PDF kritische Bugs
+- [x] BUG: Doppelter Name im Lieferantenblock behoben (onSupplierSelect setzt recipientName='')
+- [x] BUG: Fußzeile-Position korrigiert (height:3cm, align-items:flex-end, @page margin-bottom:3.5cm)
+- [x] SHA-256 Zeile vollständig aus PDF entfernt
+- [x] Browser-URL-Zeile: wird vom Browser selbst erzeugt - kann nur durch Druckeinstellungen des Nutzers deaktiviert werden
