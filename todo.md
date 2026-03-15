@@ -587,3 +587,6 @@
 - [x] Fußzeile auf JEDER Seite fixed am unteren Rand (position:fixed, bottom:0, @page margin-bottom:4.5cm)
 - [x] Lieferadresse im Bestellblock: nur Straße, PLZ, Ort, Land (kein Firmenname wiederholen)
 - [x] Lieferantenblock: nur Firmenname des Lieferanten (keine eigene Firmenadresse)
+
+## Phase 66: Seitennummer in PDF-Fußzeile
+- [x] Seitennummer "Seite X von Y" rechts in der Fußzeile anzeigen (CSS counter)

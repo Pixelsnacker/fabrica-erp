@@ -635,6 +635,8 @@ export default function Invoices() {
       .totals-table tr.total-row td { font-weight: 700; font-size: 13px; border-top: 2px solid #111; padding-top: 6px; }
       .section-divider { border: none; border-top: 1px solid #ddd; margin: 16px 0; }
       .footer-fixed { position: fixed; bottom: 0; left: 0; right: 0; padding: 0 1cm 0.5cm 1cm; background: #fff; }
+      .page-number::before { content: 'Seite ' counter(page) ' von ' counter(pages); }
+      @page { counter-increment: page; }
       @media print { button { display: none; } }
     </style></head><body>
 
@@ -728,13 +730,14 @@ export default function Invoices() {
 
     ${agbPage}
     <!-- FUSSZEILE fixed auf jeder Seite -->
-    ${hasFooterCols ? `<div class="footer-fixed">
-      <table style="width:100%;border-top:1.5px solid #bbb;padding-top:5px;font-size:9px;color:#555;">
+    <div class="footer-fixed">
+      ${hasFooterCols ? `<table style="width:100%;border-top:1.5px solid #bbb;padding-top:5px;font-size:9px;color:#555;">
         <tr>
           ${footerCols.map(c => `<td style="width:25%;vertical-align:top;padding-right:8px;">${renderCol(c)}</td>`).join('')}
+          <td style="width:15%;text-align:right;vertical-align:bottom;font-size:9px;color:#999;"><span class="page-number"></span></td>
         </tr>
-      </table>
-    </div>` : ''}
+      </table>` : `<div style="text-align:right;font-size:9px;color:#999;padding-top:5px;border-top:1px solid #ddd;"><span class="page-number"></span></div>`}
+    </div>
     <script>window.onload=()=>window.print();</script></body></html>`;
     const w = window.open('', '_blank');
     if (w) { w.document.write(html); w.document.close(); }
