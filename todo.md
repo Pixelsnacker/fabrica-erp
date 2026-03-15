@@ -557,3 +557,8 @@
 - [x] Beschreibungsfeld als Textarea (Zeilenumbruch per Enter möglich)
 - [x] Pfeil-Buttons (hoch/runter) zum Verschieben von Positionen
 - [x] PDF: Zeilenumbrüche in Beschreibung korrekt darstellen (white-space:pre-wrap)
+
+## Phase 60: PDF-Layout Fußzeile und Umbrüche
+- [x] Fußzeile fixed am unteren Rand (position:fixed, bottom:0), auf jeder Seite
+- [x] Seiteninhalt hat genug Abstand zur Fußzeile (@page margin-bottom: 3.5cm)
+- [x] Beschreibungs-Zeilenumbrüche im PDF korrekt dargestellt (white-space:pre-wrap)

@@ -579,7 +579,7 @@ export default function Invoices() {
 
     const html = `<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><title>${inv.invoiceNumber}</title>
     <style>
-      @page { margin: 1.5cm 1cm 2cm 1cm; }
+      @page { margin: 1.5cm 1cm 3.5cm 1cm; }
       * { box-sizing: border-box; }
       body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; margin: 0; padding: 0; color: #111; line-height: 1.4; }
       h1, h2, h3 { margin: 0; }
@@ -590,7 +590,8 @@ export default function Invoices() {
       .totals-table td { padding: 3px 6px; font-size: 11px; }
       .totals-table tr.total-row td { font-weight: 700; font-size: 13px; border-top: 2px solid #111; padding-top: 6px; }
       .section-divider { border: none; border-top: 1px solid #ddd; margin: 16px 0; }
-      @media print { button { display: none; } }
+      .page-footer { position: fixed; bottom: 0; left: 0; right: 0; padding: 6px 1cm 8px 1cm; background: #fff; }
+      @media print { button { display: none; } .page-footer { position: fixed; bottom: 0; left: 0; right: 0; padding: 6px 1cm 8px 1cm; background: #fff; } }
     </style></head><body>
 
     <!-- KOPFZEILE: Logo + Absender links, Dokumenttitel rechts -->
@@ -681,8 +682,14 @@ export default function Invoices() {
     ${inv.footerText ? `<p style="margin:16px 0 0 0;font-size:9px;color:#888;">${inv.footerText}</p>` : ''}
     <p style="margin:12px 0 0 0;font-size:8px;color:#bbb;">SHA-256: ${inv.contentHash ?? 'noch nicht finalisiert'}</p>
 
-    <!-- FUSSZEILE (4 Spalten) -->
-    ${footerHtml}
+    <!-- FUSSZEILE (4 Spalten) - fixed am unteren Rand -->
+    ${hasFooterCols ? `<div class="page-footer">
+      <table style="width:100%;border-top:1.5px solid #bbb;padding-top:6px;font-size:9px;color:#555;">
+        <tr>
+          ${footerCols.map(c => `<td style="width:25%;vertical-align:top;padding-right:8px;">${renderCol(c)}</td>`).join('')}
+        </tr>
+      </table>
+    </div>` : ''}
 
     ${agbPage}
     <script>window.onload=()=>window.print();</script></body></html>`;
