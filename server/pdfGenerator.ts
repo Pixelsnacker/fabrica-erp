@@ -225,7 +225,7 @@ function buildPdfHtml(data: OrderConfirmationData): string {
     padding-top: 5pt;
     display: flex;
     justify-content: space-between;
-    font-size: 7pt;
+    font-size: 8pt;
     color: #666;
     line-height: 1.5;
   }

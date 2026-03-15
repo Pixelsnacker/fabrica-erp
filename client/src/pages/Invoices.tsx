@@ -504,7 +504,7 @@ export default function Invoices() {
       text.split('\n').map(l => `<span>${l}</span>`).join('<br/>');
     return `
       <div class="page-footer">
-        <table style="width:100%;border-top:1px solid #ccc;padding-top:6px;font-size:9px;color:#555;">
+        <table style="width:100%;border-top:1px solid #ccc;padding-top:6px;font-size:10px;color:#555;">
           <tr>
             <td style="width:25%;vertical-align:top;padding-right:8px;">${renderCol(col1)}</td>
             <td style="width:25%;vertical-align:top;padding-right:8px;">${renderCol(col2)}</td>
@@ -613,7 +613,7 @@ export default function Invoices() {
     ${inv.senderIban ? '<p>IBAN: ' + inv.senderIban + (inv.senderBic ? ' | BIC: ' + inv.senderBic : '') + '</p>' : ''}
     ${inv.notes ? '<p style="margin-top:16px;color:#555;">' + inv.notes + '</p>' : ''}
     ${inv.footerText ? '<p style="margin-top:24px;font-size:10px;color:#888;">' + inv.footerText + '</p>' : ''}
-    <p style="margin-top:16px;font-size:9px;color:#aaa;">SHA-256: ${inv.contentHash ?? 'noch nicht finalisiert'}</p>
+    <p style="margin-top:16px;font-size:10px;color:#aaa;">SHA-256: ${inv.contentHash ?? 'noch nicht finalisiert'}</p>
     ${buildFooterHtml()}
     <div style="margin-bottom:3cm;"></div>
     ${agbPage}

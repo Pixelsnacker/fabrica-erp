@@ -206,7 +206,7 @@ export default function ProjectDetail() {
     const buildFooter = () => {
       const cols = [cs.footerCol1, cs.footerCol2, cs.footerCol3, cs.footerCol4].filter(Boolean);
       if (!cols.length) return '';
-      return `<div class="page-footer" style="position:fixed;bottom:0;left:1cm;right:1cm;border-top:1px solid #ccc;padding-top:6px;display:grid;grid-template-columns:repeat(${cols.length},1fr);gap:8px;font-size:8px;color:#666;">${cols.map((c: string) => `<div>${nl2br(c)}</div>`).join('')}</div>`;
+      return `<div class="page-footer" style="position:fixed;bottom:0;left:1cm;right:1cm;border-top:1px solid #ccc;padding-top:6px;display:grid;grid-template-columns:repeat(${cols.length},1fr);gap:8px;font-size:9px;color:#666;">${cols.map((c: string) => `<div>${nl2br(c)}</div>`).join('')}</div>`;
     };
     const allItems = items as any[];
     const taxRate = cs.kleinunternehmer ? 0 : 0.19;
