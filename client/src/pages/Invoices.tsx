@@ -603,7 +603,8 @@ export default function Invoices() {
     const cs2 = companySettings as any;
     const footerCols = [cs2?.footerCol1 ?? '', cs2?.footerCol2 ?? '', cs2?.footerCol3 ?? '', cs2?.footerCol4 ?? ''];
     const hasFooterCols = footerCols.some(c => c.trim());
-    const renderCol = (text: string) => text.split('\n').map((l: string) => `<span>${l}</span>`).join('<br/>');
+    // HTTP-Links als Plain-Text darstellen (keine klickbaren Anker)
+    const renderCol = (text: string) => text.split('\n').map((l: string) => `<span>${l.replace(/https?:\/\/\S+/g, url => url.replace(/^https?:\/\//, ''))}</span>`).join('<br/>');
     const footerHtml = hasFooterCols ? `
       <table style="width:100%;border-top:1.5px solid #bbb;padding-top:6px;font-size:9px;color:#555;margin-top:8px;">
         <tr>
@@ -622,7 +623,7 @@ export default function Invoices() {
 
     const html = `<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><title>${inv.invoiceNumber}</title>
     <style>
-      @page { margin: 1.5cm 1cm 2cm 1cm; }
+      @page { margin: 1.5cm 1cm 4.5cm 1cm; }
       * { box-sizing: border-box; }
       body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; margin: 0; padding: 0; color: #111; line-height: 1.4; }
       h1, h2, h3 { margin: 0; }
@@ -633,6 +634,7 @@ export default function Invoices() {
       .totals-table td { padding: 3px 6px; font-size: 11px; }
       .totals-table tr.total-row td { font-weight: 700; font-size: 13px; border-top: 2px solid #111; padding-top: 6px; }
       .section-divider { border: none; border-top: 1px solid #ddd; margin: 16px 0; }
+      .footer-fixed { position: fixed; bottom: 0; left: 0; right: 0; padding: 0 1cm 0.5cm 1cm; background: #fff; }
       @media print { button { display: none; } }
     </style></head><body>
 
@@ -646,7 +648,7 @@ export default function Invoices() {
             ${inv.senderStreet ?? ''}<br>
             ${inv.senderZip ?? ''} ${inv.senderCity ?? ''}<br>
             ${inv.senderEmail ? inv.senderEmail + '<br>' : ''}
-            ${inv.senderPhone ? inv.senderPhone + '<br>' : ''}
+            ${inv.senderPhone ? 'Tel. ' + inv.senderPhone + '<br>' : ''}
             ${inv.senderVatId ? 'USt-IdNr: ' + inv.senderVatId : ''}
           </div>
         </td>
@@ -666,10 +668,10 @@ export default function Invoices() {
     <div style="margin-bottom:20px;">
       <div style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">${recipientLabel}</div>
       <div style="font-size:11px;line-height:1.7;">
-        ${inv.recipientCompany ? `<strong>${inv.recipientCompany}</strong><br>` : ''}
-        ${inv.recipientName && inv.recipientName !== inv.recipientCompany ? inv.recipientName + '<br>' : ''}
-        ${inv.recipientStreet ? inv.recipientStreet + '<br>' : ''}
-        ${inv.recipientZip || inv.recipientCity ? (inv.recipientZip ?? '') + ' ' + (inv.recipientCity ?? '') : ''}
+        ${isPurchaseOrder
+          ? `${inv.recipientCompany ? `<strong>${inv.recipientCompany}</strong><br>` : ''}${inv.recipientStreet ? inv.recipientStreet + '<br>' : ''}${inv.recipientZip || inv.recipientCity ? (inv.recipientZip ?? '') + ' ' + (inv.recipientCity ?? '') + '<br>' : ''}${inv.recipientCountry && inv.recipientCountry !== 'Deutschland' ? inv.recipientCountry : ''}`
+          : `${inv.recipientCompany ? `<strong>${inv.recipientCompany}</strong><br>` : ''}${inv.recipientName && inv.recipientName !== inv.recipientCompany ? inv.recipientName + '<br>' : ''}${inv.recipientStreet ? inv.recipientStreet + '<br>' : ''}${inv.recipientZip || inv.recipientCity ? (inv.recipientZip ?? '') + ' ' + (inv.recipientCity ?? '') : ''}`
+        }
       </div>
     </div>
 
@@ -724,16 +726,15 @@ export default function Invoices() {
     ${inv.footerText ? `<p style="margin:16px 0 0 0;font-size:9px;color:#888;">${inv.footerText}</p>` : ''}
     <p style="margin:12px 0 0 0;font-size:8px;color:#bbb;">SHA-256: ${inv.contentHash ?? 'noch nicht finalisiert'}</p>
 
-    <!-- FUSSZEILE (4 Spalten) - am Ende der Seite 1 -->  
-    ${hasFooterCols ? `<div style="margin-top:24px;">
-      <table style="width:100%;border-top:1.5px solid #bbb;padding-top:6px;font-size:9px;color:#555;">
+    ${agbPage}
+    <!-- FUSSZEILE fixed auf jeder Seite -->
+    ${hasFooterCols ? `<div class="footer-fixed">
+      <table style="width:100%;border-top:1.5px solid #bbb;padding-top:5px;font-size:9px;color:#555;">
         <tr>
           ${footerCols.map(c => `<td style="width:25%;vertical-align:top;padding-right:8px;">${renderCol(c)}</td>`).join('')}
         </tr>
       </table>
     </div>` : ''}
-
-    ${agbPage}
     <script>window.onload=()=>window.print();</script></body></html>`;
     const w = window.open('', '_blank');
     if (w) { w.document.write(html); w.document.close(); }

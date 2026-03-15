@@ -581,3 +581,9 @@
 ## Phase 64: Mengenfeld-Formatierung
 - [x] BUG: quantity-Feld zeigt "1.000" mit Punkt (sieht aus wie Tausend) - behoben
 - [x] quantity-Input: nur Ziffern und Komma erlauben, kein Tausenderpunkt (Komma wird zu Punkt normalisiert)
+
+## Phase 65: PDF Pflichtänderungen
+- [x] HTTP-Links vollständig entfernen aus dem PDF (renderCol entfernt http:// Präfix)
+- [x] Fußzeile auf JEDER Seite fixed am unteren Rand (position:fixed, bottom:0, @page margin-bottom:4.5cm)
+- [x] Lieferadresse im Bestellblock: nur Straße, PLZ, Ort, Land (kein Firmenname wiederholen)
+- [x] Lieferantenblock: nur Firmenname des Lieferanten (keine eigene Firmenadresse)
