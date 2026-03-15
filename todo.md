@@ -572,3 +572,12 @@
 - [x] BUG: taxRate kommt als Zahl aus Artikeldatenbank, Backend erwartet String
 - [x] Alle Artikel-Einfüge-Stellen: String-Konvertierung für taxRate, quantity, unitPriceNet
 - [x] handleSave: sanitizedItems konvertiert alle numerischen Felder zu String vor dem Senden
+
+## Phase 63: KI-Textverbesserung in Positionen
+- [x] Backend: textImprove.improve Prozedur (invokeLLM, professionelle Umformulierung)
+- [x] Frontend: KI-Button (Sparkles-Icon, lila) neben Beschreibung und Detailbeschreibung
+- [x] Frontend: Vorschau-Panel mit Original vs. KI-Vorschlag, Übernehmen/Verwerfen-Button
+
+## Phase 64: Mengenfeld-Formatierung
+- [x] BUG: quantity-Feld zeigt "1.000" mit Punkt (sieht aus wie Tausend) - behoben
+- [x] quantity-Input: nur Ziffern und Komma erlauben, kein Tausenderpunkt (Komma wird zu Punkt normalisiert)

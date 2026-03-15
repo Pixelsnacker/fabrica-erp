@@ -1306,6 +1306,28 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
         return { id: newId, invoiceNumber };
       }),
   }),
+  // ─── KI-Textverbesserung ──────────────────────────────────────────────────────────────────────────────
+  textImprove: router({
+    improve: protectedProcedure
+      .input(z.object({
+        text: z.string().min(1),
+        mode: z.enum(['improve', 'correct']).default('improve'),
+        context: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const systemPrompt = input.mode === 'correct'
+          ? `Du bist ein professioneller Lektor für deutsche Geschäftstexte. Korrigiere den folgenden Text: Rechtschreibung, Grammatik und Zeichensetzung. Gib NUR den korrigierten Text zurück, ohne Erklärungen, ohne Anführungszeichen, ohne Kommentare. Behalte die ursprüngliche Bedeutung und Struktur exakt bei. Verwende keine Gedankenstriche.`
+          : `Du bist ein professioneller Texter für deutsche Geschäftstexte im Bereich 3D-Druck und Fertigung. Formuliere den folgenden Text professionell und klar um. Gib NUR den verbesserten Text zurück, ohne Erklärungen, ohne Anführungszeichen, ohne Kommentare. Behalte die Kernaussage bei. Verwende keine Gedankenstriche. Kontext: ${input.context ?? 'Geschäftsdokument'}.`;
+        const response = await invokeLLM({
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: input.text },
+          ],
+        });
+        const improved = (response as any)?.choices?.[0]?.message?.content ?? input.text;
+        return { improved: improved.trim() };
+      }),
+  }),
   // ─── Company Settings ─────────────────────────────────────────────────────────────────────────────────
   companySettings: router({
     get: protectedProcedure.query(async () => {

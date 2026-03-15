@@ -17,7 +17,7 @@ import {
   Plus, FileText, Receipt, Search, Download, Lock, XCircle,
   ChevronDown, ChevronUp, Trash2, Eye, History, AlertTriangle,
   CheckCircle, Clock, Send, Euro, Loader2, Printer, BookOpen, ArrowRight,
-  PackageSearch, FolderOpen, Package, Copy
+  PackageSearch, FolderOpen, Package, Copy, Sparkles, Check, X
 } from "lucide-react";
 
 // ─── Typen ───────────────────────────────────────────────────────────────────
@@ -157,6 +157,25 @@ export default function Invoices() {
   const [editId, setEditId] = useState<number | null>(null);
   const [showDetail, setShowDetail] = useState<number | null>(null);
   const [showAudit, setShowAudit] = useState<number | null>(null);
+
+  // KI-Textverbesserung State
+  const [aiImproving, setAiImproving] = useState<{ idx: number; field: 'description' | 'longDescription' } | null>(null);
+  const [aiPreview, setAiPreview] = useState<{ idx: number; field: 'description' | 'longDescription'; original: string; improved: string } | null>(null);
+  const improveTextMut = trpc.textImprove.improve.useMutation({
+    onSuccess: (data) => {
+      if (aiImproving) {
+        setAiPreview({ idx: aiImproving.idx, field: aiImproving.field, original: items[aiImproving.idx]?.[aiImproving.field] ?? '', improved: data.improved });
+      }
+      setAiImproving(null);
+    },
+    onError: (e) => { toast.error('KI-Fehler: ' + e.message); setAiImproving(null); },
+  });
+  function triggerAiImprove(idx: number, field: 'description' | 'longDescription', mode: 'improve' | 'correct') {
+    const text = items[idx]?.[field] ?? '';
+    if (!text.trim()) { toast.error('Bitte zuerst Text eingeben'); return; }
+    setAiImproving({ idx, field });
+    improveTextMut.mutate({ text, mode, context: form.type === 'offer' ? 'Angebot' : form.type === 'invoice' ? 'Rechnung' : form.type === 'order_confirmation' ? 'Auftragsbestätigung' : form.type === 'purchase_order' ? 'Bestellung' : 'Geschäftsdokument' });
+  }
 
   // Datenblatt-Generator State
   const [showDatasheetGen, setShowDatasheetGen] = useState(false);
@@ -1030,25 +1049,35 @@ export default function Invoices() {
                           <ChevronDown className="w-3 h-3" />
                         </Button>
                       </div>
-                      <Textarea
-                        className="text-sm flex-1 min-w-[160px] min-h-[36px] resize-none overflow-hidden py-1.5 px-3"
-                        value={it.description}
+                      <div className="flex-1 min-w-[160px] flex items-start gap-1">
+                        <Textarea
+                          className="text-sm flex-1 min-h-[36px] resize-none overflow-hidden py-1.5 px-3"
+                          value={it.description}
+                          onChange={e => {
+                            updateItem(idx, 'description', e.target.value);
+                            e.target.style.height = 'auto';
+                            e.target.style.height = e.target.scrollHeight + 'px';
+                          }}
+                          rows={1}
+                          placeholder="Leistungsbeschreibung *"
+                        />
+                        {/* KI-Button für Beschreibung */}
+                        <div className="flex flex-col gap-0.5 shrink-0">
+                          <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-purple-400 hover:text-purple-300 hover:bg-purple-500/10" title="KI: Professionell umformulieren" disabled={aiImproving?.idx === idx && aiImproving?.field === 'description'} onClick={() => triggerAiImprove(idx, 'description', 'improve')}>
+                            {aiImproving?.idx === idx && aiImproving?.field === 'description' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                          </Button>
+                        </div>
+                      </div>
+                      <Input
+                        className="h-8 text-sm text-right w-16"
+                        value={it.quantity}
                         onChange={e => {
-                          updateItem(idx, 'description', e.target.value);
-                          // Auto-resize
-                          e.target.style.height = 'auto';
-                          e.target.style.height = e.target.scrollHeight + 'px';
+                          // Nur Ziffern, Komma und Punkt erlauben; Komma zu Punkt normalisieren
+                          const raw = e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.');
+                          updateItem(idx, 'quantity', raw);
                         }}
-                        onKeyDown={e => {
-                          // Enter = Zeilenumbruch, Shift+Enter auch
-                          if (e.key === 'Enter' && !e.shiftKey) {
-                            // Standard Enter erlauben (kein preventDefault)
-                          }
-                        }}
-                        rows={1}
-                        placeholder="Leistungsbeschreibung *"
+                        placeholder="Menge"
                       />
-                      <Input className="h-8 text-sm text-right w-16" value={it.quantity} onChange={e => updateItem(idx, 'quantity', e.target.value)} placeholder="Menge" />
                       {/* Einheit-Dropdown mit Freitext */}
                       <Select value={UNIT_OPTIONS.includes(it.unit) ? it.unit : '__custom'} onValueChange={v => { if (v !== '__custom') updateItem(idx, 'unit', v); }}>
                         <SelectTrigger className="h-8 w-24 text-xs">
@@ -1082,17 +1111,22 @@ export default function Invoices() {
                     </div>
                     {/* Zeile 2: Langbeschreibung + Optional-Toggle */}
                     <div className="flex items-start gap-3 pl-7">
-                      <Textarea
-                        className="text-xs flex-1 text-muted-foreground min-h-[28px] resize-none overflow-hidden py-1 px-3"
-                        value={it.longDescription ?? ''}
-                        rows={1}
-                        onChange={e => {
-                          updateItem(idx, 'longDescription', e.target.value);
-                          e.target.style.height = 'auto';
-                          e.target.style.height = e.target.scrollHeight + 'px';
-                        }}
-                        placeholder="Detailbeschreibung (optional, erscheint im PDF)"
-                      />
+                      <div className="flex-1 flex items-start gap-1">
+                        <Textarea
+                          className="text-xs flex-1 text-muted-foreground min-h-[28px] resize-none overflow-hidden py-1 px-3"
+                          value={it.longDescription ?? ''}
+                          rows={1}
+                          onChange={e => {
+                            updateItem(idx, 'longDescription', e.target.value);
+                            e.target.style.height = 'auto';
+                            e.target.style.height = e.target.scrollHeight + 'px';
+                          }}
+                          placeholder="Detailbeschreibung (optional, erscheint im PDF)"
+                        />
+                        <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 shrink-0" title="KI: Professionell umformulieren" disabled={aiImproving?.idx === idx && aiImproving?.field === 'longDescription'} onClick={() => triggerAiImprove(idx, 'longDescription', 'improve')}>
+                          {aiImproving?.idx === idx && aiImproving?.field === 'longDescription' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                        </Button>
+                      </div>
                       <label className="flex items-center gap-1.5 cursor-pointer shrink-0 mt-0.5">
                         <Checkbox
                           checked={!!it.isOptional}
@@ -1110,6 +1144,37 @@ export default function Invoices() {
                   </div>
                 ))}
               </div>
+              {/* KI-Vorschau Dialog */}
+              {aiPreview && (
+                <div className="border border-purple-500/40 rounded-lg p-4 bg-purple-500/5 space-y-3">
+                  <div className="flex items-center gap-2 text-purple-400 font-medium text-sm">
+                    <Sparkles className="w-4 h-4" />
+                    KI-Vorschlag für Position {aiPreview.idx + 1} ({aiPreview.field === 'description' ? 'Beschreibung' : 'Detailbeschreibung'})
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <div className="text-muted-foreground mb-1 font-medium">Original:</div>
+                      <div className="bg-muted/30 rounded p-2 whitespace-pre-wrap">{aiPreview.original}</div>
+                    </div>
+                    <div>
+                      <div className="text-purple-400 mb-1 font-medium">KI-Vorschlag:</div>
+                      <div className="bg-purple-500/10 rounded p-2 whitespace-pre-wrap">{aiPreview.improved}</div>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" className="bg-purple-600 hover:bg-purple-700 text-white" onClick={() => {
+                      updateItem(aiPreview.idx, aiPreview.field, aiPreview.improved);
+                      setAiPreview(null);
+                      toast.success('KI-Vorschlag übernommen');
+                    }}>
+                      <Check className="w-3 h-3 mr-1" /> Übernehmen
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setAiPreview(null)}>
+                      <X className="w-3 h-3 mr-1" /> Verwerfen
+                    </Button>
+                  </div>
+                </div>
+              )}
               {/* Summen */}
               <div className="flex justify-end">
                 <div className="text-sm space-y-1 min-w-[260px]">
