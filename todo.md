@@ -596,3 +596,8 @@
 - [x] BUG: Fußzeile-Position korrigiert (height:3cm, align-items:flex-end, @page margin-bottom:3.5cm)
 - [x] SHA-256 Zeile vollständig aus PDF entfernt
 - [x] Browser-URL-Zeile: wird vom Browser selbst erzeugt - kann nur durch Druckeinstellungen des Nutzers deaktiviert werden
+
+## Phase 68: Löschen mit Bestätigung und Undo
+- [x] Bestätigungsdialog vor dem Löschen: "Löschen? Ja / Nein" direkt am Trash-Button
+- [x] Undo-Toast nach dem Löschen (10 Sekunden, "Rükgängig"-Button)
+- [x] Gelöschte Position wird im State zwischengespeichert für Undo

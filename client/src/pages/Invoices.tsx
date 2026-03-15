@@ -158,6 +158,11 @@ export default function Invoices() {
   const [showDetail, setShowDetail] = useState<number | null>(null);
   const [showAudit, setShowAudit] = useState<number | null>(null);
 
+  // Undo-State für gelöschte Positionen
+  const [deletedItem, setDeletedItem] = useState<{ item: InvoiceItem; idx: number } | null>(null);
+  const [undoTimer, setUndoTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
+  const [confirmDeleteIdx, setConfirmDeleteIdx] = useState<number | null>(null);
+
   // KI-Textverbesserung State
   const [aiImproving, setAiImproving] = useState<{ idx: number; field: 'description' | 'longDescription' } | null>(null);
   const [aiPreview, setAiPreview] = useState<{ idx: number; field: 'description' | 'longDescription'; original: string; improved: string } | null>(null);
@@ -515,7 +520,40 @@ export default function Invoices() {
   }
 
   function removeItem(idx: number) {
+    // Bestätigung prüfen
+    if (confirmDeleteIdx !== idx) {
+      setConfirmDeleteIdx(idx);
+      return;
+    }
+    setConfirmDeleteIdx(null);
+    // Item merken für Undo
+    const itemToDelete = items[idx];
+    setDeletedItem({ item: itemToDelete, idx });
     setItems(prev => prev.filter((_, i) => i !== idx).map((it, i) => ({ ...it, position: i + 1 })));
+    // Undo-Timer starten (10 Sekunden)
+    if (undoTimer) clearTimeout(undoTimer);
+    const timer = setTimeout(() => { setDeletedItem(null); setUndoTimer(null); }, 10000);
+    setUndoTimer(timer);
+    toast(
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <span>Position gelöscht</span>
+        <button
+          onClick={() => {
+            setItems(prev => {
+              const restored = [...prev];
+              restored.splice(idx, 0, itemToDelete);
+              return restored.map((it, i) => ({ ...it, position: i + 1 }));
+            });
+            setDeletedItem(null);
+            clearTimeout(timer);
+            setUndoTimer(null);
+            toast.dismiss();
+          }}
+          style={{ background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '4px', padding: '2px 10px', cursor: 'pointer', fontWeight: 600 }}
+        >Rückgängig</button>
+      </div>,
+      { duration: 10000 }
+    );
   }
 
   function moveItem(idx: number, dir: 'up' | 'down') {
@@ -1113,7 +1151,15 @@ export default function Invoices() {
                         {parseFloat(it.lineTotalGross).toLocaleString('de-DE', { minimumFractionDigits: 2 })} €
                       </span>
                       <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-muted-foreground hover:text-primary shrink-0" title="Position kopieren" onClick={() => copyItem(idx)}><Copy className="w-3 h-3" /></Button>
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-400 shrink-0" onClick={() => removeItem(idx)}><Trash2 className="w-3 h-3" /></Button>
+                      {confirmDeleteIdx === idx ? (
+                        <div className="flex items-center gap-1 shrink-0">
+                          <span className="text-xs text-red-400 whitespace-nowrap">Löschen?</span>
+                          <Button size="sm" variant="ghost" className="h-7 px-2 text-red-500 text-xs font-bold" onClick={() => removeItem(idx)}>Ja</Button>
+                          <Button size="sm" variant="ghost" className="h-7 px-2 text-muted-foreground text-xs" onClick={() => setConfirmDeleteIdx(null)}>Nein</Button>
+                        </div>
+                      ) : (
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-400 shrink-0" onClick={() => removeItem(idx)}><Trash2 className="w-3 h-3" /></Button>
+                      )}
                     </div>
                     {/* Zeile 2: Langbeschreibung + Optional-Toggle */}
                     <div className="flex items-start gap-3 pl-7">
