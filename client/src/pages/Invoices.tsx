@@ -510,34 +510,14 @@ export default function Invoices() {
     });
   }, [invoiceList, tab, search]);
 
-  // 4-spaltige Fußzeile aus companySettings generieren
-  function buildFooterHtml(): string {
-    const cs = companySettings as any;
-    const col1 = cs?.footerCol1 ?? '';
-    const col2 = cs?.footerCol2 ?? '';
-    const col3 = cs?.footerCol3 ?? '';
-    const col4 = cs?.footerCol4 ?? '';
-    if (!col1 && !col2 && !col3 && !col4) return '';
-    const renderCol = (text: string) =>
-      text.split('\n').map(l => `<span>${l}</span>`).join('<br/>');
-    return `
-      <div class="page-footer">
-        <table style="width:100%;border-top:1px solid #ccc;padding-top:6px;font-size:10px;color:#555;">
-          <tr>
-            <td style="width:25%;vertical-align:top;padding-right:8px;">${renderCol(col1)}</td>
-            <td style="width:25%;vertical-align:top;padding-right:8px;">${renderCol(col2)}</td>
-            <td style="width:25%;vertical-align:top;padding-right:8px;">${renderCol(col3)}</td>
-            <td style="width:25%;vertical-align:top;">${renderCol(col4)}</td>
-          </tr>
-        </table>
-      </div>`;
-  }
+  // buildFooterHtml ist jetzt direkt in printInvoice integriert
 
   // PDF-Druckansicht (Browser-Print)
   function printInvoice(inv: any) {
     const cs = companySettings as any;
     const agbText: string = cs?.agbText ?? '';
     const logoUrl: string = cs?.logoUrl ?? '';
+    const isPurchaseOrder = inv.type === 'purchase_order';
     const taxModeNote = inv.taxMode === 'kleinunternehmer'
       ? '<p style="margin-top:16px;font-size:11px;">Gemäß §19 UStG wird keine Umsatzsteuer berechnet.</p>' : '';
     const itemRows = (inv.items ?? []).map((it: any, i: number) => {
@@ -549,63 +529,119 @@ export default function Invoices() {
         ? '<span style="background:#f3f4f6;color:#6b7280;font-size:9px;padding:1px 5px;border-radius:3px;margin-left:6px;">Optional</span>'
         : '';
       const longDesc = it.longDescription
-        ? `<div style="font-size:10px;color:#6b7280;margin-top:2px;">${it.longDescription}</div>`
+        ? `<div style="font-size:10px;color:#555;margin-top:3px;white-space:pre-wrap;">${it.longDescription}</div>`
         : '';
       return `
       <tr style="${it.isOptional ? 'opacity:0.7;' : ''}">
-        <td style="padding:6px 8px;border-bottom:1px solid #eee;">${i + 1}</td>
-        <td style="padding:6px 8px;border-bottom:1px solid #eee;">
-          ${it.description}${optionalBadge}${discountCell}
+        <td style="padding:5px 6px;border-bottom:1px solid #e8e8e8;vertical-align:top;">${i + 1}</td>
+        <td style="padding:5px 6px;border-bottom:1px solid #e8e8e8;vertical-align:top;">
+          <span style="font-weight:500;">${it.description}</span>${optionalBadge}${discountCell}
           ${longDesc}
         </td>
-        <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;">${parseFloat(it.quantity ?? 1).toLocaleString('de-DE')}</td>
-        <td style="padding:6px 8px;border-bottom:1px solid #eee;">${it.unit ?? 'Stk.'}</td>
-        <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;">${parseFloat(it.unitPriceNet ?? 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })} €</td>
-        <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;">${it.taxRate ?? 19} %</td>
-        <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;font-weight:600;">${parseFloat(it.lineTotalGross ?? 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })} €</td>
+        <td style="padding:5px 6px;border-bottom:1px solid #e8e8e8;text-align:right;vertical-align:top;white-space:nowrap;">${parseFloat(it.quantity ?? 1).toLocaleString('de-DE')}</td>
+        <td style="padding:5px 6px;border-bottom:1px solid #e8e8e8;vertical-align:top;white-space:nowrap;">${it.unit ?? 'Stk.'}</td>
+        <td style="padding:5px 6px;border-bottom:1px solid #e8e8e8;text-align:right;vertical-align:top;white-space:nowrap;">${parseFloat(it.unitPriceNet ?? 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })} €</td>
+        <td style="padding:5px 6px;border-bottom:1px solid #e8e8e8;text-align:right;vertical-align:top;white-space:nowrap;">${it.taxRate ?? 19} %</td>
+        <td style="padding:5px 6px;border-bottom:1px solid #e8e8e8;text-align:right;vertical-align:top;white-space:nowrap;font-weight:600;">${parseFloat(it.lineTotalGross ?? 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })} €</td>
       </tr>`;
     }).join('');
-    // AGB als zweite Seite
+
+    // Fusszeile aus companySettings (4 Spalten)
+    const cs2 = companySettings as any;
+    const footerCols = [cs2?.footerCol1 ?? '', cs2?.footerCol2 ?? '', cs2?.footerCol3 ?? '', cs2?.footerCol4 ?? ''];
+    const hasFooterCols = footerCols.some(c => c.trim());
+    const renderCol = (text: string) => text.split('\n').map((l: string) => `<span>${l}</span>`).join('<br/>');
+    const footerHtml = hasFooterCols ? `
+      <table style="width:100%;border-top:1.5px solid #bbb;padding-top:6px;font-size:9px;color:#555;margin-top:8px;">
+        <tr>
+          ${footerCols.map(c => `<td style="width:25%;vertical-align:top;padding-right:8px;">${renderCol(c)}</td>`).join('')}
+        </tr>
+      </table>` : '';
+
+    // AGB als zweite Seite (nur wenn vorhanden)
     const agbPage = agbText ? `
-      <div style="page-break-before:always;padding:1cm;font-family:Arial,sans-serif;font-size:11px;color:#111;">
-        <h2 style="font-size:16px;margin-bottom:16px;border-bottom:2px solid #111;padding-bottom:8px;">Allgemeine Geschäftsbedingungen</h2>
+      <div style="page-break-before:always;padding:0;font-family:Arial,sans-serif;font-size:11px;color:#111;">
+        <h2 style="font-size:15px;margin:0 0 14px 0;border-bottom:2px solid #333;padding-bottom:8px;">Allgemeine Geschäftsbedingungen</h2>
         <div style="white-space:pre-wrap;line-height:1.6;">${agbText}</div>
       </div>` : '';
+
+    const recipientLabel = isPurchaseOrder ? 'Lieferant:' : 'Empfänger:';
+
     const html = `<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><title>${inv.invoiceNumber}</title>
     <style>
-      @page{margin:1cm 1cm 3cm 1cm;}
-      body{font-family:Arial,sans-serif;font-size:12px;margin:0;padding:1cm;padding-bottom:0;color:#111;}
-      table{width:100%;border-collapse:collapse;}th{background:#f5f5f5;text-align:left;padding:6px 8px;border-bottom:2px solid #ddd;}
-      .totals td{padding:4px 8px;}.totals tr:last-child td{font-weight:700;font-size:14px;border-top:2px solid #111;}
-      .page-footer{position:fixed;bottom:1.5cm;left:1cm;right:1cm;}
-      @media print{button{display:none}.page-footer{position:fixed;bottom:1.5cm;left:1cm;right:1cm;}}
+      @page { margin: 1.5cm 1cm 2cm 1cm; }
+      * { box-sizing: border-box; }
+      body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; margin: 0; padding: 0; color: #111; line-height: 1.4; }
+      h1, h2, h3 { margin: 0; }
+      table { width: 100%; border-collapse: collapse; }
+      .header-table td { vertical-align: top; }
+      .items-table th { background: #f0f0f0; text-align: left; padding: 6px 6px; border-bottom: 2px solid #ccc; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
+      .items-table td { font-size: 11px; }
+      .totals-table td { padding: 3px 6px; font-size: 11px; }
+      .totals-table tr.total-row td { font-weight: 700; font-size: 13px; border-top: 2px solid #111; padding-top: 6px; }
+      .section-divider { border: none; border-top: 1px solid #ddd; margin: 16px 0; }
+      @media print { button { display: none; } }
     </style></head><body>
-    <table style="margin-bottom:24px;"><tr>
-      <td style="width:50%;vertical-align:top;">
-        ${logoUrl ? `<img src="${logoUrl}" alt="Logo" style="max-height:70px;max-width:200px;object-fit:contain;margin-bottom:8px;display:block;">` : ''}
-        <strong style="font-size:16px;">${inv.senderName || 'Fabrica GmbH'}</strong><br>
-        ${inv.senderStreet ?? ''}<br>${inv.senderZip ?? ''} ${inv.senderCity ?? ''}<br>
-        ${inv.senderEmail ?? ''}<br>${inv.senderPhone ?? ''}<br>
-        ${inv.senderVatId ? 'USt-IdNr: ' + inv.senderVatId : ''}</td>
-      <td style="width:50%;vertical-align:top;text-align:right;">
-        <strong style="font-size:20px;">${TYPE_LABELS[inv.type as InvoiceType] ?? inv.type}</strong><br>
-        <strong>Nr. ${inv.invoiceNumber}</strong><br>
-        Datum: ${inv.issueDate ?? ''}<br>
-        ${inv.dueDate ? 'Fälligkeit: ' + inv.dueDate : ''}
-        ${inv.deliveryDate ? '<br>Lieferdatum: ' + inv.deliveryDate : ''}
-      </td></tr></table>
-    <table style="margin-bottom:24px;"><tr>
-      <td><strong>Empfänger:</strong><br>
-        ${inv.recipientCompany ? '<strong>' + inv.recipientCompany + '</strong><br>' : ''}
-        ${inv.recipientName ?? ''}<br>
-        ${inv.recipientStreet ?? ''}<br>${inv.recipientZip ?? ''} ${inv.recipientCity ?? ''}
-      </td></tr></table>
-    ${inv.introText ? '<p>' + inv.introText + '</p>' : ''}
-    <table style="margin-bottom:16px;">
-      <thead><tr><th>#</th><th>Beschreibung</th><th style="text-align:right">Menge</th><th>Einheit</th><th style="text-align:right">EP netto</th><th style="text-align:right">MwSt</th><th style="text-align:right">Gesamt brutto</th></tr></thead>
+
+    <!-- KOPFZEILE: Logo + Absender links, Dokumenttitel rechts -->
+    <table class="header-table" style="margin-bottom:20px;">
+      <tr>
+        <td style="width:55%;">
+          ${logoUrl ? `<img src="${logoUrl}" alt="Logo" style="max-height:60px;max-width:180px;object-fit:contain;margin-bottom:10px;display:block;">` : ''}
+          <div style="font-size:13px;font-weight:700;margin-bottom:2px;">${inv.senderName || ''}</div>
+          <div style="color:#444;font-size:10px;line-height:1.6;">
+            ${inv.senderStreet ?? ''}<br>
+            ${inv.senderZip ?? ''} ${inv.senderCity ?? ''}<br>
+            ${inv.senderEmail ? inv.senderEmail + '<br>' : ''}
+            ${inv.senderPhone ? inv.senderPhone + '<br>' : ''}
+            ${inv.senderVatId ? 'USt-IdNr: ' + inv.senderVatId : ''}
+          </div>
+        </td>
+        <td style="width:45%;text-align:right;">
+          <div style="font-size:22px;font-weight:700;color:#111;margin-bottom:6px;">${TYPE_LABELS[inv.type as InvoiceType] ?? inv.type}</div>
+          <div style="font-size:11px;color:#333;line-height:1.8;">
+            <strong>Nr. ${inv.invoiceNumber}</strong><br>
+            Datum: ${inv.issueDate ?? ''}<br>
+            ${inv.dueDate ? 'Fälligkeit: ' + inv.dueDate + '<br>' : ''}
+            ${inv.deliveryDate ? 'Lieferdatum: ' + inv.deliveryDate : ''}
+          </div>
+        </td>
+      </tr>
+    </table>
+
+    <!-- EMPFAENGER -->
+    <div style="margin-bottom:20px;">
+      <div style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">${recipientLabel}</div>
+      <div style="font-size:11px;line-height:1.7;">
+        ${inv.recipientCompany ? `<strong>${inv.recipientCompany}</strong><br>` : ''}
+        ${inv.recipientName && inv.recipientName !== inv.recipientCompany ? inv.recipientName + '<br>' : ''}
+        ${inv.recipientStreet ? inv.recipientStreet + '<br>' : ''}
+        ${inv.recipientZip || inv.recipientCity ? (inv.recipientZip ?? '') + ' ' + (inv.recipientCity ?? '') : ''}
+      </div>
+    </div>
+
+    <hr class="section-divider">
+
+    ${inv.introText ? `<p style="margin:0 0 16px 0;font-size:11px;">${inv.introText}</p>` : ''}
+
+    <!-- POSITIONEN -->
+    <table class="items-table" style="margin-bottom:16px;">
+      <thead>
+        <tr>
+          <th style="width:4%;">#</th>
+          <th>Beschreibung</th>
+          <th style="text-align:right;width:8%;">Menge</th>
+          <th style="width:7%;">Einheit</th>
+          <th style="text-align:right;width:11%;">EP netto</th>
+          <th style="text-align:right;width:8%;">MwSt</th>
+          <th style="text-align:right;width:12%;">Gesamt brutto</th>
+        </tr>
+      </thead>
       <tbody>${itemRows}</tbody>
     </table>
-    <table class="totals" style="width:320px;margin-left:auto;">
+
+    <!-- SUMMEN -->
+    <table class="totals-table" style="width:280px;margin-left:auto;margin-bottom:20px;">
       ${(() => {
         const pdfItems = inv.items ?? [];
         const reqItems = pdfItems.filter((i: any) => !i.isOptional);
@@ -613,27 +649,31 @@ export default function Invoices() {
         const pdfNet = reqItems.reduce((s: number, i: any) => s + parseFloat(i.lineTotalNet ?? 0), 0);
         const pdfTax = reqItems.reduce((s: number, i: any) => s + parseFloat(i.lineTax ?? 0), 0);
         const pdfGross = pdfNet + pdfTax;
-        const pdfOptNet = optItems.reduce((s: number, i: any) => s + parseFloat(i.lineTotalNet ?? 0), 0);
         const pdfOptGross = optItems.reduce((s: number, i: any) => s + parseFloat(i.lineTotalGross ?? 0), 0);
         const pdfDiscount = pdfItems.reduce((s: number, i: any) => s + parseFloat(i.discountedNet ?? 0), 0);
         const fmt = (n: number) => n.toLocaleString('de-DE', { minimumFractionDigits: 2 }) + ' €';
         return [
-          pdfDiscount > 0 ? `<tr style="color:#d97706;"><td>Rabatt gesamt:</td><td style="text-align:right">-${fmt(pdfDiscount)}</td></tr>` : '',
-          `<tr><td>Nettobetrag:</td><td style="text-align:right">${fmt(pdfNet)}</td></tr>`,
-          `<tr><td>MwSt:</td><td style="text-align:right">${fmt(pdfTax)}</td></tr>`,
-          `<tr><td><strong>Gesamtbetrag:</strong></td><td style="text-align:right"><strong>${fmt(pdfGross)}</strong></td></tr>`,
-          optItems.length > 0 ? `<tr style="font-size:10px;color:#888;border-top:1px dashed #ccc;"><td colspan="2" style="padding-top:8px;">zzgl. optionale Pos. (${optItems.length}): ${fmt(pdfOptGross)} brutto</td></tr>` : '',
+          pdfDiscount > 0 ? `<tr style="color:#c47a00;"><td>Rabatt gesamt:</td><td style="text-align:right">-${fmt(pdfDiscount)}</td></tr>` : '',
+          `<tr><td style="color:#555;">Nettobetrag:</td><td style="text-align:right">${fmt(pdfNet)}</td></tr>`,
+          `<tr><td style="color:#555;">MwSt:</td><td style="text-align:right">${fmt(pdfTax)}</td></tr>`,
+          `<tr class="total-row"><td>Gesamtbetrag:</td><td style="text-align:right">${fmt(pdfGross)}</td></tr>`,
+          optItems.length > 0 ? `<tr><td colspan="2" style="font-size:9px;color:#888;padding-top:6px;border-top:1px dashed #ccc;">zzgl. optionale Pos. (${optItems.length}): ${fmt(pdfOptGross)}</td></tr>` : '',
         ].join('');
       })()}
     </table>
+
     ${taxModeNote}
-    ${inv.paymentTerms ? '<p style="margin-top:24px;">' + inv.paymentTerms + '</p>' : ''}
-    ${inv.senderIban ? '<p>IBAN: ' + inv.senderIban + (inv.senderBic ? ' | BIC: ' + inv.senderBic : '') + '</p>' : ''}
-    ${inv.notes ? '<p style="margin-top:16px;color:#555;">' + inv.notes + '</p>' : ''}
-    ${inv.footerText ? '<p style="margin-top:24px;font-size:10px;color:#888;">' + inv.footerText + '</p>' : ''}
-    <p style="margin-top:16px;font-size:10px;color:#aaa;">SHA-256: ${inv.contentHash ?? 'noch nicht finalisiert'}</p>
-    ${buildFooterHtml()}
-    <div style="margin-bottom:3cm;"></div>
+
+    <!-- ZAHLUNGSINFOS -->
+    ${inv.paymentTerms ? `<p style="margin:0 0 6px 0;font-size:10px;color:#333;">${inv.paymentTerms}</p>` : ''}
+    ${inv.senderIban ? `<p style="margin:0 0 6px 0;font-size:10px;color:#333;">IBAN: ${inv.senderIban}${inv.senderBic ? ' | BIC: ' + inv.senderBic : ''}</p>` : ''}
+    ${inv.notes ? `<p style="margin:12px 0 0 0;font-size:10px;color:#555;">${inv.notes}</p>` : ''}
+    ${inv.footerText ? `<p style="margin:16px 0 0 0;font-size:9px;color:#888;">${inv.footerText}</p>` : ''}
+    <p style="margin:12px 0 0 0;font-size:8px;color:#bbb;">SHA-256: ${inv.contentHash ?? 'noch nicht finalisiert'}</p>
+
+    <!-- FUSSZEILE (4 Spalten) -->
+    ${footerHtml}
+
     ${agbPage}
     <script>window.onload=()=>window.print();</script></body></html>`;
     const w = window.open('', '_blank');

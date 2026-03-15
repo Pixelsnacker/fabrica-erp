@@ -546,3 +546,9 @@
 - [x] Frontend: Lieferanten-Dropdown im Formular (nur bei purchase_order sichtbar)
 - [x] Frontend: Empfänger-Felder automatisch aus Lieferant befüllen
 - [x] Frontend: Lieferant in der Listenansicht anzeigen
+
+## Phase 58: PDF-Layout verbessern
+- [x] AGB-Seite 2 überlappt nicht mehr mit Fußzeile (fixed positioning entfernt)
+- [x] Fußzeile auf Seite 1 korrekt positioniert (kein Überlappen mit AGB-Titel)
+- [x] Seite 2 nur anzeigen wenn AGB-Text vorhanden
+- [x] Allgemeines PDF-Layout aufgeräumt (Abstände, Schriften, Tabelle, Empfänger-Label)
