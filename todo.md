@@ -719,3 +719,9 @@
 - [x] QueryClient staleTime=0, refetchOnWindowFocus=true gesetzt
 - [x] invoices.update gibt jetzt id zurück für gezielte Invalidierung
 - [x] convertMut invalidiert Quell-Angebot und neues Dokument
+
+## Feature: Projektkalkulation → Angebot automatisch übernehmen
+- [x] Projekt-Positionen (items) Datenstruktur analysiert: name, description, quantity, unitVk, technique
+- [x] Backend: projects.items.list bereits vorhanden, gibt alle Felder zurück
+- [x] Frontend: Mapping verbessert — name als Haupttitel, description+material als Langbeschreibung, Einheit aus Technik, calcItem für korrekte Summen
+- [x] useEffect auch bei leerem Array ausgeführt (leere Kalkulation öffnet trotzdem Formular)

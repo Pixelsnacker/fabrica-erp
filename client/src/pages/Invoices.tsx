@@ -430,18 +430,38 @@ export default function Invoices() {
     const footer = companySettings?.invoiceFooter ?? '';
     setForm({ type, customerId: prefill?.customerId, supplierId: undefined, projectId: prefill?.projectId, ...sender, recipientName: '', recipientCompany: '', recipientStreet: '', recipientZip: '', recipientCity: '', recipientEmail: '', issueDate: new Date().toISOString().slice(0, 10), dueDate: '', deliveryDate: '', paymentTerms: 'Zahlbar innerhalb von 14 Tagen ohne Abzug.', taxMode: companySettings?.kleinunternehmer ? 'kleinunternehmer' : 'standard', introText: '', notes: '', footerText: footer });
     // Wenn Projekt-Positionen mitgegeben werden, vorausfüllen
+    const taxMode = companySettings?.kleinunternehmer ? 'kleinunternehmer' : 'standard';
     if (prefill?.projectItems?.length) {
-      const mapped = prefill.projectItems.map((it: any, idx: number) => ({
-        position: idx + 1,
-        description: [it.name, it.material].filter(Boolean).join(' – '),
-        quantity: it.quantity ? String(parseFloat(String(it.quantity))) : '1',
-        unit: 'Stk.',
-        unitPriceNet: parseFloat(it.unitVk ?? '0').toFixed(2),
-        taxRate: '19',
-        lineTotalNet: (parseFloat(it.unitVk ?? '0') * (it.quantity ?? 1)).toFixed(2),
-        lineTax: (parseFloat(it.unitVk ?? '0') * (it.quantity ?? 1) * 0.19).toFixed(2),
-        lineTotalGross: (parseFloat(it.unitVk ?? '0') * (it.quantity ?? 1) * 1.19).toFixed(2),
-      }));
+      const mapped = prefill.projectItems.map((it: any, idx: number) => {
+        // Beschreibung: Name als Haupttitel, Material als Ergänzung
+        const description = it.name ?? '';
+        // Langbeschreibung: Notizen und Beschreibung aus Kalkulation
+        const longDescription = [it.description, it.material ? `Material: ${it.material}` : ''].filter(Boolean).join('\n');
+        const qty = it.quantity ? String(parseFloat(String(it.quantity))) : '1';
+        const unitPrice = parseFloat(it.unitVk ?? '0').toFixed(2);
+        // Einheit aus Technik ableiten
+        const unitMap: Record<string, string> = {
+          '3d_print': 'Stk.', cnc: 'Stk.', painting: 'Stk.',
+          cad_work: 'Std.', model_making: 'Stk.', assembly: 'Std.', other: 'Stk.'
+        };
+        const unit = unitMap[it.technique ?? 'other'] ?? 'Stk.';
+        const baseItem = {
+          position: idx + 1,
+          description,
+          longDescription,
+          quantity: qty,
+          unit,
+          unitPriceNet: unitPrice,
+          taxRate: '19',
+          lineTotalNet: '0',
+          lineTax: '0',
+          lineTotalGross: '0',
+          discount: '0',
+          discountedNet: '0',
+          isOptional: false,
+        };
+        return calcItem(baseItem, taxMode);
+      });
       setItems(mapped.length ? mapped : [emptyItem(1)]);
     } else {
       setItems([emptyItem(1)]);
@@ -489,15 +509,16 @@ export default function Invoices() {
     }
   }, [location]);
 
-  // Wenn Projekt-Positionen geladen sind, Formular öffnen
+  // Wenn Projekt-Positionen geladen sind (auch leeres Array), Formular öffnen
   useEffect(() => {
     if (pendingProjectId !== undefined && pendingProjectItems !== undefined) {
-      openNew('offer', { projectId: pendingProjectId, customerId: pendingCustomerId, projectItems: pendingProjectItems });
+      // Auch bei 0 Positionen öffnen (leere Kalkulation)
+      openNew('offer', { projectId: pendingProjectId, customerId: pendingCustomerId, projectItems: pendingProjectItems as any[] });
       setPendingProjectId(undefined);
       setPendingCustomerId(undefined);
       setLocation('/invoices');
     }
-  }, [pendingProjectItems]);
+  }, [pendingProjectItems, pendingProjectId]);
 
   const [pendingEditId, setPendingEditId] = useState<number | null>(null);
   const { data: editDetailData } = trpc.invoices.getById.useQuery(
