@@ -652,3 +652,10 @@
 - [x] generatePdf auf puppeteer.executablePath() umgestellt (ESM-kompatibel, kein require())
 - [x] PUPPETEER_CACHE_DIR als Umgebungsvariable gesetzt
 - [x] Live-Test erfolgreich: Toast 'PDF heruntergeladen' erscheint
+
+## Phase 78: PDF mit @react-pdf/renderer (kein Chromium)
+- [x] @react-pdf/renderer 4.3.2 installiert
+- [x] generatePdf Procedure auf renderInvoicePdf umgestellt (kein Puppeteer/Chromium mehr)
+- [x] PDF-Template: Logo, Absender/Empfänger, Positionen-Tabelle, Summen, Fußzeile
+- [x] Live-Test mit echten DB-Daten: 1 Seite, Fußzeile unten, kein IBAN bei Bestellungen
+- [ ] Auf Produktions-Domain testen
