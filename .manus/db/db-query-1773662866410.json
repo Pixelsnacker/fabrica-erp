@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE invoices MODIFY COLUMN type ENUM('offer','invoice','credit_note','order_confirmation','purchase_order','delivery_note') NOT NULL DEFAULT 'offer';\nALTER TABLE invoice_sequences MODIFY COLUMN type ENUM('invoice','offer','credit_note','order_confirmation','purchase_order','delivery_note') NOT NULL;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 9NNjvn7NV7enobv.7ea640e70a8c --database YMZow7uQxpBVyBGbmbpvvd --execute ALTER TABLE invoices MODIFY COLUMN type ENUM('offer','invoice','credit_note','order_confirmation','purchase_order','delivery_note') NOT NULL DEFAULT 'offer';\nALTER TABLE invoice_sequences MODIFY COLUMN type ENUM('invoice','offer','credit_note','order_confirmation','purchase_order','delivery_note') NOT NULL;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 791
+}

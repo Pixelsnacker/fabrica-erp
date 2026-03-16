@@ -335,13 +335,13 @@ export type InsertComplaintAttachment = typeof complaintAttachments.$inferInsert
 export const invoiceSequences = mysqlTable("invoice_sequences", {
   id: int().autoincrement().primaryKey(),
   year: int().notNull(),
-   type: mysqlEnum(['invoice','offer','credit_note','order_confirmation','purchase_order']).notNull(),
+   type: mysqlEnum(['invoice','offer','credit_note','order_confirmation','purchase_order','delivery_note']).notNull(),
   lastNumber: int("last_number").notNull().default(0),
 });
 export const invoices = mysqlTable("invoices", {
   id: int().autoincrement().primaryKey(),
   invoiceNumber: varchar("invoice_number", { length: 32 }).notNull(),
-  type: mysqlEnum(['offer','invoice','credit_note','order_confirmation','purchase_order']).notNull().default('offer'),
+  type: mysqlEnum(['offer','invoice','credit_note','order_confirmation','purchase_order','delivery_note']).notNull().default('offer'),
   status: mysqlEnum(['draft','sent','accepted','invoiced','paid','cancelled','overdue']).notNull().default('draft'),
   customerId: int("customer_id"),
   supplierId: int("supplier_id"),
@@ -463,6 +463,8 @@ export const companySettings = mysqlTable("company_settings", {
   offerStartNumber: int("offer_start_number").default(1),
   invoiceStartNumber: int("invoice_start_number").default(1),
   creditNoteStartNumber: int("credit_note_start_number").default(1),
+  deliveryNotePrefix: varchar("delivery_note_prefix", { length: 20 }).default("LS"),
+  deliveryNoteStartNumber: int("delivery_note_start_number").default(1),
   agbText: text("agb_text"),
   // SMTP-Konfiguration für E-Mail-Versand
   smtpHost: varchar("smtp_host", { length: 255 }),

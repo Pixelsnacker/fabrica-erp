@@ -113,6 +113,20 @@
       "when": 1773599468383,
       "tag": "0015_real_bishop",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "5",
+      "when": 1773662850971,
+      "tag": "0016_secret_dagger",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "5",
+      "when": 1773663261492,
+      "tag": "0017_safe_gamora",
+      "breakpoints": true
     }
   ]
 }

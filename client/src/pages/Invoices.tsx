@@ -24,7 +24,7 @@ import {
 
 // ─── Typen ───────────────────────────────────────────────────────────────────
 type TaxMode = 'standard' | 'reduced' | 'mixed' | 'tax_free' | 'kleinunternehmer';
-type InvoiceType = 'offer' | 'invoice' | 'credit_note' | 'order_confirmation' | 'purchase_order';
+type InvoiceType = 'offer' | 'invoice' | 'credit_note' | 'order_confirmation' | 'purchase_order' | 'delivery_note';
 type InvoiceStatus = 'draft' | 'sent' | 'accepted' | 'invoiced' | 'paid' | 'cancelled' | 'overdue';
 
 interface InvoiceItem {
@@ -63,6 +63,7 @@ const STATUS_COLORS: Record<InvoiceStatus, string> = {
 const TYPE_LABELS: Record<InvoiceType, string> = {
   offer: 'Angebot', invoice: 'Rechnung', credit_note: 'Gutschrift',
   order_confirmation: 'Auftragsbestätigung', purchase_order: 'Bestellung',
+  delivery_note: 'Lieferschein',
 };
 const TAX_MODE_LABELS: Record<TaxMode, string> = {
   standard: '19% MwSt (Standard)',
@@ -151,7 +152,7 @@ export default function Invoices() {
   const utils = trpc.useUtils();
   const [location, setLocation] = useLocation();
 
-  const [tab, setTab] = useState<'all' | 'offer' | 'invoice' | 'credit_note' | 'order_confirmation' | 'purchase_order'>('all');
+  const [tab, setTab] = useState<'all' | 'offer' | 'invoice' | 'credit_note' | 'order_confirmation' | 'purchase_order' | 'delivery_note'>('all');
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [showArticleSearch, setShowArticleSearch] = useState(false);
@@ -734,13 +735,14 @@ export default function Invoices() {
         {/* Tabs + Suche */}
         <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
           <Tabs value={tab} onValueChange={v => setTab(v as any)}>
-            <TabsList>
+            <TabsList className="flex flex-wrap gap-1 h-auto">
               <TabsTrigger value="all">Alle</TabsTrigger>
               <TabsTrigger value="offer">Angebote</TabsTrigger>
               <TabsTrigger value="invoice">Rechnungen</TabsTrigger>
               <TabsTrigger value="order_confirmation">AB</TabsTrigger>
               <TabsTrigger value="purchase_order">Bestellungen</TabsTrigger>
               <TabsTrigger value="credit_note">Gutschriften</TabsTrigger>
+              <TabsTrigger value="delivery_note">Lieferscheine</TabsTrigger>
             </TabsList>
           </Tabs>
           <div className="relative flex-1 min-w-[200px]">
@@ -895,6 +897,7 @@ export default function Invoices() {
                     <SelectItem value="order_confirmation">Auftragsbestätigung</SelectItem>
                     <SelectItem value="purchase_order">Bestellung</SelectItem>
                     <SelectItem value="credit_note">Gutschrift</SelectItem>
+                    <SelectItem value="delivery_note">Lieferschein</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

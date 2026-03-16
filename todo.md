@@ -677,4 +677,13 @@
 - [x] Backend: Alle gefilterten Rechnungen als PDFs generieren und in ZIP packen
 - [x] Frontend: PDF-Export Button in der Rechnungsliste
 - [x] Frontend: Dialog mit Monat/Jahr-Filter und Dokumenttyp-Auswahl
+- [x] Testen und Checkpoint (cb719985)
+
+## Phase 81: Lieferschein + Tab-Fix
+- [x] Bug: Tab-Filter-Überlappung behoben (flex-wrap, h-auto)
+- [x] Feature: delivery_note zum Schema-Enum hinzugefügt + DB-Migration
+- [x] Feature: Lieferschein erstellen (direkt über Formular)
+- [x] Feature: Lieferschein-PDF ohne Preise (nur #, Beschreibung, Menge, Einheit)
+- [x] Feature: Lieferschein-Tab im Filter
+- [x] Feature: LS-Präfix + Startnummer in Firmeneinstellungen
 - [ ] Testen und Checkpoint

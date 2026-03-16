@@ -29,6 +29,7 @@ function typeLabel(type: string): string {
     credit_note: 'Gutschrift',
     order_confirmation: 'Auftragsbestätigung',
     purchase_order: 'Bestellung',
+    delivery_note: 'Lieferschein',
   };
   return labels[type] ?? type;
 }
@@ -138,8 +139,21 @@ function Footer({ cs, type }: { cs: CompanySettings | null; type: string }) {
   );
 }
 
-function TableRow({ item, idx }: { item: InvoiceItem; idx: number }) {
+function TableRow({ item, idx, isDeliveryNote }: { item: InvoiceItem; idx: number; isDeliveryNote?: boolean }) {
   const rowStyle = idx % 2 === 0 ? S.tableRow : S.tableRowAlt;
+  if (isDeliveryNote) {
+    return (
+      <View style={rowStyle} wrap={false}>
+        <Text style={S.colPos}>{item.position}</Text>
+        <View style={{ width: '67%', fontSize: 8, paddingRight: 4 }}>
+          <Text style={{ fontSize: 8 }}>{item.description}</Text>
+          {item.longDescription ? <Text style={S.longDesc}>{item.longDescription}</Text> : null}
+        </View>
+        <Text style={{ width: '13%', fontSize: 8, textAlign: 'right' }}>{fmtQty(item.quantity)}</Text>
+        <Text style={{ width: '15%', fontSize: 8, textAlign: 'center' }}>{item.unit ?? 'Stk.'}</Text>
+      </View>
+    );
+  }
   return (
     <View style={rowStyle} wrap={false}>
       <Text style={S.colPos}>{item.position}</Text>
@@ -232,34 +246,45 @@ export function InvoicePDF({ inv, cs }: { inv: InvoiceWithItems; cs: CompanySett
         {inv.introText ? <Text style={S.introText}>{inv.introText}</Text> : null}
 
         {/* Positionen-Tabelle */}
-        <View style={S.tableHeader}>
-          <Text style={[S.colPos, S.colHeaderText]}>#</Text>
-          <Text style={[S.colDesc, S.colHeaderText]}>Beschreibung</Text>
-          <Text style={[S.colQty, S.colHeaderText]}>Menge</Text>
-          <Text style={[S.colUnit, S.colHeaderText]}>Einh.</Text>
-          <Text style={[S.colPrice, S.colHeaderText]}>EP netto</Text>
-          <Text style={[S.colTax, S.colHeaderText]}>MwSt</Text>
-          <Text style={[S.colTotal, S.colHeaderText]}>Gesamt</Text>
-        </View>
+        {inv.type === 'delivery_note' ? (
+          <View style={S.tableHeader}>
+            <Text style={[S.colPos, S.colHeaderText]}>#</Text>
+            <Text style={[{ width: '67%', fontSize: 8 }, S.colHeaderText]}>Beschreibung</Text>
+            <Text style={[{ width: '13%', fontSize: 8, textAlign: 'right' as const }, S.colHeaderText]}>Menge</Text>
+            <Text style={[{ width: '15%', fontSize: 8, textAlign: 'center' as const }, S.colHeaderText]}>Einheit</Text>
+          </View>
+        ) : (
+          <View style={S.tableHeader}>
+            <Text style={[S.colPos, S.colHeaderText]}>#</Text>
+            <Text style={[S.colDesc, S.colHeaderText]}>Beschreibung</Text>
+            <Text style={[S.colQty, S.colHeaderText]}>Menge</Text>
+            <Text style={[S.colUnit, S.colHeaderText]}>Einh.</Text>
+            <Text style={[S.colPrice, S.colHeaderText]}>EP netto</Text>
+            <Text style={[S.colTax, S.colHeaderText]}>MwSt</Text>
+            <Text style={[S.colTotal, S.colHeaderText]}>Gesamt</Text>
+          </View>
+        )}
         {inv.items.map((item, idx) => (
-          <TableRow key={item.id} item={item} idx={idx} />
+          <TableRow key={item.id} item={item} idx={idx} isDeliveryNote={inv.type === 'delivery_note'} />
         ))}
 
-        {/* Summen */}
-        <View style={S.summaryBlock}>
-          <View style={S.summaryRow}>
-            <Text style={S.summaryLabel}>Netto:</Text>
-            <Text style={S.summaryValue}>{fmt(inv.subtotalNet)} €</Text>
+        {/* Summen — bei Lieferschein ausblenden */}
+        {inv.type !== 'delivery_note' ? (
+          <View style={S.summaryBlock}>
+            <View style={S.summaryRow}>
+              <Text style={S.summaryLabel}>Netto:</Text>
+              <Text style={S.summaryValue}>{fmt(inv.subtotalNet)} €</Text>
+            </View>
+            <View style={S.summaryRow}>
+              <Text style={S.summaryLabel}>MwSt:</Text>
+              <Text style={S.summaryValue}>{fmt(inv.taxAmount)} €</Text>
+            </View>
+            <View style={S.summaryTotalRow}>
+              <Text style={S.summaryTotalLabel}>Gesamt (brutto):</Text>
+              <Text style={S.summaryTotalValue}>{fmt(inv.totalGross)} €</Text>
+            </View>
           </View>
-          <View style={S.summaryRow}>
-            <Text style={S.summaryLabel}>MwSt:</Text>
-            <Text style={S.summaryValue}>{fmt(inv.taxAmount)} €</Text>
-          </View>
-          <View style={S.summaryTotalRow}>
-            <Text style={S.summaryTotalLabel}>Gesamt (brutto):</Text>
-            <Text style={S.summaryTotalValue}>{fmt(inv.totalGross)} €</Text>
-          </View>
-        </View>
+        ) : null}
 
         {/* Notizen */}
         {inv.notes ? <Text style={S.notesText}>{inv.notes}</Text> : null}
