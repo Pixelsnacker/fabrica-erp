@@ -708,3 +708,7 @@
 - [x] Frontend: "Lieferschein" Option im Konvertierungs-Dialog der Dokumentliste
 - [x] Frontend: onSuccess-Handler für delivery_note Label angepasst
 - [x] TypeScript: Truck-Icon importiert, 0 Fehler
+
+## Bugfix: Angebot-Button im Projektdetail → 404
+- [x] Angebot-Button navigiert zur falschen URL (404) — Route /invoices/new fehlte
+- [x] Route /invoices/new in App.tsx hinzugefügt

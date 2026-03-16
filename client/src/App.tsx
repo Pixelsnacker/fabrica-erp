@@ -45,6 +45,7 @@ function Router() {
         <Route path="/complaints" component={Complaints} />
         <Route path="/articles" component={Articles} />
         <Route path="/invoices" component={Invoices} />
+        <Route path="/invoices/new" component={Invoices} />
         <Route path="/calendar" component={Calendar} />
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />
