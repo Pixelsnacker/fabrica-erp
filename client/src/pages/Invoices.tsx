@@ -215,17 +215,50 @@ export default function Invoices() {
 
   // Mutationen
   const createMut = trpc.invoices.create.useMutation({
-    onSuccess: () => { utils.invoices.list.invalidate(); setShowForm(false); toast.success('Erstellt'); },
+    onSuccess: (data) => {
+      utils.invoices.list.invalidate();
+      if (data?.id) utils.invoices.getById.invalidate({ id: data.id });
+      setShowForm(false);
+      toast.success('Erstellt');
+    },
     onError: (err) => toast.error(`Fehler beim Erstellen: ${err.message}`),
   });
   const updateMut = trpc.invoices.update.useMutation({
-    onSuccess: () => { utils.invoices.list.invalidate(); setShowForm(false); toast.success('Gespeichert'); },
+    onSuccess: (_data, vars) => {
+      utils.invoices.list.invalidate();
+      utils.invoices.getById.invalidate({ id: vars.id });
+      setShowForm(false);
+      toast.success('Gespeichert');
+    },
     onError: (err) => toast.error(`Fehler beim Speichern: ${err.message}`),
   });
-  const statusMut = trpc.invoices.changeStatus.useMutation({ onSuccess: () => utils.invoices.list.invalidate() });
-  const lockMut = trpc.invoices.lock.useMutation({ onSuccess: () => { utils.invoices.list.invalidate(); toast.success('Rechnung finalisiert — GoBD-konform gesperrt.'); } });
-  const cancelMut = trpc.invoices.cancel.useMutation({ onSuccess: () => { utils.invoices.list.invalidate(); toast.success('Storniert'); } });
-  const deleteMut = trpc.invoices.delete.useMutation({ onSuccess: () => { utils.invoices.list.invalidate(); toast.success('Gelöscht'); } });
+  const statusMut = trpc.invoices.changeStatus.useMutation({
+    onSuccess: (_data, vars) => {
+      utils.invoices.list.invalidate();
+      utils.invoices.getById.invalidate({ id: vars.id });
+    }
+  });
+  const lockMut = trpc.invoices.lock.useMutation({
+    onSuccess: (_data, vars) => {
+      utils.invoices.list.invalidate();
+      utils.invoices.getById.invalidate({ id: vars.id });
+      toast.success('Rechnung finalisiert — GoBD-konform gesperrt.');
+    }
+  });
+  const cancelMut = trpc.invoices.cancel.useMutation({
+    onSuccess: (_data, vars) => {
+      utils.invoices.list.invalidate();
+      utils.invoices.getById.invalidate({ id: vars.id });
+      toast.success('Storniert');
+    }
+  });
+  const deleteMut = trpc.invoices.delete.useMutation({
+    onSuccess: (_data, vars) => {
+      utils.invoices.list.invalidate();
+      utils.invoices.getById.invalidate({ id: vars.id });
+      toast.success('Gelöscht');
+    }
+  });
   const generatePdfMut = trpc.invoices.generatePdf.useMutation();
   const exportZipMut = trpc.invoices.exportZip.useMutation();
   const [showExportDialog, setShowExportDialog] = useState(false);
@@ -263,6 +296,9 @@ export default function Invoices() {
   const convertMut = trpc.invoices.convert.useMutation({
     onSuccess: (data: { id?: number; invoiceNumber: string }, vars: { offerId: number; targetType: 'invoice' | 'order_confirmation' | 'purchase_order' | 'delivery_note' }) => {
       utils.invoices.list.invalidate();
+      // Quell-Angebot und neues Dokument invalidieren
+      utils.invoices.getById.invalidate({ id: vars.offerId });
+      if (data?.id) utils.invoices.getById.invalidate({ id: data.id });
       const label = vars.targetType === 'invoice' ? 'Rechnung' : vars.targetType === 'order_confirmation' ? 'Auftragsbestätigung' : vars.targetType === 'delivery_note' ? 'Lieferschein' : 'Bestellung';
       toast.success(`✅ ${label} ${data.invoiceNumber} wurde erstellt`);
       setShowConvertDialog(null);

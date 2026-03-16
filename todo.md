@@ -712,3 +712,10 @@
 ## Bugfix: Angebot-Button im Projektdetail → 404
 - [x] Angebot-Button navigiert zur falschen URL (404) — Route /invoices/new fehlte
 - [x] Route /invoices/new in App.tsx hinzugefügt
+
+## Bugfix: Angebots-Modul unzuverlässig (kritisch)
+- [x] Positionen nach dem Speichern nicht sichtbar ohne Browser-Refresh
+- [x] Cache-Invalidierung nach Mutations erweitert: getById für alle Mutations invalidiert
+- [x] QueryClient staleTime=0, refetchOnWindowFocus=true gesetzt
+- [x] invoices.update gibt jetzt id zurück für gezielte Invalidierung
+- [x] convertMut invalidiert Quell-Angebot und neues Dokument

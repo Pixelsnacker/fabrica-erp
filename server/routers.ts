@@ -1172,7 +1172,7 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
         ? items.map(it => ({ ...it, isOptional: it.isOptional ? 1 : 0 }))
         : null;
       await updateInvoice(id, data as any, mappedItems as any, ctx.user.email ?? 'system');
-      return { success: true };
+      return { id, success: true };
     }),
     changeStatus: protectedProcedure.input(z.object({ id: z.number(), status: z.string() })).mutation(async ({ input, ctx }) => {
       await changeInvoiceStatus(input.id, input.status, ctx.user.email ?? 'system');
