@@ -226,6 +226,39 @@ export default function Invoices() {
   const cancelMut = trpc.invoices.cancel.useMutation({ onSuccess: () => { utils.invoices.list.invalidate(); toast.success('Storniert'); } });
   const deleteMut = trpc.invoices.delete.useMutation({ onSuccess: () => { utils.invoices.list.invalidate(); toast.success('Gelöscht'); } });
   const generatePdfMut = trpc.invoices.generatePdf.useMutation();
+  const exportZipMut = trpc.invoices.exportZip.useMutation();
+  const [showExportDialog, setShowExportDialog] = useState(false);
+  const [exportYear, setExportYear] = useState(new Date().getFullYear());
+  const [exportMonth, setExportMonth] = useState(0); // 0 = ganzes Jahr
+  const [exportTypes, setExportTypes] = useState<string[]>([]); // leer = alle
+  const [exportLoading, setExportLoading] = useState(false);
+
+  async function handleExportZip() {
+    setExportLoading(true);
+    try {
+      const result = await exportZipMut.mutateAsync({
+        year: exportYear,
+        month: exportMonth > 0 ? exportMonth : undefined,
+        types: exportTypes.length > 0 ? exportTypes : undefined,
+      });
+      // ZIP herunterladen
+      const bytes = Uint8Array.from(atob(result.zip), c => c.charCodeAt(0));
+      const blob = new Blob([bytes], { type: 'application/zip' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = result.filename;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(`${result.count} Dokumente exportiert: ${result.filename}`);
+      setShowExportDialog(false);
+    } catch (e: any) {
+      toast.error(e.message ?? 'Export fehlgeschlagen');
+    } finally {
+      setExportLoading(false);
+    }
+  }
+
   const convertMut = trpc.invoices.convert.useMutation({
     onSuccess: (data: { id?: number; invoiceNumber: string }, vars: { offerId: number; targetType: 'invoice' | 'order_confirmation' | 'purchase_order' }) => {
       utils.invoices.list.invalidate();
@@ -679,6 +712,9 @@ export default function Invoices() {
             </Button>
             <Button variant="outline" size="sm" onClick={() => datevData && downloadCsv(datevData.csv, datevData.filename ?? 'DATEV.csv')}>
               <Download className="w-4 h-4 mr-1" /> DATEV
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setShowExportDialog(true)}>
+              <FolderOpen className="w-4 h-4 mr-1" /> PDF-Export
             </Button>
             <Button variant="outline" size="sm" onClick={() => openNew('offer')}>
               <FileText className="w-4 h-4 mr-1" /> Angebot
@@ -1800,6 +1836,92 @@ export default function Invoices() {
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setShowConvertDialog(null)}>Abbrechen</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── PDF-Export Dialog ─────────────────────────────────────────────────── */}
+      <Dialog open={showExportDialog} onOpenChange={setShowExportDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>PDF-Export für Buchhalter</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-sm mb-1 block">Jahr</Label>
+                <Select value={String(exportYear)} onValueChange={v => setExportYear(Number(v))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {[2024, 2025, 2026, 2027].map(y => (
+                      <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-sm mb-1 block">Monat</Label>
+                <Select value={String(exportMonth)} onValueChange={v => setExportMonth(Number(v))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">Ganzes Jahr</SelectItem>
+                    <SelectItem value="1">Januar</SelectItem>
+                    <SelectItem value="2">Februar</SelectItem>
+                    <SelectItem value="3">März</SelectItem>
+                    <SelectItem value="4">April</SelectItem>
+                    <SelectItem value="5">Mai</SelectItem>
+                    <SelectItem value="6">Juni</SelectItem>
+                    <SelectItem value="7">Juli</SelectItem>
+                    <SelectItem value="8">August</SelectItem>
+                    <SelectItem value="9">September</SelectItem>
+                    <SelectItem value="10">Oktober</SelectItem>
+                    <SelectItem value="11">November</SelectItem>
+                    <SelectItem value="12">Dezember</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div>
+              <Label className="text-sm mb-2 block">Dokumenttypen (leer = alle)</Label>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { value: 'invoice', label: 'Rechnungen' },
+                  { value: 'offer', label: 'Angebote' },
+                  { value: 'credit_note', label: 'Gutschriften' },
+                  { value: 'order_confirmation', label: 'Auftragsbestätigungen' },
+                  { value: 'purchase_order', label: 'Bestellungen' },
+                ].map(t => (
+                  <button
+                    key={t.value}
+                    type="button"
+                    onClick={() => setExportTypes(prev =>
+                      prev.includes(t.value) ? prev.filter(x => x !== t.value) : [...prev, t.value]
+                    )}
+                    className={`px-3 py-1 rounded-full text-xs border transition-colors ${
+                      exportTypes.includes(t.value)
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'border-border text-muted-foreground hover:border-primary'
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+              {exportTypes.length === 0 && (
+                <p className="text-xs text-muted-foreground mt-1">Alle Dokumenttypen werden exportiert</p>
+              )}
+            </div>
+            <div className="bg-muted/50 rounded-lg p-3 text-sm text-muted-foreground">
+              Es wird ein ZIP-Archiv mit allen PDFs des gewählten Zeitraums erstellt.
+              Der Dateiname lautet z.B. <code className="font-mono text-xs">Dokumente-{exportYear}{exportMonth > 0 ? `-${String(exportMonth).padStart(2, '0')}` : ''}.zip</code>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setShowExportDialog(false)}>Abbrechen</Button>
+            <Button onClick={handleExportZip} disabled={exportLoading}>
+              {exportLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+              {exportLoading ? 'Wird erstellt...' : 'ZIP herunterladen'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -6,6 +6,7 @@ import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { invokeLLM } from "./_core/llm";
 import { storagePut } from "./storage";
 import { renderInvoicePdf } from "./pdfRenderer";
+import archiver from "archiver";
 import {
   getCustomers, getCustomerById, createCustomer, updateCustomer, deleteCustomer,
   getLeadSources, createLeadSource, updateLeadSource, deleteLeadSource,
@@ -1314,6 +1315,68 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
         const cs = await getCompanySettings();
         const pdfBuffer = await renderInvoicePdf(inv, cs);
         return { pdf: pdfBuffer.toString('base64'), filename: inv.invoiceNumber + '.pdf' };
+      }),
+
+    exportZip: protectedProcedure
+      .input(z.object({
+        year: z.number().int().min(2020).max(2099),
+        month: z.number().int().min(0).max(12).optional(), // 0 = ganzes Jahr, 1-12 = Monat
+        types: z.array(z.string()).optional(), // ['invoice','offer','purchase_order','credit_note'] oder leer = alle
+      }))
+      .mutation(async ({ input }) => {
+        // Alle Rechnungen laden
+        const allInvoices = await getInvoices();
+        const cs = await getCompanySettings();
+
+        // Filtern nach Jahr/Monat/Typ
+        const filtered = allInvoices.filter((inv: any) => {
+          const d = new Date(inv.date);
+          const invYear = d.getFullYear();
+          const invMonth = d.getMonth() + 1; // 1-12
+          if (invYear !== input.year) return false;
+          if (input.month && input.month > 0 && invMonth !== input.month) return false;
+          if (input.types && input.types.length > 0 && !input.types.includes(inv.type)) return false;
+          return true;
+        });
+
+        if (filtered.length === 0) {
+          throw new Error('Keine Dokumente für den gewählten Zeitraum gefunden');
+        }
+
+        // ZIP erstellen
+        const chunks: Buffer[] = [];
+        await new Promise<void>((resolve, reject) => {
+          const archive = archiver('zip', { zlib: { level: 6 } });
+          archive.on('data', (chunk: Buffer) => chunks.push(chunk));
+          archive.on('end', () => resolve());
+          archive.on('error', reject);
+
+          // PDFs generieren und zum ZIP hinzufügen
+          const pdfPromises = filtered.map(async (inv: any) => {
+            try {
+              const fullInv = await getInvoiceById(inv.id);
+              if (!fullInv) return;
+              const pdfBuffer = await renderInvoicePdf(fullInv, cs);
+              archive.append(pdfBuffer, { name: `${inv.invoiceNumber}.pdf` });
+            } catch (e) {
+              // Einzelne Fehler überspringen
+            }
+          });
+
+          Promise.all(pdfPromises).then(() => archive.finalize()).catch(reject);
+        });
+
+        const zipBuffer = Buffer.concat(chunks);
+        const monthStr = input.month && input.month > 0
+          ? `-${String(input.month).padStart(2, '0')}`
+          : '';
+        const filename = `Dokumente-${input.year}${monthStr}.zip`;
+
+        return {
+          zip: zipBuffer.toString('base64'),
+          filename,
+          count: filtered.length,
+        };
       }),
   }),
   // ─── KI-Textverbesserung ──────────────────────────────────────────────────────────────────────────────

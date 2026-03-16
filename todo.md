@@ -659,3 +659,22 @@
 - [x] PDF-Template: Logo, Absender/Empfänger, Positionen-Tabelle, Summen, Fußzeile
 - [x] Live-Test mit echten DB-Daten: 1 Seite, Fußzeile unten, kein IBAN bei Bestellungen
 - [ ] Auf Produktions-Domain testen
+
+## Phase 79: Google Drive Integration
+- [ ] googleapis npm-Paket installieren
+- [ ] Google Drive OAuth2 Credentials (Client ID + Secret) einrichten
+- [ ] Google Drive Service: Ordnerstruktur Fabrica ERP / Jahr / Monat
+- [ ] PDF-Upload: Bei jeder PDF-Generierung automatisch auf Drive hochladen
+- [ ] Datei-Upload: Projektdateien (STL, STEP, Bilder) auf Drive synchronisieren
+- [ ] Datenbank-Export: Täglicher automatischer JSON-Export auf Drive
+- [ ] Frontend: Google Drive Verbindungs-UI (Connect/Disconnect Button)
+- [ ] Frontend: Sync-Status und manuelle Sync-Buttons
+- [ ] Testen auf Produktions-Domain
+
+## Phase 80: ZIP-Export für Buchhalter
+- [x] archiver npm-Paket installiert
+- [x] Backend: exportZip Procedure (Filter: Monat/Jahr, Dokumenttyp)
+- [x] Backend: Alle gefilterten Rechnungen als PDFs generieren und in ZIP packen
+- [x] Frontend: PDF-Export Button in der Rechnungsliste
+- [x] Frontend: Dialog mit Monat/Jahr-Filter und Dokumenttyp-Auswahl
+- [ ] Testen und Checkpoint
