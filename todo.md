@@ -725,3 +725,12 @@
 - [x] Backend: projects.items.list bereits vorhanden, gibt alle Felder zurück
 - [x] Frontend: Mapping verbessert — name als Haupttitel, description+material als Langbeschreibung, Einheit aus Technik, calcItem für korrekte Summen
 - [x] useEffect auch bei leerem Array ausgeführt (leere Kalkulation öffnet trotzdem Formular)
+
+## Feature: Projektstatus → 'Angebot' bei Angebotserstellung
+- [ ] Backend: invoices.create setzt Projektstatus auf 'offer' wenn projectId vorhanden und type='offer'
+- [ ] Nur wenn aktueller Status früher als 'offer' ist (inquiry, calculation)
+
+## Bugfix: Cache-Bug beim Angebot bearbeiten (kritisch)
+- [x] Nach Speichern → Schließen → Wieder öffnen: alte Daten sichtbar — behoben
+- [x] Root Cause: React Query lieferte gecachte Daten beim erneuten Öffnen
+- [x] Fix: queryClient.removeQueries in updateMut onSuccess und openEdit — Cache wird direkt gelöscht

@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
+import { useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -150,6 +151,7 @@ const DEFAULT_SENDER = {
 // ─── Hauptkomponente ──────────────────────────────────────────────────────────
 export default function Invoices() {
   const utils = trpc.useUtils();
+  const queryClient = useQueryClient();
   const [location, setLocation] = useLocation();
 
   const [tab, setTab] = useState<'all' | 'offer' | 'invoice' | 'credit_note' | 'order_confirmation' | 'purchase_order' | 'delivery_note'>('all');
@@ -226,7 +228,9 @@ export default function Invoices() {
   const updateMut = trpc.invoices.update.useMutation({
     onSuccess: (_data, vars) => {
       utils.invoices.list.invalidate();
-      utils.invoices.getById.invalidate({ id: vars.id });
+      // Cache-Eintrag direkt löschen (removeQueries) damit beim nächsten Öffnen
+      // immer frische Daten vom Server geladen werden, nicht gecachte
+      queryClient.removeQueries({ queryKey: [['invoices', 'getById'], { input: { id: vars.id }, type: 'query' }] });
       setShowForm(false);
       toast.success('Gespeichert');
     },
@@ -572,6 +576,9 @@ export default function Invoices() {
   }, [editDetailData, pendingEditId]);
 
   function openEdit(inv: any) {
+    // Cache-Eintrag direkt löschen damit der Query beim nächsten Aufruf
+    // garantiert frische Daten vom Server lädt
+    queryClient.removeQueries({ queryKey: [['invoices', 'getById'], { input: { id: inv.id }, type: 'query' }] });
     setPendingEditId(inv.id);
   }
 

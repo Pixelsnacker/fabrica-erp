@@ -1117,6 +1117,17 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
         mappedItems as any,
         ctx.user.email ?? 'system',
       );
+      // Projektstatus automatisch auf 'offer' setzen wenn Angebot mit Projektbezug
+      if (input.type === 'offer' && input.projectId) {
+        const project = await getProjectById(input.projectId);
+        const STATUS_ORDER = ['inquiry', 'calculation', 'offer', 'order', 'production', 'shipping', 'completed', 'cancelled'];
+        const currentIdx = STATUS_ORDER.indexOf(project?.status ?? 'inquiry');
+        const offerIdx = STATUS_ORDER.indexOf('offer');
+        // Nur hochstufen, nie zurückstufen
+        if (project && currentIdx < offerIdx) {
+          await updateProject(input.projectId, { status: 'offer' });
+        }
+      }
       return { id, invoiceNumber };
     }),
     update: protectedProcedure.input(z.object({
