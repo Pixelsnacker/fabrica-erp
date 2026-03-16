@@ -5,6 +5,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { invokeLLM } from "./_core/llm";
 import { storagePut } from "./storage";
+import { buildInvoiceHtml } from "./pdfHtml";
 import {
   getCustomers, getCustomerById, createCustomer, updateCustomer, deleteCustomer,
   getLeadSources, createLeadSource, updateLeadSource, deleteLeadSource,
@@ -1304,6 +1305,33 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
         const newStatus = input.targetType === 'invoice' ? 'invoiced' : 'accepted';
         await changeInvoiceStatus(input.offerId, newStatus, ctx.user.email ?? 'system');
         return { id: newId, invoiceNumber };
+      }),
+    generatePdf: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const inv = await getInvoiceById(input.id);
+        if (!inv) throw new Error('Dokument nicht gefunden');
+        const cs = await getCompanySettings();
+        const puppeteer = await import('puppeteer-core');
+        const browser = await puppeteer.launch({
+          executablePath: '/usr/bin/chromium-browser',
+          args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+          headless: true,
+        });
+        try {
+          const page = await browser.newPage();
+          const html = buildInvoiceHtml(inv, cs);
+          await page.setContent(html, { waitUntil: 'networkidle0' });
+          const pdfBuffer = await page.pdf({
+            format: 'A4',
+            printBackground: true,
+            margin: { top: '15mm', right: '15mm', bottom: '35mm', left: '15mm' },
+            displayHeaderFooter: false,
+          });
+          return { pdf: Buffer.from(pdfBuffer).toString('base64'), filename: inv.invoiceNumber + '.pdf' };
+        } finally {
+          await browser.close();
+        }
       }),
   }),
   // ─── KI-Textverbesserung ──────────────────────────────────────────────────────────────────────────────

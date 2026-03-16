@@ -21,8 +21,6 @@ import {
 } from "lucide-react";
 
 // ─── PDF Download ───────────────────────────────────────────────────────────
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 
 // ─── Typen ───────────────────────────────────────────────────────────────────
 type TaxMode = 'standard' | 'reduced' | 'mixed' | 'tax_free' | 'kleinunternehmer';
@@ -227,6 +225,7 @@ export default function Invoices() {
   const lockMut = trpc.invoices.lock.useMutation({ onSuccess: () => { utils.invoices.list.invalidate(); toast.success('Rechnung finalisiert — GoBD-konform gesperrt.'); } });
   const cancelMut = trpc.invoices.cancel.useMutation({ onSuccess: () => { utils.invoices.list.invalidate(); toast.success('Storniert'); } });
   const deleteMut = trpc.invoices.delete.useMutation({ onSuccess: () => { utils.invoices.list.invalidate(); toast.success('Gelöscht'); } });
+  const generatePdfMut = trpc.invoices.generatePdf.useMutation();
   const convertMut = trpc.invoices.convert.useMutation({
     onSuccess: (data: { id?: number; invoiceNumber: string }, vars: { offerId: number; targetType: 'invoice' | 'order_confirmation' | 'purchase_order' }) => {
       utils.invoices.list.invalidate();
@@ -616,349 +615,49 @@ export default function Invoices() {
     return dateStr;
   }
 
-  function printInvoice(inv: any) {
-    const cs = companySettings as any;
-    const agbText: string = (cs?.agbText ?? '').trim();
-    const logoUrl: string = cs?.logoUrl ?? '';
-    const isPurchaseOrder = inv.type === 'purchase_order';
-
-    const taxModeNote = inv.taxMode === 'kleinunternehmer'
-      ? '<p style="margin-top:16px;font-size:11px;">Gemäß §19 UStG wird keine Umsatzsteuer berechnet.</p>' : '';
-
-    const itemRows = (inv.items ?? []).map((it: any, i: number) => {
-      const discountPct = parseFloat(it.discount ?? '0');
-      const discountCell = discountPct > 0
-        ? `<span style="color:#d97706;font-size:10px;"> (${discountPct}% Rabatt)</span>` : '';
-      const optionalBadge = it.isOptional
-        ? '<span style="background:#f3f4f6;color:#6b7280;font-size:9px;padding:1px 5px;border-radius:3px;margin-left:6px;">Optional</span>' : '';
-      const longDesc = it.longDescription
-        ? `<div style="font-size:10px;color:#555;margin-top:3px;white-space:pre-wrap;">${it.longDescription}</div>` : '';
-      return `<tr style="${it.isOptional ? 'opacity:0.7;' : ''}">
-        <td style="padding:5px 6px;border-bottom:1px solid #e8e8e8;vertical-align:top;">${i + 1}</td>
-        <td style="padding:5px 6px;border-bottom:1px solid #e8e8e8;vertical-align:top;">
-          <span style="font-weight:500;white-space:pre-wrap;">${it.description}</span>${optionalBadge}${discountCell}${longDesc}
-        </td>
-        <td style="padding:5px 6px;border-bottom:1px solid #e8e8e8;text-align:right;vertical-align:top;white-space:nowrap;">${parseFloat(it.quantity ?? 1).toLocaleString('de-DE')}</td>
-        <td style="padding:5px 6px;border-bottom:1px solid #e8e8e8;vertical-align:top;white-space:nowrap;">${it.unit ?? 'Stk.'}</td>
-        <td style="padding:5px 6px;border-bottom:1px solid #e8e8e8;text-align:right;vertical-align:top;white-space:nowrap;">${parseFloat(it.unitPriceNet ?? 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })} €</td>
-        <td style="padding:5px 6px;border-bottom:1px solid #e8e8e8;text-align:right;vertical-align:top;white-space:nowrap;">${it.taxRate ?? 19} %</td>
-        <td style="padding:5px 6px;border-bottom:1px solid #e8e8e8;text-align:right;vertical-align:top;white-space:nowrap;font-weight:600;">${parseFloat(it.lineTotalGross ?? 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })} €</td>
-      </tr>`;
-    }).join('');
-
-    // Summen berechnen
-    const pdfItems = inv.items ?? [];
-    const reqItems = pdfItems.filter((i: any) => !i.isOptional);
-    const optItems = pdfItems.filter((i: any) => i.isOptional);
-    const pdfNet = reqItems.reduce((s: number, i: any) => s + parseFloat(i.lineTotalNet ?? 0), 0);
-    const pdfTax = reqItems.reduce((s: number, i: any) => s + parseFloat(i.lineTax ?? 0), 0);
-    const pdfGross = pdfNet + pdfTax;
-    const pdfOptGross = optItems.reduce((s: number, i: any) => s + parseFloat(i.lineTotalGross ?? 0), 0);
-    const pdfDiscount = pdfItems.reduce((s: number, i: any) => s + parseFloat(i.discountedNet ?? 0), 0);
-    const fmt = (n: number) => n.toLocaleString('de-DE', { minimumFractionDigits: 2 }) + ' €';
-
-    // Fußzeile aus companySettings (4 Spalten) - als normaler Fließtext, KEIN position:fixed
-    // Bei Bestellungen: footerCol4 (Bankdaten/IBAN) nicht anzeigen
-    const footerCols = isPurchaseOrder
-      ? [cs?.footerCol1 ?? '', cs?.footerCol2 ?? '', cs?.footerCol3 ?? '', '']
-      : [cs?.footerCol1 ?? '', cs?.footerCol2 ?? '', cs?.footerCol3 ?? '', cs?.footerCol4 ?? ''];
-    const hasFooterCols = footerCols.some(c => c.trim());
-    const renderCol = (text: string) => text.split('\n')
-      .map((l: string) => `<span>${l.replace(/https?:\/\//, '')}</span>`)
-      .join('<br/>');
-
-    const recipientLabel = isPurchaseOrder ? 'LIEFERANT' : 'EMPFÄNGER';
-    const docTitle = TYPE_LABELS[inv.type as InvoiceType] ?? inv.type;
-
-    const html = `<!DOCTYPE html>
-<html lang="de">
-<head>
-<meta charset="UTF-8">
-<title>${inv.invoiceNumber}</title>
-<style>
-  @page {
-    size: A4;
-    margin: 1.5cm 1.5cm 2.5cm 1.5cm;
-    @bottom-center {
-      content: '';
-    }
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body {
-    height: 100%;
-  }
-  body {
-    font-family: Arial, Helvetica, sans-serif;
-    font-size: 11px;
-    color: #111;
-    line-height: 1.5;
-    background: #fff;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-  }
-  .main-content {
-    flex: 1;
-  }
-  table { width: 100%; border-collapse: collapse; }
-  .doc-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
-  .doc-header-left { flex: 1; }
-  .doc-header-right { text-align: right; }
-  .doc-title { font-size: 24px; font-weight: 700; color: #111; margin-bottom: 8px; }
-  .doc-meta { font-size: 11px; color: #333; line-height: 1.8; }
-  .sender-name { font-size: 13px; font-weight: 700; margin-bottom: 3px; }
-  .sender-info { font-size: 10px; color: #444; line-height: 1.6; }
-  .recipient-label { font-size: 9px; color: #888; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
-  .recipient-block { margin-bottom: 20px; }
-  .divider { border: none; border-top: 1px solid #ddd; margin: 16px 0; }
-  .items-table th {
-    background: #f0f0f0;
-    text-align: left;
-    padding: 6px;
-    border-bottom: 2px solid #ccc;
-    font-size: 10px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-  }
-  .items-table td { padding: 5px 6px; border-bottom: 1px solid #e8e8e8; font-size: 11px; vertical-align: top; }
-  .totals-section { display: flex; justify-content: flex-end; margin: 16px 0; }
-  .totals-table { width: 280px; }
-  .totals-table td { padding: 3px 6px; font-size: 11px; }
-  .totals-table .total-row td { font-weight: 700; font-size: 13px; border-top: 2px solid #111; padding-top: 6px; }
-  .payment-info { font-size: 10px; color: #333; margin-top: 8px; line-height: 1.8; }
-  .notes { font-size: 10px; color: #555; margin-top: 12px; }
-  .footer-area {
-    margin-top: 32px;
-    padding-top: 8px;
-    border-top: 1.5px solid #bbb;
-    font-size: 9px;
-    color: #555;
-  }
-  .footer-area table td { padding: 0 8px 0 0; vertical-align: top; font-size: 9px; color: #555; }
-  .page-num { text-align: right; font-size: 9px; color: #999; margin-top: 4px; }
-  .agb-page { page-break-before: always; padding-top: 8px; }
-  .agb-page h2 { font-size: 15px; margin-bottom: 14px; border-bottom: 2px solid #333; padding-bottom: 8px; }
-  @media print {
-    a { text-decoration: none; color: inherit; }
-    button { display: none; }
-  }
-</style>
-</head>
-<body>
-
-<div class="main-content">
-<!-- KOPF -->
-<div class="doc-header">
-  <div class="doc-header-left">
-    ${logoUrl ? `<img src="${logoUrl}" alt="Logo" style="max-height:65px;max-width:200px;object-fit:contain;margin-bottom:10px;display:block;">` : ''}
-    <div class="sender-name">${inv.senderName || ''}</div>
-    <div class="sender-info">
-      ${inv.senderStreet ? inv.senderStreet + '<br>' : ''}
-      ${(inv.senderZip || inv.senderCity) ? (inv.senderZip ?? '') + ' ' + (inv.senderCity ?? '') + '<br>' : ''}
-      ${inv.senderEmail ? inv.senderEmail + '<br>' : ''}
-      ${inv.senderPhone ? 'Tel. ' + inv.senderPhone + '<br>' : ''}
-      ${inv.senderVatId ? 'USt-IdNr: ' + inv.senderVatId : ''}
-    </div>
-  </div>
-  <div class="doc-header-right">
-    <div class="doc-title">${docTitle}</div>
-    <div class="doc-meta">
-      <strong>Nr. ${inv.invoiceNumber}</strong><br>
-      Datum: ${formatDateDE(inv.issueDate)}<br>
-      ${inv.dueDate ? 'Fälligkeit: ' + formatDateDE(inv.dueDate) + '<br>' : ''}
-      ${inv.deliveryDate ? 'Lieferdatum: ' + formatDateDE(inv.deliveryDate) : ''}
-    </div>
-  </div>
-</div>
-
-<!-- EMPFÄNGER / LIEFERANT -->
-<div class="recipient-block">
-  <div class="recipient-label">${recipientLabel}</div>
-  <div style="font-size:11px;line-height:1.7;">
-    ${isPurchaseOrder
-      ? `${inv.recipientCompany ? `<strong>${inv.recipientCompany}</strong><br>` : ''}${inv.recipientStreet ? inv.recipientStreet + '<br>' : ''}${(inv.recipientZip || inv.recipientCity) ? (inv.recipientZip ?? '') + ' ' + (inv.recipientCity ?? '') + '<br>' : ''}${inv.recipientCountry && inv.recipientCountry !== 'Deutschland' ? inv.recipientCountry : ''}`
-      : `${inv.recipientCompany ? `<strong>${inv.recipientCompany}</strong><br>` : ''}${inv.recipientName && inv.recipientName !== inv.recipientCompany ? inv.recipientName + '<br>' : ''}${inv.recipientStreet ? inv.recipientStreet + '<br>' : ''}${(inv.recipientZip || inv.recipientCity) ? (inv.recipientZip ?? '') + ' ' + (inv.recipientCity ?? '') : ''}`
-    }
-  </div>
-</div>
-
-<hr class="divider">
-
-${inv.introText ? `<p style="margin-bottom:16px;font-size:11px;">${inv.introText}</p>` : ''}
-
-<!-- POSITIONEN -->
-<table class="items-table" style="margin-bottom:16px;">
-  <thead><tr>
-    <th style="width:4%;">#</th>
-    <th>Beschreibung</th>
-    <th style="text-align:right;width:8%;">Menge</th>
-    <th style="width:7%;">Einheit</th>
-    <th style="text-align:right;width:11%;">EP netto</th>
-    <th style="text-align:right;width:8%;">MwSt</th>
-    <th style="text-align:right;width:12%;">Gesamt brutto</th>
-  </tr></thead>
-  <tbody>${itemRows}</tbody>
-</table>
-
-<!-- SUMMEN -->
-<div class="totals-section">
-  <table class="totals-table">
-    ${pdfDiscount > 0 ? `<tr style="color:#c47a00;"><td>Rabatt gesamt:</td><td style="text-align:right">-${fmt(pdfDiscount)}</td></tr>` : ''}
-    <tr><td style="color:#555;">Nettobetrag:</td><td style="text-align:right">${fmt(pdfNet)}</td></tr>
-    <tr><td style="color:#555;">MwSt:</td><td style="text-align:right">${fmt(pdfTax)}</td></tr>
-    <tr class="total-row"><td>Gesamtbetrag:</td><td style="text-align:right">${fmt(pdfGross)}</td></tr>
-    ${optItems.length > 0 ? `<tr><td colspan="2" style="font-size:9px;color:#888;padding-top:6px;border-top:1px dashed #ccc;">zzgl. optionale Pos. (${optItems.length}): ${fmt(pdfOptGross)}</td></tr>` : ''}
-  </table>
-</div>
-
-${taxModeNote}
-
-<!-- ZAHLUNGSINFOS -->
-<div class="payment-info">
-  ${inv.type !== 'purchase_order' && inv.paymentTerms ? inv.paymentTerms + '<br>' : ''}
-  ${inv.type !== 'purchase_order' && inv.senderIban ? 'IBAN: ' + inv.senderIban + (inv.senderBic ? ' | BIC: ' + inv.senderBic : '') : ''}
-</div>
-${inv.notes ? `<div class="notes">${inv.notes}</div>` : ''}
-${inv.footerText ? `<p style="margin-top:16px;font-size:9px;color:#888;">${inv.footerText}</p>` : ''}
-</div><!-- end main-content -->
-
-<!-- Fußzeile immer unten -->
-${hasFooterCols ? `<div class="footer-area">
-  <table><tr>
-    ${footerCols.map(c => `<td style="width:25%;">${renderCol(c)}</td>`).join('')}
-  </tr></table>
-</div>` : ''}
-
-${agbText ? `<div class="agb-page">
-  <h2>Allgemeine Geschäftsbedingungen</h2>
-  <div style="white-space:pre-wrap;line-height:1.6;font-size:11px;">${agbText}</div>
-</div>` : ''}
-
-<script>window.onload = () => window.print();</script>
-</body>
-</html>`;
-
-    const w = window.open('', '_blank');
-    if (w) { w.document.write(html); w.document.close(); }
-  }
-
-  async function downloadPDF(invOrId: any) {
+  async function printInvoice(inv: any) {
+    // Puppeteer-PDF generieren und im Browser öffnen (zum Drucken)
     const toastId = toast.loading('PDF wird erstellt...');
     try {
-      // Sicherstellen dass wir vollständige Daten inkl. items haben
-      // Die list-Query gibt keine items zurück, daher immer getById aufrufen
-      let inv = invOrId;
-      if (!inv.items || inv.items.length === 0) {
-        const fullData = await utils.invoices.getById.fetch({ id: inv.id });
-        if (fullData) inv = fullData;
-      }
+      const result = await generatePdfMut.mutateAsync({ id: inv.id });
+      if (!result?.pdf) throw new Error('Kein PDF erhalten');
+      const byteChars = atob(result.pdf);
+      const byteArr = new Uint8Array(byteChars.length);
+      for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
+      const blob = new Blob([byteArr], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+      toast.dismiss(toastId);
+    } catch (err) {
+      toast.dismiss(toastId);
+      toast.error('PDF-Erstellung fehlgeschlagen');
+      console.error(err);
+    }
+  }
 
-      // HTML-Inhalt in einem versteckten iframe rendern
-      const iframe = document.createElement('iframe');
-      iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;height:1123px;border:none;';
-      document.body.appendChild(iframe);
-
-      // printInvoice HTML generieren (ohne window.print)
-      const cs = companySettings as any;
-      const agbText: string = (cs?.agbText ?? '').trim();
-      const logoUrl: string = cs?.logoUrl ?? '';
-      const isPurchaseOrder = inv.type === 'purchase_order';
-      const taxModeNote = inv.taxMode === 'kleinunternehmer'
-        ? '<p style="margin-top:16px;font-size:11px;">Gemäß §19 UStG wird keine Umsatzsteuer berechnet.</p>' : '';
-      const itemRows = (inv.items ?? []).map((it: any, i: number) => {
-        const discountPct = parseFloat(it.discount ?? '0');
-        const discountCell = discountPct > 0 ? `<span style="color:#d97706;font-size:10px;"> (${discountPct}% Rabatt)</span>` : '';
-        const optionalBadge = it.isOptional ? '<span style="background:#f3f4f6;color:#6b7280;font-size:9px;padding:1px 5px;border-radius:3px;margin-left:6px;">Optional</span>' : '';
-        const longDesc = it.longDescription ? `<div style="font-size:10px;color:#555;margin-top:3px;white-space:pre-wrap;">${it.longDescription}</div>` : '';
-        return `<tr><td style="padding:5px 6px;border-bottom:1px solid #e8e8e8;">${i + 1}</td><td style="padding:5px 6px;border-bottom:1px solid #e8e8e8;"><span style="font-weight:500;">${it.description}</span>${optionalBadge}${discountCell}${longDesc}</td><td style="padding:5px 6px;border-bottom:1px solid #e8e8e8;text-align:right;">${parseFloat(it.quantity ?? 1).toLocaleString('de-DE')}</td><td style="padding:5px 6px;border-bottom:1px solid #e8e8e8;">${it.unit ?? 'Stk.'}</td><td style="padding:5px 6px;border-bottom:1px solid #e8e8e8;text-align:right;">${parseFloat(it.unitPriceNet ?? 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })} €</td><td style="padding:5px 6px;border-bottom:1px solid #e8e8e8;text-align:right;">${it.taxRate ?? 19} %</td><td style="padding:5px 6px;border-bottom:1px solid #e8e8e8;text-align:right;font-weight:600;">${parseFloat(it.lineTotalGross ?? 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })} €</td></tr>`;
-      }).join('');
-      const pdfItems = inv.items ?? [];
-      const reqItems = pdfItems.filter((i: any) => !i.isOptional);
-      const pdfNet = reqItems.reduce((s: number, i: any) => s + parseFloat(i.lineTotalNet ?? 0), 0);
-      const pdfTax = reqItems.reduce((s: number, i: any) => s + parseFloat(i.lineTax ?? 0), 0);
-      const pdfGross = pdfNet + pdfTax;
-      const fmt = (n: number) => n.toLocaleString('de-DE', { minimumFractionDigits: 2 }) + ' €';
-       // Bei Bestellungen: footerCol4 (Bankdaten) nicht anzeigen
-      const footerCols = isPurchaseOrder
-        ? [cs?.footerCol1 ?? '', cs?.footerCol2 ?? '', cs?.footerCol3 ?? '', '']
-        : [cs?.footerCol1 ?? '', cs?.footerCol2 ?? '', cs?.footerCol3 ?? '', cs?.footerCol4 ?? ''];
-      const hasFooterCols = footerCols.some(c => c.trim());
-      const renderCol = (text: string) => text.split('\n').map((l: string) => `<span>${l.replace(/https?:\/\//, '')}</span>`).join('<br/>');
-      const recipientLabel = isPurchaseOrder ? 'LIEFERANT' : 'EMPFÄNGER';
-      const docTitle = TYPE_LABELS[inv.type as InvoiceType] ?? inv.type;
-
-      const htmlContent = `<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #111; line-height: 1.5; background: #fff; padding: 40px; }
-        table { width: 100%; border-collapse: collapse; }
-        .doc-header { display: flex; justify-content: space-between; margin-bottom: 24px; }
-        .doc-title { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
-        .items-table th { background: #f0f0f0; text-align: left; padding: 6px; border-bottom: 2px solid #ccc; font-size: 10px; font-weight: 700; text-transform: uppercase; }
-        .totals-table { width: 280px; margin-left: auto; }
-        .totals-table td { padding: 3px 6px; }
-        .total-row td { font-weight: 700; font-size: 13px; border-top: 2px solid #111; padding-top: 6px; }
-        .footer-area { margin-top: 24px; padding-top: 8px; border-top: 1.5px solid #bbb; font-size: 9px; color: #555; }
-        .footer-area table td { padding: 0 8px 0 0; vertical-align: top; font-size: 9px; }
-      </style></head><body>
-      <div class="doc-header">
-          <div>${logoUrl ? `<img src="${logoUrl}" style="max-height:60px;max-width:180px;object-fit:contain;margin-bottom:8px;display:block;">` : ''}<div style="font-size:13px;font-weight:700;">${inv.senderName || ''}</div><div style="font-size:10px;color:#444;line-height:1.6;">${inv.senderStreet ?? ''}<br>${(inv.senderZip ?? '') + ' ' + (inv.senderCity ?? '')}<br>${inv.senderEmail ?? ''}<br>${inv.senderPhone ? 'Tel. ' + inv.senderPhone : ''}</div></div>
-          <div style="text-align:right;"><div class="doc-title">${docTitle}</div><div style="font-size:11px;color:#333;line-height:1.8;"><strong>Nr. ${inv.invoiceNumber}</strong><br>Datum: ${formatDateDE(inv.issueDate)}<br>${inv.dueDate ? 'Fälligkeit: ' + formatDateDE(inv.dueDate) + '<br>' : ''}${inv.deliveryDate ? 'Lieferdatum: ' + formatDateDE(inv.deliveryDate) : ''}</div></div>
-        </div>
-        <div style="margin-bottom:16px;"><div style="font-size:9px;color:#888;text-transform:uppercase;margin-bottom:4px;">${recipientLabel}</div><div style="font-size:11px;line-height:1.7;">${isPurchaseOrder ? `${inv.recipientCompany ? `<strong>${inv.recipientCompany}</strong><br>` : ''}${inv.recipientStreet ? inv.recipientStreet + '<br>' : ''}${(inv.recipientZip ?? '') + ' ' + (inv.recipientCity ?? '')}` : `${inv.recipientCompany ? `<strong>${inv.recipientCompany}</strong><br>` : ''}${inv.recipientName && inv.recipientName !== inv.recipientCompany ? inv.recipientName + '<br>' : ''}${inv.recipientStreet ? inv.recipientStreet + '<br>' : ''}${(inv.recipientZip ?? '') + ' ' + (inv.recipientCity ?? '')}`}</div></div>
-        <hr style="border:none;border-top:1px solid #ddd;margin:12px 0;">
-        ${inv.introText ? `<p style="margin-bottom:12px;">${inv.introText}</p>` : ''}
-        <table class="items-table" style="margin-bottom:12px;"><thead><tr><th style="width:4%;">#</th><th>Beschreibung</th><th style="text-align:right;width:8%;">Menge</th><th style="width:7%;">Einheit</th><th style="text-align:right;width:11%;">EP netto</th><th style="text-align:right;width:8%;">MwSt</th><th style="text-align:right;width:12%;">Gesamt brutto</th></tr></thead><tbody>${itemRows}</tbody></table>
-        <table class="totals-table" style="margin-bottom:12px;"><tr><td style="color:#555;">Nettobetrag:</td><td style="text-align:right">${fmt(pdfNet)}</td></tr><tr><td style="color:#555;">MwSt:</td><td style="text-align:right">${fmt(pdfTax)}</td></tr><tr class="total-row"><td>Gesamtbetrag:</td><td style="text-align:right">${fmt(pdfGross)}</td></tr></table>
-        ${taxModeNote}
-        <div style="font-size:10px;color:#333;margin-top:8px;">${inv.type !== 'purchase_order' && inv.paymentTerms ? inv.paymentTerms : ''}${inv.type !== 'purchase_order' && inv.senderIban ? '<br>IBAN: ' + inv.senderIban : ''}</div>
-        ${inv.notes ? `<div style="font-size:10px;color:#555;margin-top:8px;">${inv.notes}</div>` : ''}
-      ${hasFooterCols ? `<div class="footer-area"><table><tr>${footerCols.map(c => `<td style="width:25%;">${renderCol(c)}</td>`).join('')}</tr></table></div>` : ''}
-      ${agbText ? `<div style="page-break-before:always;padding-top:8px;"><h2 style="font-size:15px;margin-bottom:14px;border-bottom:2px solid #333;padding-bottom:8px;">Allgemeine Geschäftsbedingungen</h2><div style="white-space:pre-wrap;line-height:1.6;font-size:11px;">${agbText}</div></div>` : ''}
-      </body></html>`;
-
-      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-      if (!iframeDoc) throw new Error('iframe nicht verfügbar');
-      iframeDoc.open();
-      iframeDoc.write(htmlContent);
-      iframeDoc.close();
-
-      await new Promise(resolve => setTimeout(resolve, 800));
-
-      const canvas = await html2canvas(iframeDoc.body, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff',
-        width: 794,
-        windowWidth: 794,
-      });
-
-      document.body.removeChild(iframe);
-
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
-      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-      const pageW = pdf.internal.pageSize.getWidth();
-      const pageH = pdf.internal.pageSize.getHeight();
-      const imgH = (canvas.height * pageW) / canvas.width;
-
-      let yPos = 0;
-      let remaining = imgH;
-      let page = 0;
-      while (remaining > 0) {
-        if (page > 0) pdf.addPage();
-        const sliceH = Math.min(remaining, pageH);
-        pdf.addImage(imgData, 'JPEG', 0, -yPos, pageW, imgH);
-        yPos += pageH;
-        remaining -= sliceH;
-        page++;
-      }
-
-      pdf.save(`${inv.invoiceNumber}.pdf`);
+  async function downloadPDF(inv: any) {
+    const toastId = toast.loading('PDF wird erstellt...');
+    try {
+      // Server-seitige PDF-Generierung via Puppeteer
+      const result = await generatePdfMut.mutateAsync({ id: inv.id });
+      if (!result?.pdf) throw new Error('Kein PDF erhalten');
+      // base64 -> Blob -> Download
+      const byteChars = atob(result.pdf);
+      const byteArr = new Uint8Array(byteChars.length);
+      for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
+      const blob = new Blob([byteArr], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = result.filename ?? inv.invoiceNumber + '.pdf';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
       toast.dismiss(toastId);
       toast.success('PDF heruntergeladen');
     } catch (err) {
-      document.querySelectorAll('iframe[style*="-9999px"]').forEach(el => el.remove());
       toast.dismiss(toastId);
       toast.error('PDF-Erstellung fehlgeschlagen');
       console.error(err);

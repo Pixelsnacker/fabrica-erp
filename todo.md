@@ -633,3 +633,11 @@
 - [x] Fix: agbText.trim() verhindert Whitespace-only AGB-Seite
 - [x] Fix: footerCol4 (Bankdaten) bei purchase_order leer gesetzt (beide: printInvoice + downloadPDF)
 - [x] Fix: min-height:1063px aus downloadPDF-HTML entfernt → kein leerer Überlauf mehr
+
+## Phase 75: PDF-Generierung auf server-seitiges Puppeteer umstellen
+- [x] puppeteer-core installiert (Chromium unter /usr/bin/chromium-browser)
+- [x] tRPC-Procedure: invoices.generatePdf (gibt PDF-Buffer als base64 zurück)
+- [x] HTML-Template server-seitig in pdfHtml.ts (buildInvoiceHtml)
+- [x] Puppeteer: position:fixed Fußzeile am unteren Seitenrand
+- [x] Frontend: downloadPDF und printInvoice nutzen generatePdf
+- [x] html2canvas + jsPDF Imports entfernt
