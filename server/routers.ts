@@ -6,6 +6,7 @@ import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { invokeLLM } from "./_core/llm";
 import { storagePut } from "./storage";
 import { buildInvoiceHtml } from "./pdfHtml";
+import puppeteer from 'puppeteer-core';
 import {
   getCustomers, getCustomerById, createCustomer, updateCustomer, deleteCustomer,
   getLeadSources, createLeadSource, updateLeadSource, deleteLeadSource,
@@ -1312,7 +1313,6 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
         const inv = await getInvoiceById(input.id);
         if (!inv) throw new Error('Dokument nicht gefunden');
         const cs = await getCompanySettings();
-        const puppeteer = await import('puppeteer-core');
         const browser = await puppeteer.launch({
           executablePath: '/usr/bin/chromium-browser',
           args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
