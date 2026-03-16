@@ -702,3 +702,9 @@
 ## Bugfix: Projekt löschen
 - [x] Löschen-Button in Projektdetail-Header einbauen (mit Bestätigungsdialog)
 - [x] Backend deleteProject löscht zuerst alle abhängigen Daten (cascade)
+
+## Feature: Angebot → Lieferschein konvertieren
+- [x] Backend: invoices.convert Procedure um delivery_note erweitert (kopiert Angebot-Items ohne Preise, erstellt neuen Lieferschein mit LS-Nummer)
+- [x] Frontend: "Lieferschein" Option im Konvertierungs-Dialog der Dokumentliste
+- [x] Frontend: onSuccess-Handler für delivery_note Label angepasst
+- [x] TypeScript: Truck-Icon importiert, 0 Fehler

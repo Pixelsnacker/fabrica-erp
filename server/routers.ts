@@ -1237,7 +1237,7 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
     convert: protectedProcedure
       .input(z.object({
         offerId: z.number(),
-        targetType: z.enum(['invoice', 'order_confirmation', 'purchase_order']),
+        targetType: z.enum(['invoice', 'order_confirmation', 'purchase_order', 'delivery_note']),
       }))
       .mutation(async ({ input, ctx }) => {
         // Angebot laden
@@ -1247,7 +1247,7 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
         // Neue Nummer vergeben
         const invoiceNumber = await getNextInvoiceNumber(input.targetType);
         const today = new Date().toISOString().slice(0, 10);
-        // Fälligkeitsdatum: heute + 14 Tage
+        // Fälligkeitsdatum: heute + 14 Tage (nur bei Rechnung relevant)
         const dueDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
         // Neues Dokument aus Angebotsdaten erstellen
         const invoiceData: any = {
@@ -1273,15 +1273,17 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
           recipientCity: offer.recipientCity,
           recipientEmail: offer.recipientEmail,
           issueDate: today,
-          dueDate,
-          deliveryDate: offer.deliveryDate,
-          paymentTerms: offer.paymentTerms,
+          dueDate: input.targetType === 'invoice' ? dueDate : null,
+          deliveryDate: input.targetType === 'delivery_note' ? today : offer.deliveryDate,
+          paymentTerms: input.targetType === 'delivery_note' ? null : offer.paymentTerms,
           taxMode: offer.taxMode,
-          subtotalNet: offer.subtotalNet,
-          taxAmount: offer.taxAmount,
-          totalGross: offer.totalGross,
+          subtotalNet: input.targetType === 'delivery_note' ? null : offer.subtotalNet,
+          taxAmount: input.targetType === 'delivery_note' ? null : offer.taxAmount,
+          totalGross: input.targetType === 'delivery_note' ? null : offer.totalGross,
           currency: offer.currency,
-          introText: offer.introText,
+          introText: input.targetType === 'delivery_note'
+            ? `Lieferschein zu Angebot ${offer.invoiceNumber}`
+            : offer.introText,
           notes: offer.notes,
           footerText: offer.footerText,
         };
@@ -1291,18 +1293,18 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
           description: item.description,
           quantity: item.quantity,
           unit: item.unit,
-          unitPriceNet: item.unitPriceNet,
-          taxRate: item.taxRate,
-          lineTotalNet: item.lineTotalNet,
-          lineTax: item.lineTax,
-          lineTotalGross: item.lineTotalGross,
+          unitPriceNet: input.targetType === 'delivery_note' ? '0' : item.unitPriceNet,
+          taxRate: input.targetType === 'delivery_note' ? '0' : item.taxRate,
+          lineTotalNet: input.targetType === 'delivery_note' ? '0' : item.lineTotalNet,
+          lineTax: input.targetType === 'delivery_note' ? '0' : item.lineTax,
+          lineTotalGross: input.targetType === 'delivery_note' ? '0' : item.lineTotalGross,
           longDescription: item.longDescription,
-          isOptional: item.isOptional ? 1 : 0,
-          discount: item.discount,
-          discountedNet: item.discountedNet,
+          isOptional: 0,
+          discount: input.targetType === 'delivery_note' ? null : item.discount,
+          discountedNet: input.targetType === 'delivery_note' ? null : item.discountedNet,
         }));
         const newId = await createInvoice(invoiceData, items, ctx.user.email ?? 'system');
-        // Angebot-Status setzen
+        // Angebot-Status setzen (bei Lieferschein bleibt Angebot auf 'accepted')
         const newStatus = input.targetType === 'invoice' ? 'invoiced' : 'accepted';
         await changeInvoiceStatus(input.offerId, newStatus, ctx.user.email ?? 'system');
         return { id: newId, invoiceNumber };

@@ -17,7 +17,7 @@ import {
   Plus, FileText, Receipt, Search, Download, Lock, XCircle,
   ChevronDown, ChevronUp, Trash2, Eye, History, AlertTriangle,
   CheckCircle, Clock, Send, Euro, Loader2, Printer, BookOpen, ArrowRight,
-  PackageSearch, FolderOpen, Package, Copy, Sparkles, Check, X
+  PackageSearch, FolderOpen, Package, Copy, Sparkles, Check, X, Truck
 } from "lucide-react";
 
 // ─── PDF Download ───────────────────────────────────────────────────────────
@@ -261,9 +261,9 @@ export default function Invoices() {
   }
 
   const convertMut = trpc.invoices.convert.useMutation({
-    onSuccess: (data: { id?: number; invoiceNumber: string }, vars: { offerId: number; targetType: 'invoice' | 'order_confirmation' | 'purchase_order' }) => {
+    onSuccess: (data: { id?: number; invoiceNumber: string }, vars: { offerId: number; targetType: 'invoice' | 'order_confirmation' | 'purchase_order' | 'delivery_note' }) => {
       utils.invoices.list.invalidate();
-      const label = vars.targetType === 'invoice' ? 'Rechnung' : vars.targetType === 'order_confirmation' ? 'Auftragsbestätigung' : 'Bestellung';
+      const label = vars.targetType === 'invoice' ? 'Rechnung' : vars.targetType === 'order_confirmation' ? 'Auftragsbestätigung' : vars.targetType === 'delivery_note' ? 'Lieferschein' : 'Bestellung';
       toast.success(`✅ ${label} ${data.invoiceNumber} wurde erstellt`);
       setShowConvertDialog(null);
     },
@@ -1833,6 +1833,20 @@ export default function Invoices() {
                 <div>
                   <div className="font-medium">Bestellung</div>
                   <div className="text-xs text-muted-foreground">Als Bestellung an Lieferanten (BE-Nummer)</div>
+                </div>
+              </Button>
+              <Button
+                variant="outline"
+                className="justify-start gap-3 h-14 text-left border-emerald-500/30 hover:bg-emerald-500/10"
+                disabled={convertMut.isPending}
+                onClick={() => convertMut.mutate({ offerId: showConvertDialog!, targetType: 'delivery_note' })}
+              >
+                <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                  <Truck className="w-4 h-4 text-emerald-400" />
+                </div>
+                <div>
+                  <div className="font-medium text-emerald-400">Lieferschein</div>
+                  <div className="text-xs text-muted-foreground">Positionen ohne Preise übernehmen (LS-Nummer)</div>
                 </div>
               </Button>
             </div>
