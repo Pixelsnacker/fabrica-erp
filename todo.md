@@ -641,3 +641,8 @@
 - [x] Puppeteer: position:fixed Fußzeile am unteren Seitenrand
 - [x] Frontend: downloadPDF und printInvoice nutzen generatePdf
 - [x] html2canvas + jsPDF Imports entfernt
+
+## Phase 76: PDF ohne Puppeteer/Chromium (Produktions-Server hat kein Chromium)
+- [x] WeasyPrint (Python, kein Chromium nötig) als PDF-Engine
+- [x] generatePdf Procedure auf WeasyPrint umgestellt
+- [x] Live-Test erfolgreich: 1 Seite, Fußzeile unten, Positionen korrekt
