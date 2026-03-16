@@ -741,3 +741,7 @@
 - [x] Service Worker (sw.js) erstellt: Network-first, API nie gecacht
 - [x] Meta-Tags in index.html: theme-color, apple-touch-icon
 - [x] Service Worker in main.tsx registriert
+
+## Bugfix: Angebotsnummer ignoriert Einstellungen
+- [x] getNextInvoiceNumber ignorierte Einstellungs-Startwert wenn Sequenz bereits existierte
+- [x] Fix: Wenn aktuelle Sequenz < Einstellungs-Startwert, wird auf Startwert gesprungen

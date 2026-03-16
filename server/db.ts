@@ -885,17 +885,27 @@ export async function getNextInvoiceNumber(type: 'invoice' | 'offer' | 'credit_n
   const existing = await db.select().from(invoiceSequences)
     .where(and(eq(invoiceSequences.year, year), eq(invoiceSequences.type, type)));
   if (existing.length === 0) {
-    // Erster Eintrag: mit Startnummer beginnen
+    // Erster Eintrag: mit Startnummer aus Einstellungen beginnen
     await db.execute(
       sql`INSERT INTO invoice_sequences (year, type, last_number) VALUES (${year}, ${type}, ${startNum})
           ON DUPLICATE KEY UPDATE last_number = last_number + 1`
     );
   } else {
-    // Bereits vorhanden: normal hochzählen
-    await db.execute(
-      sql`INSERT INTO invoice_sequences (year, type, last_number) VALUES (${year}, ${type}, 1)
-          ON DUPLICATE KEY UPDATE last_number = last_number + 1`
-    );
+    // Bereits vorhanden: hochzählen, aber mindestens den Einstellungs-Startwert verwenden
+    const currentNum = existing[0]?.lastNumber ?? 0;
+    if (currentNum < startNum) {
+      // Einstellungs-Startwert ist höher als aktuelle Sequenz → auf Startwert springen
+      await db.execute(
+        sql`INSERT INTO invoice_sequences (year, type, last_number) VALUES (${year}, ${type}, ${startNum})
+            ON DUPLICATE KEY UPDATE last_number = ${startNum}`
+      );
+    } else {
+      // Normal hochzählen
+      await db.execute(
+        sql`INSERT INTO invoice_sequences (year, type, last_number) VALUES (${year}, ${type}, 1)
+            ON DUPLICATE KEY UPDATE last_number = last_number + 1`
+      );
+    }
   }
   const rows = await db.select().from(invoiceSequences)
     .where(and(eq(invoiceSequences.year, year), eq(invoiceSequences.type, type)));
