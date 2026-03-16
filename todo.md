@@ -646,3 +646,9 @@
 - [x] WeasyPrint (Python, kein Chromium nötig) als PDF-Engine
 - [x] generatePdf Procedure auf WeasyPrint umgestellt
 - [x] Live-Test erfolgreich: 1 Seite, Fußzeile unten, Positionen korrekt
+
+## Phase 77: Puppeteer mit eingebettetem Chromium (npm-Paket, kein systemweites Chromium)
+- [x] puppeteer mit eingebettetem Chromium installiert (.puppeteer-cache im Projektverzeichnis)
+- [x] generatePdf auf puppeteer.executablePath() umgestellt (ESM-kompatibel, kein require())
+- [x] PUPPETEER_CACHE_DIR als Umgebungsvariable gesetzt
+- [x] Live-Test erfolgreich: Toast 'PDF heruntergeladen' erscheint

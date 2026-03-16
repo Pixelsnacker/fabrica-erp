@@ -6,12 +6,7 @@ import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { invokeLLM } from "./_core/llm";
 import { storagePut } from "./storage";
 import { buildInvoiceHtml } from "./pdfHtml";
-import { execFile } from 'child_process';
-import { promisify } from 'util';
-import { writeFile, readFile, unlink } from 'fs/promises';
-import { tmpdir } from 'os';
-import { join } from 'path';
-const execFileAsync = promisify(execFile);
+import puppeteer from 'puppeteer';
 import {
   getCustomers, getCustomerById, createCustomer, updateCustomer, deleteCustomer,
   getLeadSources, createLeadSource, updateLeadSource, deleteLeadSource,
@@ -1319,20 +1314,25 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
         if (!inv) throw new Error('Dokument nicht gefunden');
         const cs = await getCompanySettings();
         const html = buildInvoiceHtml(inv, cs);
-        const id = Date.now() + Math.random().toString(36).slice(2);
-        const htmlPath = join(tmpdir(), `inv-${id}.html`);
-        const pdfPath = join(tmpdir(), `inv-${id}.pdf`);
+        // Chromium liegt im Projektverzeichnis (.puppeteer-cache) — funktioniert auch auf dem Produktions-Server
+        const chromiumPath = process.env.PUPPETEER_EXECUTABLE_PATH || puppeteer.executablePath();
+        const browser = await puppeteer.launch({
+          executablePath: chromiumPath,
+          args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+          headless: true,
+        });
         try {
-          await writeFile(htmlPath, html, 'utf8');
-          await execFileAsync('python3.11', [
-            '-c',
-            `import weasyprint; weasyprint.HTML(filename='${htmlPath}').write_pdf('${pdfPath}')`
-          ]);
-          const pdfBuffer = await readFile(pdfPath);
-          return { pdf: pdfBuffer.toString('base64'), filename: inv.invoiceNumber + '.pdf' };
+          const page = await browser.newPage();
+          await page.setContent(html, { waitUntil: 'networkidle0' });
+          const pdfBuffer = await page.pdf({
+            format: 'A4',
+            printBackground: true,
+            margin: { top: '15mm', right: '15mm', bottom: '20mm', left: '15mm' },
+            displayHeaderFooter: false,
+          });
+          return { pdf: Buffer.from(pdfBuffer).toString('base64'), filename: inv.invoiceNumber + '.pdf' };
         } finally {
-          await unlink(htmlPath).catch(() => {});
-          await unlink(pdfPath).catch(() => {});
+          await browser.close();
         }
       }),
   }),
