@@ -4,15 +4,23 @@
   "description": "ERP-System für Fabrica GmbH – 3D-Druck & Technische Beratung",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f1117",
-  "theme_color": "#0f1117",
-  "orientation": "portrait-primary",
+  "background_color": "#0a0a0f",
+  "theme_color": "#4f46e5",
+  "orientation": "any",
   "icons": [
     {
-      "src": "/favicon.ico",
-      "sizes": "48x48",
-      "type": "image/x-icon"
+      "src": "https://d2xsxph8kpxj0f.cloudfront.net/310419663031764330/YMZow7uQxpBVyBGbmbpvvd/fabrica-icon-512-KMnADQBJPsQBCQkJxVqt6Z.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://d2xsxph8kpxj0f.cloudfront.net/310419663031764330/YMZow7uQxpBVyBGbmbpvvd/fabrica-icon-512-KMnADQBJPsQBCQkJxVqt6Z.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ],
+  "lang": "de",
   "categories": ["business", "productivity"]
 }

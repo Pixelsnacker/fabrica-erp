@@ -734,3 +734,10 @@
 - [x] Nach Speichern → Schließen → Wieder öffnen: alte Daten sichtbar — behoben
 - [x] Root Cause: React Query lieferte gecachte Daten beim erneuten Öffnen
 - [x] Fix: queryClient.removeQueries in updateMut onSuccess und openEdit — Cache wird direkt gelöscht
+
+## Feature: PWA (Progressive Web App)
+- [x] App-Icon generiert (512x512, Fabrica ERP Logo mit 3D-Würfel) und auf CDN hochgeladen
+- [x] manifest.json aktualisiert: echtes Icon, theme-color #4f46e5, orientation any, lang de
+- [x] Service Worker (sw.js) erstellt: Network-first, API nie gecacht
+- [x] Meta-Tags in index.html: theme-color, apple-touch-icon
+- [x] Service Worker in main.tsx registriert

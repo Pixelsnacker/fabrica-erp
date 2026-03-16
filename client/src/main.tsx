@@ -68,4 +68,12 @@ createRoot(document.getElementById("root")!).render(
     </QueryClientProvider>
   </trpc.Provider>
 );
+// Service Worker für PWA registrieren
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch((err) => {
+      console.warn('[PWA] Service Worker Registrierung fehlgeschlagen:', err);
+    });
+  });
+}
 // build: 1773420485
