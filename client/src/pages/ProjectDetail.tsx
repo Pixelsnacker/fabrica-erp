@@ -321,6 +321,10 @@ export default function ProjectDetail() {
     onSuccess: () => { utils.projectDocs.list.invalidate({ projectId: id }); toast.success("Dokument gelöscht"); },
     onError: () => toast.error("Fehler beim Löschen"),
   });
+  const deleteProjectMut = trpc.projects.delete.useMutation({
+    onSuccess: () => { utils.projects.list.invalidate(); toast.success("Projekt gelöscht"); setLocation("/projects"); },
+    onError: () => toast.error("Fehler beim Löschen des Projekts"),
+  });
 
   const totalNotesCount = projectNotes.length;
 
@@ -402,6 +406,21 @@ export default function ProjectDetail() {
           >
             <Download className="h-4 w-4" />
             <span className="hidden sm:inline">Backup</span>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 text-destructive border-destructive/30 hover:bg-destructive/10"
+            title="Projekt löschen"
+            disabled={deleteProjectMut.isPending}
+            onClick={() => {
+              if (confirm(`Projekt "${project.title}" wirklich löschen?\n\nAlle Positionen, Notizen, Dokumente und Reklamationen werden ebenfalls gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.`)) {
+                deleteProjectMut.mutate({ id });
+              }
+            }}
+          >
+            <Trash2 className="h-4 w-4" />
+            <span className="hidden sm:inline">Löschen</span>
           </Button>
         </div>
       </div>

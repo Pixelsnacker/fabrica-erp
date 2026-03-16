@@ -23,6 +23,7 @@ import {
   invoices, invoiceItems, invoiceAuditLog, invoiceSequences,
   InsertInvoice, InsertInvoiceItem, InsertInvoiceAuditLog,
   companySettings, InsertCompanySettings,
+  projectDocuments,
 } from "../drizzle/schema";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -163,6 +164,44 @@ export async function updateProject(id: number, data: Partial<InsertProject>) {
 export async function deleteProject(id: number) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
+
+  // Zuerst alle abhängigen Daten löschen (cascade)
+  // 1. Reklamations-Anhänge
+  const projectComplaints = await db.select({ id: complaints.id }).from(complaints).where(eq(complaints.projectId, id));
+  for (const c of projectComplaints) {
+    await db.delete(complaintAttachments).where(eq(complaintAttachments.complaintId, c.id));
+  }
+  await db.delete(complaints).where(eq(complaints.projectId, id));
+
+  // 2. Notiz-Anhänge und Erinnerungen
+  const projectNotes = await db.select({ id: notes.id }).from(notes).where(eq(notes.projectId, id));
+  for (const n of projectNotes) {
+    await db.delete(noteAttachments).where(eq(noteAttachments.noteId, n.id));
+    await db.delete(noteReminders).where(eq(noteReminders.noteId, n.id));
+  }
+  await db.delete(notes).where(eq(notes.projectId, id));
+
+  // 3. RFQ-Antworten und RFQs
+  const projectRfqs = await db.select({ id: rfqs.id }).from(rfqs).where(eq(rfqs.projectId, id));
+  for (const r of projectRfqs) {
+    await db.delete(rfqResponses).where(eq(rfqResponses.rfqId, r.id));
+  }
+  await db.delete(rfqs).where(eq(rfqs.projectId, id));
+
+  // 4. Positionen (project_items)
+  await db.delete(projectItems).where(eq(projectItems.projectId, id));
+
+  // 5. Versand, CAD-Dateien, Beratung, Schnellnotizen, AI-Sessions
+  await db.delete(shipments).where(eq(shipments.projectId, id));
+  await db.delete(cadFiles).where(eq(cadFiles.projectId, id));
+  await db.delete(consultationEntries).where(eq(consultationEntries.projectId, id));
+  await db.delete(quickNotes).where(eq(quickNotes.projectId, id));
+  await db.delete(aiSessions).where(eq(aiSessions.projectId, id));
+
+  // 6. Projekt-Dokumente
+  await db.delete(projectDocuments).where(eq(projectDocuments.projectId, id));
+
+  // 7. Schließlich das Projekt selbst
   await db.delete(projects).where(eq(projects.id, id));
 }
 

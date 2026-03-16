@@ -691,3 +691,14 @@
 ## Phase 82: PDF-Fixes
 - [x] Bug: Logo im PDF 20% größer (90→48 / 40→48 px)
 - [x] Bug: Zahlungsziel bei Bestellungen ausgeblendet (purchase_order)
+
+## Phase 83: Gmail-Entwurf mit PDF-Anhang
+- [ ] Gmail MCP-Tools prüfen (create_draft Funktion)
+- [ ] Backend: sendEmailDraft Procedure (PDF generieren + Gmail-Entwurf via MCP)
+- [ ] Frontend: E-Mail-Button öffnet Dialog mit Betreff/Text-Vorschau, dann Entwurf erstellen
+- [ ] E-Mail-Signatur automatisch einfügen
+- [ ] Testen und Checkpoint
+
+## Bugfix: Projekt löschen
+- [x] Löschen-Button in Projektdetail-Header einbauen (mit Bestätigungsdialog)
+- [x] Backend deleteProject löscht zuerst alle abhängigen Daten (cascade)
