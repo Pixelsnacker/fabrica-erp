@@ -687,3 +687,7 @@
 - [x] Feature: Lieferschein-Tab im Filter
 - [x] Feature: LS-Präfix + Startnummer in Firmeneinstellungen
 - [ ] Testen und Checkpoint
+
+## Phase 82: PDF-Fixes
+- [x] Bug: Logo im PDF 20% größer (90→48 / 40→48 px)
+- [x] Bug: Zahlungsziel bei Bestellungen ausgeblendet (purchase_order)

@@ -48,7 +48,7 @@ const S = StyleSheet.create({
 
   // Header
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
-  logo: { width: 90, height: 40, objectFit: 'contain' },
+  logo: { width: 108, height: 48, objectFit: 'contain' },
   companyBlock: { textAlign: 'right', fontSize: 8, color: '#555', lineHeight: 1.5 },
 
   // Absender-Zeile (klein über Empfänger)
@@ -288,7 +288,7 @@ export function InvoicePDF({ inv, cs }: { inv: InvoiceWithItems; cs: CompanySett
 
         {/* Notizen */}
         {inv.notes ? <Text style={S.notesText}>{inv.notes}</Text> : null}
-        {inv.paymentTerms ? <Text style={S.paymentText}>{inv.paymentTerms}</Text> : null}
+        {inv.paymentTerms && inv.type !== 'purchase_order' ? <Text style={S.paymentText}>{inv.paymentTerms}</Text> : null}
 
         {/* Fußzeile */}
         <Footer cs={cs} type={inv.type} />
