@@ -1322,6 +1322,71 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
         await changeInvoiceStatus(input.offerId, newStatus, ctx.user.email ?? 'system');
         return { id: newId, invoiceNumber };
       }),
+    duplicate: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const original = await getInvoiceById(input.id);
+        if (!original) throw new Error('Dokument nicht gefunden');
+        // Neue Nummer vergeben (gleicher Typ)
+        const invoiceNumber = await getNextInvoiceNumber(original.type);
+        const today = new Date().toISOString().slice(0, 10);
+        const copyData: any = {
+          invoiceNumber,
+          type: original.type,
+          status: 'draft' as const,
+          customerId: original.customerId,
+          projectId: original.projectId,
+          senderName: original.senderName,
+          senderStreet: original.senderStreet,
+          senderZip: original.senderZip,
+          senderCity: original.senderCity,
+          senderTaxId: original.senderTaxId,
+          senderVatId: original.senderVatId,
+          senderEmail: original.senderEmail,
+          senderPhone: original.senderPhone,
+          senderIban: original.senderIban,
+          senderBic: original.senderBic,
+          recipientName: original.recipientName,
+          recipientCompany: original.recipientCompany,
+          recipientStreet: original.recipientStreet,
+          recipientZip: original.recipientZip,
+          recipientCity: original.recipientCity,
+          recipientEmail: original.recipientEmail,
+          issueDate: today,
+          dueDate: original.dueDate,
+          deliveryDate: original.deliveryDate,
+          paymentTerms: original.paymentTerms,
+          taxMode: original.taxMode,
+          subtotalNet: original.subtotalNet,
+          taxAmount: original.taxAmount,
+          totalGross: original.totalGross,
+          currency: original.currency,
+          introText: original.introText,
+          notes: original.notes,
+          footerText: original.footerText,
+          discount: (original as any).discount ?? null,
+          discountType: (original as any).discountType ?? null,
+          discountValue: (original as any).discountValue ?? null,
+        };
+        const items = (original.items ?? []).map((item: any) => ({
+          invoiceId: 0,
+          position: item.position,
+          description: item.description,
+          quantity: item.quantity,
+          unit: item.unit,
+          unitPriceNet: item.unitPriceNet,
+          taxRate: item.taxRate,
+          lineTotalNet: item.lineTotalNet,
+          lineTax: item.lineTax,
+          lineTotalGross: item.lineTotalGross,
+          longDescription: item.longDescription,
+          isOptional: item.isOptional ?? 0,
+          discount: item.discount,
+          discountedNet: item.discountedNet,
+        }));
+        const newId = await createInvoice(copyData, items, ctx.user.email ?? 'system');
+        return { id: newId, invoiceNumber };
+      }),
     generatePdf: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {

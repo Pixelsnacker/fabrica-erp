@@ -769,3 +769,8 @@
 - [x] Frontend: PDF-Vorschau und Download
 - [x] Navigation: Lieferantenanfragen (SendHorizontal-Icon) in Sidebar eingebaut
 - [x] Status-Workflow: Entwurf → Versendet → Beantwortet → Abgeschlossen/Storniert
+
+## Feature: Angebot duplizieren
+- [x] Backend: invoices.duplicate Procedure (kopiert alle Felder + Items, neue Nummer, heutiges Datum, Status=draft)
+- [x] Frontend: "Duplizieren"-Button (blau, Copy-Icon) in der Angebotsliste für alle Dokumenttypen
+- [x] Nach Duplizieren: Kopie direkt zum Bearbeiten geöffnet (Kunde änderbar)

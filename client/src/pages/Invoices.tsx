@@ -311,6 +311,19 @@ export default function Invoices() {
     onError: (e: { message: string }) => toast.error('Fehler: ' + e.message),
   });
   const [showConvertDialog, setShowConvertDialog] = useState<number | null>(null);
+
+  const duplicateMut = trpc.invoices.duplicate.useMutation({
+    onSuccess: (data: { id?: number; invoiceNumber: string }) => {
+      utils.invoices.list.invalidate();
+      toast.success(`✅ Kopie ${data.invoiceNumber} erstellt — jetzt Kunden ändern`);
+      // Cache leeren und Kopie direkt zum Bearbeiten öffnen
+      if (data.id) {
+        queryClient.removeQueries({ queryKey: [['invoices', 'getById'], { input: { id: data.id }, type: 'query' }] });
+        setPendingEditId(data.id);
+      }
+    },
+    onError: (e: { message: string }) => toast.error('Fehler: ' + e.message),
+  });
   // ─── Lieferantenangebot-Import ───────────────────────────────────────────────
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [importProjectId, setImportProjectId] = useState<number | undefined>(undefined);
@@ -916,6 +929,17 @@ export default function Invoices() {
                     Konvertieren
                   </Button>
                 )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-blue-400 border-blue-400/30 hover:bg-blue-400/10"
+                  disabled={duplicateMut.isPending}
+                  title="Angebot duplizieren (Kopie für anderen Kunden)"
+                  onClick={() => { if (confirm(`"${inv.invoiceNumber}" duplizieren?`)) duplicateMut.mutate({ id: inv.id }); }}
+                >
+                  <Copy className="w-3 h-3 mr-1" />
+                  Duplizieren
+                </Button>
                 {inv.status === 'draft' && (
                   <Button size="sm" variant="outline" className="text-red-400 border-red-400/30" onClick={() => { if (confirm('Entwurf löschen?')) deleteMut.mutate({ id: inv.id }); }}>
                     <Trash2 className="w-3 h-3 mr-1" /> Löschen
