@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 import { CadViewer, CadFileThumbnail } from "@/components/CadViewer";
+import { EntitySearch } from "@/components/EntitySearch";
 import { trpc } from "@/lib/trpc";
 import { useParams, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -2059,19 +2060,17 @@ function ProjectDocUploadDialog({
           {/* Lieferant */}
           <div className="space-y-1.5">
             <Label>Lieferant {category === 'supplier_offer' ? '*' : '(optional)'}</Label>
-            <Select value={supplierId} onValueChange={setSupplierId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Lieferant auswählen..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Kein Lieferant</SelectItem>
-                {(supplierList as any[]).map((s: any) => (
-                  <SelectItem key={s.id} value={String(s.id)}>
-                    {s.company ? `${s.company} (${s.name})` : s.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <EntitySearch
+              options={(supplierList as any[]).map((s: any) => ({
+                id: s.id,
+                label: s.company || s.name,
+                sublabel: s.company ? s.name : (s.email || undefined)
+              }))}
+              value={supplierId && supplierId !== 'none' ? parseInt(supplierId) : undefined}
+              onChange={v => setSupplierId(v ? String(v) : 'none')}
+              placeholder="Lieferant suchen..."
+              emptyLabel="Kein Lieferant"
+            />
           </div>
 
           {/* Notizen */}

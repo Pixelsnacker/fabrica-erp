@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import { EntitySearch } from "@/components/EntitySearch";
 import { trpc } from "@/lib/trpc";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
@@ -968,24 +969,24 @@ export default function Invoices() {
               {form.type === 'purchase_order' ? (
                 <div className="min-w-0">
                   <Label>Lieferant</Label>
-                  <Select value={form.supplierId ? String(form.supplierId) : 'none'} onValueChange={v => v !== 'none' ? onSupplierSelect(v) : setForm(f => ({ ...f, supplierId: undefined }))}>
-                    <SelectTrigger className="w-full"><SelectValue placeholder="Lieferant wählen" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Kein Lieferant</SelectItem>
-                      {(suppliers as any[]).map((s: any) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <EntitySearch
+                    options={(suppliers as any[]).map((s: any) => ({ id: s.id, label: s.name, sublabel: s.email || undefined }))}
+                    value={form.supplierId}
+                    onChange={v => v ? onSupplierSelect(String(v)) : setForm(f => ({ ...f, supplierId: undefined }))}
+                    placeholder="Lieferant suchen..."
+                    emptyLabel="Kein Lieferant"
+                  />
                 </div>
               ) : (
                 <div className="min-w-0">
                   <Label>Kunde</Label>
-                  <Select value={form.customerId ? String(form.customerId) : 'none'} onValueChange={v => v !== 'none' ? onCustomerSelect(v) : setForm(f => ({ ...f, customerId: undefined }))}>
-                    <SelectTrigger className="w-full"><SelectValue placeholder="Kunde wählen" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Kein Kunde</SelectItem>
-                      {customers.map((c: any) => <SelectItem key={c.id} value={String(c.id)}>{c.company || c.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <EntitySearch
+                    options={customers.map((c: any) => ({ id: c.id, label: c.company || c.name, sublabel: c.company ? c.name : undefined }))}
+                    value={form.customerId}
+                    onChange={v => v ? onCustomerSelect(String(v)) : setForm(f => ({ ...f, customerId: undefined }))}
+                    placeholder="Kunde suchen..."
+                    emptyLabel="Kein Kunde"
+                  />
                 </div>
               )}
               <div className="min-w-0">

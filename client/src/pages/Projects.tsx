@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Search, FolderKanban, Euro, Calendar, LayoutGrid, List, ArchiveRestore } from "lucide-react";
+import { EntitySearch } from "@/components/EntitySearch";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 
@@ -211,15 +212,13 @@ export default function Projects() {
             </div>
             <div className="space-y-1.5">
               <Label>Kunde (optional)</Label>
-              <Select value={form.customerId || "none"} onValueChange={v => setForm(f => ({ ...f, customerId: v === 'none' ? '' : v }))}>
-                <SelectTrigger><SelectValue placeholder="Kein Kunde" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Kein Kunde</SelectItem>
-                  {customers.map((c: any) => (
-                    <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <EntitySearch
+                options={customers.map((c: any) => ({ id: c.id, label: c.company || c.name, sublabel: c.company ? c.name : undefined }))}
+                value={form.customerId ? parseInt(form.customerId) : undefined}
+                onChange={v => setForm(f => ({ ...f, customerId: v ? String(v) : '' }))}
+                placeholder="Kunde suchen..."
+                emptyLabel="Kein Kunde"
+              />
             </div>
             <div className="space-y-1.5">
               <Label>Notizen</Label>

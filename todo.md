@@ -745,3 +745,9 @@
 ## Bugfix: Angebotsnummer ignoriert Einstellungen
 - [x] getNextInvoiceNumber ignorierte Einstellungs-Startwert wenn Sequenz bereits existierte
 - [x] Fix: Wenn aktuelle Sequenz < Einstellungs-Startwert, wird auf Startwert gesprungen
+
+## Feature: Kunden/Lieferanten Suchfeld (Combobox)
+- [x] EntitySearch-Komponente erstellt (Suchfeld + Live-Vorschläge, bis 50 Treffer, Tastatur-Navigation)
+- [x] In Invoices.tsx: Kunden- und Lieferanten-Dropdown ersetzt
+- [x] In Projects.tsx: Kunden-Dropdown ersetzt
+- [x] In ProjectDetail.tsx: Lieferanten-Dropdown im Dokument-Upload ersetzt
