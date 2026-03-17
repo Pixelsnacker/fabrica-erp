@@ -2,7 +2,7 @@ import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { TrendingUp, FolderKanban, Euro, ArrowRight, Plus } from "lucide-react";
+import { TrendingUp, FolderKanban, Euro, ArrowRight, Plus, HardDrive, Wifi, WifiOff, Loader2 } from "lucide-react";
 import { useLocation } from "wouter";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
@@ -32,6 +32,10 @@ export default function Dashboard() {
   const [, setLocation] = useLocation();
   const { data: stats, isLoading } = trpc.dashboard.stats.useQuery();
   const { data: projects } = trpc.projects.list.useQuery({});
+  const { data: driveStatus, isLoading: driveLoading } = trpc.customerFiles.testConnection.useQuery(
+    undefined,
+    { retry: false, refetchOnWindowFocus: false }
+  );
 
   const recentProjects = projects?.slice(0, 6) ?? [];
 
@@ -111,6 +115,39 @@ export default function Dashboard() {
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Google Drive Status */}
+      <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg border border-border bg-card">
+        <div className={`flex items-center gap-1.5 shrink-0 ${
+          driveLoading ? 'text-muted-foreground' :
+          driveStatus?.connected ? 'text-green-400' : 'text-destructive'
+        }`}>
+          {driveLoading ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : driveStatus?.connected ? (
+            <Wifi className="h-3.5 w-3.5" />
+          ) : (
+            <WifiOff className="h-3.5 w-3.5" />
+          )}
+          <HardDrive className="h-3.5 w-3.5" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <span className="text-xs font-medium">
+            Google Drive
+          </span>
+          <span className={`ml-2 text-xs ${
+            driveLoading ? 'text-muted-foreground' :
+            driveStatus?.connected ? 'text-green-400' : 'text-destructive'
+          }`}>
+            {driveLoading ? 'Verbinde...' : driveStatus?.connected ? `Verbunden · ${driveStatus.email}` : 'Nicht verbunden'}
+          </span>
+        </div>
+        {driveStatus?.connected && driveStatus.storageUsed && (
+          <span className="text-xs text-muted-foreground shrink-0 hidden sm:block">
+            {driveStatus.storageUsed}
+          </span>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">

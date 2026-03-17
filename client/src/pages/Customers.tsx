@@ -596,6 +596,16 @@ function CustomerAkte({ customer }: { customer: { id: number; name: string; comp
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const customerDisplayName = customer.company || customer.name;
+  const [zipping, setZipping] = useState(false);
+
+  const zipMut = trpc.customerFiles.zipExport.useMutation({
+    onSuccess: ({ url, fileCount }) => {
+      window.open(url, '_blank');
+      toast.success(`ZIP mit ${fileCount} Dateien wird heruntergeladen`);
+    },
+    onError: (e) => toast.error(`ZIP-Export fehlgeschlagen: ${e.message}`),
+    onSettled: () => setZipping(false),
+  });
 
   const { data: files = [], isLoading } = trpc.customerFiles.list.useQuery(
     { customerId: customer.id },
@@ -725,7 +735,7 @@ function CustomerAkte({ customer }: { customer: { id: number; name: string; comp
 
       <Separator />
 
-      {/* Kategorie-Filter */}
+      {/* Kategorie-Filter + ZIP-Export */}
       <div className="flex items-center gap-2 flex-wrap">
         <Button
           variant={selectedCategory === 'all' ? 'default' : 'outline'}
@@ -751,6 +761,19 @@ function CustomerAkte({ customer }: { customer: { id: number; name: string; comp
             </Button>
           );
         })}
+        {files.length > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => { setZipping(true); zipMut.mutate({ customerId: customer.id }); }}
+            disabled={zipping}
+            className="h-7 text-xs gap-1 ml-auto border-green-500/30 text-green-400 hover:bg-green-500/10"
+            title="Alle Dateien als ZIP herunterladen"
+          >
+            {zipping ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
+            ZIP-Export
+          </Button>
+        )}
       </div>
 
       {/* Dateiliste */}

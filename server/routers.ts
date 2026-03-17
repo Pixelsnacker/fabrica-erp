@@ -2419,6 +2419,100 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
         return { success: true };
       }),
 
+    // Dateien nach Kunde + Projekt filtern
+    listByProject: protectedProcedure
+      .input(z.object({ customerId: z.number(), projectId: z.number() }))
+      .query(async ({ input }) => {
+        const db = await (await import('./db')).getDb();
+        if (!db) throw new Error('DB nicht verfügbar');
+        const { customerFiles } = await import('../drizzle/schema');
+        const { eq, and, desc } = await import('drizzle-orm');
+        return db.select().from(customerFiles)
+          .where(and(
+            eq(customerFiles.customerId, input.customerId),
+            eq(customerFiles.projectId, input.projectId)
+          ))
+          .orderBy(desc(customerFiles.createdAt));
+      }),
+
+    // ZIP-Export aller Dateien einer Kundenakte
+    zipExport: protectedProcedure
+      .input(z.object({ customerId: z.number(), projectId: z.number().optional() }))
+      .mutation(async ({ input }) => {
+        const db = await (await import('./db')).getDb();
+        if (!db) throw new Error('DB nicht verfügbar');
+        const { customerFiles } = await import('../drizzle/schema');
+        const { eq, and, desc } = await import('drizzle-orm');
+
+        // Dateien aus DB laden
+        let files;
+        if (input.projectId) {
+          files = await db.select().from(customerFiles)
+            .where(and(eq(customerFiles.customerId, input.customerId), eq(customerFiles.projectId, input.projectId)))
+            .orderBy(desc(customerFiles.createdAt));
+        } else {
+          files = await db.select().from(customerFiles)
+            .where(eq(customerFiles.customerId, input.customerId))
+            .orderBy(desc(customerFiles.createdAt));
+        }
+
+        if (files.length === 0) throw new Error('Keine Dateien vorhanden');
+
+        // Dateien von Google Drive herunterladen und ZIP erstellen
+        const archiver = (await import('archiver')).default;
+        const { PassThrough } = await import('stream');
+        const https = await import('https');
+        const http = await import('http');
+
+        const chunks: Buffer[] = [];
+        const passThrough = new PassThrough();
+        passThrough.on('data', (chunk: Buffer) => chunks.push(chunk));
+
+        const archive = archiver('zip', { zlib: { level: 6 } });
+        archive.pipe(passThrough);
+
+        // Jede Datei von Drive herunterladen und zum Archiv hinzufügen
+        for (const file of files) {
+          const downloadUrl = `https://drive.google.com/uc?export=download&id=${file.driveFileId}`;
+          const fileBuffer = await new Promise<Buffer>((resolve, reject) => {
+            const protocol = downloadUrl.startsWith('https') ? https : http;
+            const req = (protocol as any).get(downloadUrl, (res: any) => {
+              // Handle redirects
+              if (res.statusCode === 302 || res.statusCode === 301) {
+                const redirectUrl = res.headers.location;
+                const redirectProto = redirectUrl.startsWith('https') ? https : http;
+                (redirectProto as any).get(redirectUrl, (res2: any) => {
+                  const chunks2: Buffer[] = [];
+                  res2.on('data', (c: Buffer) => chunks2.push(c));
+                  res2.on('end', () => resolve(Buffer.concat(chunks2)));
+                  res2.on('error', reject);
+                }).on('error', reject);
+              } else {
+                const chunks2: Buffer[] = [];
+                res.on('data', (c: Buffer) => chunks2.push(c));
+                res.on('end', () => resolve(Buffer.concat(chunks2)));
+                res.on('error', reject);
+              }
+            });
+            req.on('error', reject);
+          });
+
+          // Kategorie-Ordner im ZIP
+          const categoryFolder = file.category || 'sonstiges';
+          archive.append(fileBuffer, { name: `${categoryFolder}/${file.filename}` });
+        }
+
+        await archive.finalize();
+        await new Promise<void>(resolve => passThrough.on('end', resolve));
+
+        const zipBuffer = Buffer.concat(chunks);
+        const { storagePut } = await import('./storage');
+        const zipKey = `customer-akte-exports/${input.customerId}-${Date.now()}.zip`;
+        const { url } = await storagePut(zipKey, zipBuffer, 'application/zip');
+
+        return { url, fileCount: files.length };
+      }),
+
     // Google Drive Verbindung testen
     testConnection: protectedProcedure
       .query(async () => {

@@ -171,12 +171,19 @@ export async function listCustomerFolderFiles(customerName: string): Promise<Arr
 /**
  * Prüft ob die Google Drive Verbindung funktioniert
  */
-export async function testDriveConnection(): Promise<{ ok: boolean; email?: string; error?: string }> {
+export async function testDriveConnection(): Promise<{ ok: boolean; connected?: boolean; email?: string; storageUsed?: string; error?: string }> {
   try {
     const drive = getDriveClient();
-    const about = await drive.about.get({ fields: 'user' });
-    return { ok: true, email: about.data.user?.emailAddress || undefined };
+    const about = await drive.about.get({ fields: 'user,storageQuota' });
+    const quota = about.data.storageQuota;
+    let storageUsed: string | undefined;
+    if (quota?.usage && quota?.limit) {
+      const usedGB = (parseInt(quota.usage) / 1024 / 1024 / 1024).toFixed(1);
+      const totalGB = Math.round(parseInt(quota.limit) / 1024 / 1024 / 1024);
+      storageUsed = `${usedGB} GB / ${totalGB >= 1000 ? (totalGB / 1024).toFixed(0) + ' TB' : totalGB + ' GB'}`;
+    }
+    return { ok: true, connected: true, email: about.data.user?.emailAddress || undefined, storageUsed };
   } catch (err: any) {
-    return { ok: false, error: err.message };
+    return { ok: false, connected: false, error: err.message };
   }
 }

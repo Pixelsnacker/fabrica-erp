@@ -797,3 +797,12 @@
 - [x] Max. 50 MB Dateigrößen-Validierung
 - [x] Vitest: 3 neue Tests für customerFiles Router (alle grün)
 - [x] 222 Tests grün, 0 TypeScript-Fehler
+
+## Phase 25: Kundenakte-Erweiterungen
+-- [x] Backend: customerFiles.listByProject – Dateien nach customerId + projectId filtern
+- [x] Backend: customerFiles.zipExport – alle Dateien einer Kundenakte als ZIP zurückgeben
+- [x] Frontend: Projekt-Detail – neuer "Akte"-Tab mit CustomerAkte-Komponente (gefiltert nach Projekt-ID)
+- [x] Frontend: Dashboard – Drive-Verbindungsstatus-Badge (grün/rot) mit E-Mail + Speicherplatz
+- [x] Frontend: Akte-Dialog – ZIP-Download-Button für alle Dateien der Kundenakte
+## Bugs Phase 25
+- [x] Bug: Upload fehlgeschlagen – behoben (neuer Refresh Token mit Web-Client generiert)

@@ -18,10 +18,195 @@ import {
   ExternalLink, Bell, StickyNote, Clock, Paperclip, CheckCircle2, Circle,
   AlertCircle, Upload, FileText, Image, X, Edit2, Save, AlertTriangle,
   ShieldAlert, Receipt, BookOpen, Loader2, Printer, ChevronDown, ChevronUp,
-  Download,
+  Download, FolderOpen, Shield, ClipboardList, FolderSync, Wifi, WifiOff, Archive,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
+
+// ─── Datei-Kategorien (gleich wie in Customers.tsx) ─────────────────────────
+const FILE_CATEGORIES_PD: Record<string, { label: string; color: string }> = {
+  cad_data:       { label: 'CAD-Daten',          color: 'text-blue-400' },
+  drawing:        { label: 'Zeichnungen',         color: 'text-purple-400' },
+  photo:          { label: 'Fotos',               color: 'text-green-400' },
+  nda:            { label: 'NDA / Verträge',      color: 'text-red-400' },
+  protocol:       { label: 'Protokolle',          color: 'text-yellow-400' },
+  supplier_quote: { label: 'Lieferantenangebote', color: 'text-orange-400' },
+  contract:       { label: 'Verträge',            color: 'text-pink-400' },
+  invoice:        { label: 'Rechnungen',          color: 'text-cyan-400' },
+  other:          { label: 'Sonstiges',           color: 'text-muted-foreground' },
+};
+
+function fmtSize(bytes?: number | null): string {
+  if (!bytes) return '-';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+// ─── Akte-Tab im Projekt-Detail ──────────────────────────────────────────────
+function ProjectAkteTab({ customerId, projectId, customerName }: {
+  customerId: number;
+  projectId: number;
+  customerName: string;
+}) {
+  const utils = trpc.useUtils();
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [uploadCategory, setUploadCategory] = useState<string>('other');
+  const [uploadNotes, setUploadNotes] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const { data: files = [], isLoading } = trpc.customerFiles.listByProject.useQuery(
+    { customerId, projectId },
+    { refetchOnWindowFocus: true }
+  );
+
+  const uploadMut = trpc.customerFiles.upload.useMutation({
+    onSuccess: () => {
+      utils.customerFiles.listByProject.invalidate({ customerId, projectId });
+      setUploadNotes('');
+      toast.success('Datei hochgeladen');
+    },
+    onError: (e) => toast.error(`Upload fehlgeschlagen: ${e.message}`),
+  });
+
+  const deleteMut = trpc.customerFiles.delete.useMutation({
+    onSuccess: () => {
+      utils.customerFiles.listByProject.invalidate({ customerId, projectId });
+      toast.success('Datei gelöscht');
+    },
+    onError: () => toast.error('Fehler beim Löschen'),
+  });
+
+  const handleFiles = async (fileList: FileList) => {
+    const MAX_SIZE = 50 * 1024 * 1024;
+    for (const file of Array.from(fileList)) {
+      if (file.size > MAX_SIZE) { toast.error(`"${file.name}" ist zu groß (max. 50 MB)`); continue; }
+      setUploading(true);
+      try {
+        const buffer = await file.arrayBuffer();
+        const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+        await uploadMut.mutateAsync({
+          customerId,
+          customerName,
+          projectId,
+          category: uploadCategory as any,
+          filename: file.name,
+          mimeType: file.type || 'application/octet-stream',
+          fileBase64: base64,
+          fileSize: file.size,
+          notes: uploadNotes || undefined,
+        });
+      } catch (_) {}
+      finally { setUploading(false); }
+    }
+  };
+
+  const filteredFiles = selectedCategory === 'all' ? files : files.filter(f => f.category === selectedCategory);
+  const categoryCounts = files.reduce((acc, f) => { acc[f.category] = (acc[f.category] || 0) + 1; return acc; }, {} as Record<string, number>);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 mb-1">
+        <FolderOpen className="h-4 w-4 text-blue-400" />
+        <span className="text-sm font-medium text-blue-400">Kundenakte: {customerName}</span>
+        <span className="text-xs text-muted-foreground ml-auto">Gespeichert in Google Drive · Fabrica ERP/Kunden/{customerName}/</span>
+      </div>
+
+      {/* Upload */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-3">
+          <div className="flex-1">
+            <Label className="text-xs text-muted-foreground mb-1 block">Kategorie</Label>
+            <Select value={uploadCategory} onValueChange={setUploadCategory}>
+              <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {Object.entries(FILE_CATEGORIES_PD).map(([v, { label }]) => (
+                  <SelectItem key={v} value={v}>{label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex-1">
+            <Label className="text-xs text-muted-foreground mb-1 block">Notiz (optional)</Label>
+            <Input value={uploadNotes} onChange={e => setUploadNotes(e.target.value)} placeholder="z.B. Rev. A, Endversion..." className="h-8 text-sm" />
+          </div>
+        </div>
+        <div
+          className={`border-2 border-dashed rounded-lg p-5 text-center transition-colors cursor-pointer ${
+            isDragging ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
+          }`}
+          onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={e => { e.preventDefault(); setIsDragging(false); if (e.dataTransfer.files.length > 0) handleFiles(e.dataTransfer.files); }}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <input ref={fileInputRef} type="file" multiple className="hidden" onChange={e => e.target.files && handleFiles(e.target.files)} />
+          {uploading ? (
+            <div className="flex flex-col items-center gap-2"><Loader2 className="h-7 w-7 text-primary animate-spin" /><p className="text-sm text-muted-foreground">Wird hochgeladen...</p></div>
+          ) : (
+            <div className="flex flex-col items-center gap-2"><Upload className="h-7 w-7 text-muted-foreground" /><p className="text-sm font-medium">Dateien ablegen oder klicken</p><p className="text-xs text-muted-foreground">Alle Formate, max. 50 MB</p></div>
+          )}
+        </div>
+      </div>
+
+      {/* Kategorie-Filter */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <Button variant={selectedCategory === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setSelectedCategory('all')} className="h-7 text-xs">Alle ({files.length})</Button>
+        {Object.entries(categoryCounts).map(([cat, count]) => {
+          const cfg = FILE_CATEGORIES_PD[cat];
+          if (!cfg) return null;
+          return (
+            <Button key={cat} variant={selectedCategory === cat ? 'default' : 'outline'} size="sm" onClick={() => setSelectedCategory(cat)} className="h-7 text-xs">
+              <span className={`h-2 w-2 rounded-full bg-current ${cfg.color} mr-1`} />
+              {cfg.label} ({count})
+            </Button>
+          );
+        })}
+      </div>
+
+      {/* Dateiliste */}
+      {isLoading ? (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground py-4"><Loader2 className="h-4 w-4 animate-spin" />Lade Dateien...</div>
+      ) : filteredFiles.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-8 gap-3">
+          <FolderOpen className="h-10 w-10 text-muted-foreground opacity-30" />
+          <p className="text-sm text-muted-foreground">Noch keine Dateien für dieses Projekt in der Kundenakte</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {filteredFiles.map(file => {
+            const cfg = FILE_CATEGORIES_PD[file.category] ?? FILE_CATEGORIES_PD.other;
+            return (
+              <div key={file.id} className="flex items-center gap-3 p-3 rounded-lg bg-card border border-border hover:border-primary/30 transition-all group">
+                <div className={`h-7 w-7 rounded flex items-center justify-center bg-card border border-border shrink-0`}>
+                  <FileText className={`h-3.5 w-3.5 ${cfg.color}`} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{file.filename}</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs text-muted-foreground">{cfg.label}</span>
+                    <span className="text-xs text-muted-foreground">·</span>
+                    <span className="text-xs text-muted-foreground">{fmtSize(file.fileSize)}</span>
+                    <span className="text-xs text-muted-foreground">·</span>
+                    <span className="text-xs text-muted-foreground">{new Date(file.createdAt).toLocaleDateString('de-DE')}</span>
+                    {file.notes && <><span className="text-xs text-muted-foreground">·</span><span className="text-xs text-muted-foreground italic">{file.notes}</span></>}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-blue-400 hover:text-blue-300" onClick={() => window.open(file.driveFileUrl, '_blank')} title="In Google Drive öffnen"><ExternalLink className="h-3.5 w-3.5" /></Button>
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-green-400 hover:text-green-300" onClick={() => window.open(`https://drive.google.com/uc?export=download&id=${file.driveFileId}`, '_blank')} title="Herunterladen"><Download className="h-3.5 w-3.5" /></Button>
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={() => { if (confirm(`"${file.filename}" wirklich löschen?`)) deleteMut.mutate({ id: file.id }); }} title="Löschen"><Trash2 className="h-3.5 w-3.5" /></Button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const STATUS_LABELS: Record<string, string> = {
   inquiry: "Anfrage", calculation: "Kalkulation", offer: "Angebot",
@@ -468,6 +653,9 @@ export default function ProjectDetail() {
           <TabsTrigger value="consultation" className="gap-1.5 text-xs md:text-sm"><MessageSquare className="h-3.5 w-3.5" /><span className="hidden sm:inline">Beratung</span> ({consultations.length})</TabsTrigger>
           <TabsTrigger value="datasheet" className="gap-1.5 text-xs md:text-sm"><BookOpen className="h-3.5 w-3.5" /><span className="hidden sm:inline">Datenblatt</span></TabsTrigger>
           <TabsTrigger value="docs" className="gap-1.5 text-xs md:text-sm"><Paperclip className="h-3.5 w-3.5" /><span className="hidden sm:inline">Dokumente</span>{projectDocs.length > 0 && <span className="ml-0.5">({projectDocs.length})</span>}</TabsTrigger>
+          {project.customerId && (
+            <TabsTrigger value="akte" className="gap-1.5 text-xs md:text-sm text-blue-400 data-[state=active]:text-blue-300"><FolderOpen className="h-3.5 w-3.5" /><span className="hidden sm:inline">Akte</span></TabsTrigger>
+          )}
         </TabsList>
 
         {/* ── Positionen (editierbar) ── */}
@@ -978,6 +1166,17 @@ export default function ProjectDetail() {
             </div>
           )}
         </TabsContent>
+
+        {/* ── Kundenakte (Google Drive) ── */}
+        {project.customerId && (
+          <TabsContent value="akte" className="mt-4">
+            <ProjectAkteTab
+              customerId={project.customerId}
+              projectId={id}
+              customerName={(project as any).customer?.company || (project as any).customer?.name || 'Kunde'}
+            />
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* Dokument-Upload-Dialog */}
