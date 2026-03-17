@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, Users, Building2, Truck, BookOpen, Image, Bot, Layers, TrendingUp, MessageSquare, FolderKanban, Zap, MoreHorizontal, Bell, AlertTriangle, Receipt, CalendarDays, Package } from "lucide-react";
+import { LayoutDashboard, LogOut, PanelLeft, Users, Building2, Truck, BookOpen, Image, Bot, Layers, TrendingUp, MessageSquare, FolderKanban, Zap, MoreHorizontal, Bell, AlertTriangle, Receipt, CalendarDays, Package, SendHorizontal } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -44,6 +44,7 @@ const menuItems = [
   { icon: AlertTriangle, label: "Reklamationen", path: "/complaints" },
   { icon: Package, label: "Artikeldatenbank", path: "/articles" },
   { icon: Receipt, label: "Angebote & Rechnungen", path: "/invoices" },
+  { icon: SendHorizontal, label: "Lieferantenanfragen", path: "/inquiries" },
   { icon: CalendarDays, label: "Kalender", path: "/calendar" },
   { icon: MoreHorizontal, label: "Einstellungen", path: "/settings" },
 ];

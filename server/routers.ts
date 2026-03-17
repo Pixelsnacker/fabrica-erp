@@ -34,6 +34,8 @@ import {
   lockInvoice, cancelInvoice, deleteInvoiceDraft, getInvoiceAuditLog, getNextInvoiceNumber,
   getCompanySettings, upsertCompanySettings,
   listCalendarEvents, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent, getCalendarEvent,
+  getNextInquiryNumber, listInquiries, getInquiryById, getInquiryItems,
+  createInquiry, updateInquiry, deleteInquiry, replaceInquiryItems,
 } from "./db";
 
 const EMAIL_SIGNATURE = `\n\nMit freundlichen Grüßen / Best Regards\n\nDaniel Rincón\n\nFabrica GmbH\nHüttenstraße 205\n50170 Kerpen-Sindorf\n\nTel.: +49(0)2273-9529429\nMobil: +49(0)170/8342238\nd.rincon@fabrica3d.eu\nwww.fabrica3d.de`;
@@ -2113,6 +2115,142 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
         .where(isNotNull(articles.category));
       return rows.map(r => r.category).filter(Boolean) as string[];
     }),
+  }),
+
+  // ─── Lieferantenanfragen ──────────────────────────────────────────────────
+  inquiries: router({
+    list: protectedProcedure
+      .input(z.object({
+        status: z.string().optional(),
+        supplierId: z.number().optional(),
+        search: z.string().optional(),
+      }).optional())
+      .query(async ({ input }) => listInquiries(input)),
+
+    getById: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        const inquiry = await getInquiryById(input.id);
+        if (!inquiry) throw new Error("Anfrage nicht gefunden");
+        const items = await getInquiryItems(input.id);
+        return { ...inquiry, items };
+      }),
+
+    nextNumber: protectedProcedure
+      .query(async () => getNextInquiryNumber()),
+
+    create: protectedProcedure
+      .input(z.object({
+        supplierId: z.number().optional(),
+        supplierName: z.string().optional(),
+        supplierContact: z.string().optional(),
+        supplierEmail: z.string().optional(),
+        projectId: z.number().optional(),
+        subject: z.string().optional(),
+        introText: z.string().optional(),
+        outroText: z.string().optional(),
+        desiredDeliveryDate: z.string().optional(),
+        paymentTerms: z.string().optional(),
+        deliveryTerms: z.string().optional(),
+        notes: z.string().optional(),
+        items: z.array(z.object({
+          description: z.string(),
+          longDescription: z.string().optional(),
+          quantity: z.string().default("1.000"),
+          unit: z.string().default("Stk."),
+          remark: z.string().optional(),
+          articleId: z.number().optional(),
+        })).default([]),
+      }))
+      .mutation(async ({ input }) => {
+        const { items, ...data } = input;
+        const inquiryNumber = await getNextInquiryNumber();
+        const id = await createInquiry({ ...data, inquiryNumber, status: "draft" } as any);
+        if (items.length > 0) {
+          await replaceInquiryItems(id, items as any);
+        }
+        return { id, inquiryNumber };
+      }),
+
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        supplierId: z.number().optional(),
+        supplierName: z.string().optional(),
+        supplierContact: z.string().optional(),
+        supplierEmail: z.string().optional(),
+        projectId: z.number().optional(),
+        subject: z.string().optional(),
+        introText: z.string().optional(),
+        outroText: z.string().optional(),
+        desiredDeliveryDate: z.string().optional(),
+        paymentTerms: z.string().optional(),
+        deliveryTerms: z.string().optional(),
+        notes: z.string().optional(),
+        items: z.array(z.object({
+          description: z.string(),
+          longDescription: z.string().optional(),
+          quantity: z.string().default("1.000"),
+          unit: z.string().default("Stk."),
+          remark: z.string().optional(),
+          articleId: z.number().optional(),
+        })).optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, items, ...data } = input;
+        await updateInquiry(id, data as any);
+        if (items !== undefined) {
+          await replaceInquiryItems(id, items as any);
+        }
+        return { id };
+      }),
+
+    updateStatus: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        status: z.enum(["draft", "sent", "answered", "completed", "cancelled"]),
+      }))
+      .mutation(async ({ input }) => {
+        const extra: Record<string, any> = {};
+        if (input.status === "sent") extra.sentAt = new Date().toISOString().slice(0, 19).replace("T", " ");
+        if (input.status === "answered") extra.answeredAt = new Date().toISOString().slice(0, 19).replace("T", " ");
+        await updateInquiry(input.id, { status: input.status, ...extra } as any);
+        return { id: input.id };
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await deleteInquiry(input.id);
+        return { success: true };
+      }),
+
+    generatePdf: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const inquiry = await getInquiryById(input.id);
+        if (!inquiry) throw new Error("Anfrage nicht gefunden");
+        const items = await getInquiryItems(input.id);
+        const settings = await getCompanySettings();
+        // Inquiry als Invoice-kompatibles Objekt für den PDF-Renderer aufbereiten
+        const inquiryAsInvoice = {
+          ...inquiry,
+          invoiceNumber: inquiry.inquiryNumber,
+          type: "inquiry" as const,
+          items: items.map((item: any) => ({
+            ...item,
+            unitPriceNet: "0.00",
+            taxRate: 0,
+            discount: 0,
+            isOptional: false,
+          })),
+        };
+        const pdfBuffer = await renderInvoicePdf(inquiryAsInvoice as any, settings);
+        const { storagePut } = await import('./storage');
+        const key = `inquiries/ANF-${inquiry.id}-${Date.now()}.pdf`;
+        const { url } = await storagePut(key, pdfBuffer, 'application/pdf');
+        return { url };
+      }),
   }),
 });
 export type AppRouter = typeof appRouter;

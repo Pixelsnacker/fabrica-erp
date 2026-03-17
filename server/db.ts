@@ -24,6 +24,7 @@ import {
   InsertInvoice, InsertInvoiceItem, InsertInvoiceAuditLog,
   companySettings, InsertCompanySettings,
   projectDocuments,
+  inquiries, inquiryItems, InsertInquiry, InsertInquiryItem,
 } from "../drizzle/schema";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -1179,4 +1180,89 @@ export async function getCalendarEvent(id: number) {
   if (!db) return null;
   const rows = await db.select().from(calendarEvents).where(eq(calendarEvents.id, id));
   return rows[0] ?? null;
+}
+
+// ─── Lieferantenanfragen ──────────────────────────────────────────────────────
+
+export async function getNextInquiryNumber(): Promise<string> {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const settings = await getCompanySettings();
+  const prefix = settings?.inquiryPrefix ?? "ANF";
+  const startNum = settings?.inquiryStartNumber ?? 1;
+  const sep = settings?.numberSeparator ?? "-";
+  const padding = settings?.numberPadding ?? 4;
+  const year = new Date().getFullYear();
+
+  // Höchste laufende Nummer im aktuellen Jahr ermitteln
+  const pattern = `${prefix}${sep}${year}${sep}%`;
+  const rows = await db.select({ num: inquiries.inquiryNumber })
+    .from(inquiries)
+    .where(like(inquiries.inquiryNumber, pattern))
+    .orderBy(desc(inquiries.inquiryNumber))
+    .limit(1);
+
+  let nextNum = startNum;
+  if (rows.length > 0) {
+    const parts = rows[0].num.split(sep);
+    const last = parseInt(parts[parts.length - 1], 10);
+    if (!isNaN(last)) nextNum = Math.max(last + 1, startNum);
+  }
+  return `${prefix}${sep}${year}${sep}${String(nextNum).padStart(padding, "0")}`;
+}
+
+export async function listInquiries(filters?: { status?: string; supplierId?: number; search?: string }) {
+  const db = await getDb();
+  if (!db) return [];
+  let query = db.select().from(inquiries).orderBy(desc(inquiries.createdAt));
+  return query;
+}
+
+export async function getInquiryById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(inquiries).where(eq(inquiries.id, id)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function getInquiryItems(inquiryId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(inquiryItems).where(eq(inquiryItems.inquiryId, inquiryId)).orderBy(inquiryItems.position);
+}
+
+export async function createInquiry(data: Omit<InsertInquiry, "id" | "createdAt" | "updatedAt">) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const now = Date.now();
+  const [result] = await db.insert(inquiries).values({ ...data, createdAt: now, updatedAt: now } as any);
+  return (result as any).insertId as number;
+}
+
+export async function updateInquiry(id: number, data: Partial<InsertInquiry>) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.update(inquiries).set({ ...data, updatedAt: Date.now() } as any).where(eq(inquiries.id, id));
+}
+
+export async function deleteInquiry(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.delete(inquiryItems).where(eq(inquiryItems.inquiryId, id));
+  await db.delete(inquiries).where(eq(inquiries.id, id));
+}
+
+export async function replaceInquiryItems(inquiryId: number, items: Array<Omit<InsertInquiryItem, "id" | "inquiryId" | "createdAt">>) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.delete(inquiryItems).where(eq(inquiryItems.inquiryId, inquiryId));
+  if (items.length > 0) {
+    const now = Date.now();
+    await db.insert(inquiryItems).values(items.map((item, i) => ({
+      ...item,
+      inquiryId,
+      position: i + 1,
+      createdAt: now,
+    })) as any);
+  }
 }

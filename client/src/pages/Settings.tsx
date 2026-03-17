@@ -490,12 +490,17 @@ export default function Settings() {
                       </div>
                     </div>
 
-                    {/* Kundennummer */}
-                    <div className="pt-2 border-t border-border">
+                    {/* Kundennummer + Anfrage */}
+                    <div className="pt-2 border-t border-border grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-1.5">
                         <Label>Kundennummer Startnummer</Label>
                         <Input type="number" min={1} value={form.customerStartNumber} onChange={e => setForm(f => ({ ...f, customerStartNumber: parseInt(e.target.value) || 10000 }))} placeholder="z.B. 10000" />
                         <p className="text-xs text-muted-foreground">Neuer Kunde bekommt mindestens Kundennummer {form.customerStartNumber}</p>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Lieferantenanfrage Startnummer</Label>
+                        <Input type="number" min={1} value={(form as any).inquiryStartNumber ?? 1} onChange={e => setForm(f => ({ ...f, inquiryStartNumber: parseInt(e.target.value) || 1 }))} placeholder="z.B. 1" />
+                        <p className="text-xs text-muted-foreground">Nächste Anfrage: ANF-{new Date().getFullYear()}-{String((form as any).inquiryStartNumber ?? 1).padStart(4, "0")}</p>
                       </div>
                     </div>
                   </CardContent>

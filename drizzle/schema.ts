@@ -467,6 +467,8 @@ export const companySettings = mysqlTable("company_settings", {
   deliveryNotePrefix: varchar("delivery_note_prefix", { length: 20 }).default("LS"),
   deliveryNoteStartNumber: int("delivery_note_start_number").default(1),
   customerStartNumber: int("customer_start_number").default(10000),
+  inquiryPrefix: varchar("inquiry_prefix", { length: 20 }).default("ANF"),
+  inquiryStartNumber: int("inquiry_start_number").default(1),
   agbText: text("agb_text"),
   // SMTP-Konfiguration für E-Mail-Versand
   smtpHost: varchar("smtp_host", { length: 255 }),
@@ -554,3 +556,43 @@ export const articles = mysqlTable("articles", {
 });
 export type InsertArticle = typeof articles.$inferInsert;
 export type Article = typeof articles.$inferSelect;
+
+// ─── Lieferantenanfragen ──────────────────────────────────────────────────────
+export const inquiries = mysqlTable("inquiries", {
+  id: int("id").autoincrement().notNull(),
+  inquiryNumber: varchar("inquiry_number", { length: 64 }).notNull(),
+  supplierId: int("supplier_id"),
+  supplierName: varchar("supplier_name", { length: 255 }),
+  supplierContact: varchar("supplier_contact", { length: 255 }),
+  supplierEmail: varchar("supplier_email", { length: 320 }),
+  projectId: int("project_id"),
+  status: mysqlEnum("status", ["draft", "sent", "answered", "completed", "cancelled"]).default("draft").notNull(),
+  subject: varchar("subject", { length: 512 }),
+  introText: text("intro_text"),
+  outroText: text("outro_text"),
+  desiredDeliveryDate: varchar("desired_delivery_date", { length: 64 }),
+  paymentTerms: varchar("payment_terms", { length: 255 }),
+  deliveryTerms: varchar("delivery_terms", { length: 255 }),
+  notes: text("notes"),
+  sentAt: timestamp("sent_at", { mode: "string" }),
+  answeredAt: timestamp("answered_at", { mode: "string" }),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+});
+export type InsertInquiry = typeof inquiries.$inferInsert;
+export type Inquiry = typeof inquiries.$inferSelect;
+
+export const inquiryItems = mysqlTable("inquiry_items", {
+  id: int("id").autoincrement().notNull(),
+  inquiryId: int("inquiry_id").notNull(),
+  position: int("position").default(1).notNull(),
+  articleId: int("article_id"),
+  description: varchar("description", { length: 512 }).notNull(),
+  longDescription: text("long_description"),
+  quantity: decimal("quantity", { precision: 12, scale: 3 }).default("1.000").notNull(),
+  unit: varchar("unit", { length: 32 }).default("Stk.").notNull(),
+  remark: text("remark"),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+});
+export type InsertInquiryItem = typeof inquiryItems.$inferInsert;
+export type InquiryItem = typeof inquiryItems.$inferSelect;

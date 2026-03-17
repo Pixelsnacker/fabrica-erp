@@ -134,6 +134,13 @@
       "when": 1773761121547,
       "tag": "0018_secret_frog_thor",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "5",
+      "when": 1773762840043,
+      "tag": "0019_round_gargoyle",
+      "breakpoints": true
     }
   ]
 }

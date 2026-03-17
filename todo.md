@@ -757,3 +757,15 @@
 - [x] createCustomer: automatische Kundennummer-Vergabe mit Startwert aus Einstellungen
 - [x] settings.update Router: customerStartNumber Parameter hinzugefügt
 - [x] Settings.tsx: Feld "Kundennummer Startnummer" eingebaut (unter Nummernkreis)
+
+## Feature: Lieferantenanfragen-Modul
+- [x] DB-Schema: inquiries + inquiry_items Tabellen (via SQL angelegt)
+- [x] DB-Migration ausgeführt
+- [x] Backend: db.ts Hilfsfunktionen (CRUD, getNextInquiryNumber)
+- [x] Backend: routers.ts Procedures (list, getById, create, update, delete, updateStatus, generatePdf)
+- [x] Einstellungen: ANF-Startnummer in Nummernkreis-Bereich eingebaut
+- [x] Frontend: InquiriesPage (Übersicht mit Filter, Suche, Status)
+- [x] Frontend: Inquiry-Formular (Lieferant via EntitySearch, Positionen, Freitextfelder, Wunschliefertermin)
+- [x] Frontend: PDF-Vorschau und Download
+- [x] Navigation: Lieferantenanfragen (SendHorizontal-Icon) in Sidebar eingebaut
+- [x] Status-Workflow: Entwurf → Versendet → Beantwortet → Abgeschlossen/Storniert
