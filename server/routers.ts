@@ -1453,6 +1453,7 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
         offerStartNumber: z.number().int().min(1).optional(),
         invoiceStartNumber: z.number().int().min(1).optional(),
         creditNoteStartNumber: z.number().int().min(1).optional(),
+        customerStartNumber: z.number().int().min(1).optional(),
         // AGB
         agbText: z.string().optional(),
         // SMTP

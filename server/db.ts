@@ -88,6 +88,15 @@ export async function getCustomerById(id: number) {
 export async function createCustomer(data: InsertCustomer) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
+  // Automatische Kundennummer vergeben wenn keine angegeben
+  if (!data.customerNumber) {
+    const settings = await getCompanySettings();
+    const startNum = settings?.customerStartNumber ?? 10000;
+    // Höchste bestehende Kundennummer ermitteln
+    const rows = await db.select({ num: customers.customerNumber }).from(customers).orderBy(desc(customers.customerNumber)).limit(1);
+    const lastNum = rows[0]?.num ?? 0;
+    data = { ...data, customerNumber: Math.max(lastNum + 1, startNum) };
+  }
   await db.insert(customers).values(data);
 }
 

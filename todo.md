@@ -751,3 +751,9 @@
 - [x] In Invoices.tsx: Kunden- und Lieferanten-Dropdown ersetzt
 - [x] In Projects.tsx: Kunden-Dropdown ersetzt
 - [x] In ProjectDetail.tsx: Lieferanten-Dropdown im Dokument-Upload ersetzt
+
+## Feature: Kundennummer-Startnummer in Einstellungen
+- [x] Schema: customer_number Feld zur customers-Tabelle, customer_start_number zur company_settings-Tabelle
+- [x] createCustomer: automatische Kundennummer-Vergabe mit Startwert aus Einstellungen
+- [x] settings.update Router: customerStartNumber Parameter hinzugefügt
+- [x] Settings.tsx: Feld "Kundennummer Startnummer" eingebaut (unter Nummernkreis)

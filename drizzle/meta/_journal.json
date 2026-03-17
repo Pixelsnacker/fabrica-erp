@@ -127,6 +127,13 @@
       "when": 1773663261492,
       "tag": "0017_safe_gamora",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "5",
+      "when": 1773761121547,
+      "tag": "0018_secret_frog_thor",
+      "breakpoints": true
     }
   ]
 }

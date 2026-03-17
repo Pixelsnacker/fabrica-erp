@@ -1,0 +1,8 @@
+{
+  "query": "\nALTER TABLE `customers` ADD COLUMN `customer_number` int NULL;\nALTER TABLE `company_settings` ADD COLUMN `customer_start_number` int NOT NULL DEFAULT 10000;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 9NNjvn7NV7enobv.7ea640e70a8c --database YMZow7uQxpBVyBGbmbpvvd --execute \nALTER TABLE `customers` ADD COLUMN `customer_number` int NULL;\nALTER TABLE `company_settings` ADD COLUMN `customer_start_number` int NOT NULL DEFAULT 10000;\n",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1060 (42S21) at line 2: Duplicate column name 'customer_number'"
+  ]
+}

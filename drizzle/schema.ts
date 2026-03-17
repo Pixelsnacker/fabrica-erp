@@ -45,6 +45,7 @@ export const consultationEntries = mysqlTable("consultation_entries", {
 
 export const customers = mysqlTable("customers", {
 	id: int().autoincrement().notNull(),
+	customerNumber: int("customer_number"),
 	name: varchar({ length: 255 }).notNull(),
 	company: varchar({ length: 255 }),
 	type: mysqlEnum(['b2b','museum','industry','private','other']).default('b2b').notNull(),
@@ -465,6 +466,7 @@ export const companySettings = mysqlTable("company_settings", {
   creditNoteStartNumber: int("credit_note_start_number").default(1),
   deliveryNotePrefix: varchar("delivery_note_prefix", { length: 20 }).default("LS"),
   deliveryNoteStartNumber: int("delivery_note_start_number").default(1),
+  customerStartNumber: int("customer_start_number").default(10000),
   agbText: text("agb_text"),
   // SMTP-Konfiguration für E-Mail-Versand
   smtpHost: varchar("smtp_host", { length: 255 }),

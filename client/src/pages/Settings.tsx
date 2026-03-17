@@ -60,6 +60,7 @@ export default function Settings() {
     offerStartNumber: 1,
     invoiceStartNumber: 1,
     creditNoteStartNumber: 1,
+    customerStartNumber: 10000,
     // AGB
     agbText: "",
     // SMTP
@@ -129,6 +130,7 @@ export default function Settings() {
         offerStartNumber: (companyData as any).offerStartNumber ?? 1,
         invoiceStartNumber: (companyData as any).invoiceStartNumber ?? 1,
         creditNoteStartNumber: (companyData as any).creditNoteStartNumber ?? 1,
+        customerStartNumber: (companyData as any).customerStartNumber ?? 10000,
         agbText: (companyData as any).agbText ?? "",
         smtpHost: (companyData as any).smtpHost ?? "",
         smtpPort: (companyData as any).smtpPort ?? 587,
@@ -485,6 +487,15 @@ export default function Settings() {
                         <Label>Gutschrift Startnummer</Label>
                         <Input type="number" min={1} value={form.creditNoteStartNumber} onChange={e => setForm(f => ({ ...f, creditNoteStartNumber: parseInt(e.target.value) || 1 }))} placeholder="z.B. 5" />
                         <p className="text-xs text-muted-foreground">Nächste Gutschrift: {form.creditNotePrefix}{form.numberSeparator}{form.includeYear ? new Date().getFullYear() + form.numberSeparator : ""}{String(form.creditNoteStartNumber).padStart(form.numberPadding, "0")}</p>
+                      </div>
+                    </div>
+
+                    {/* Kundennummer */}
+                    <div className="pt-2 border-t border-border">
+                      <div className="space-y-1.5">
+                        <Label>Kundennummer Startnummer</Label>
+                        <Input type="number" min={1} value={form.customerStartNumber} onChange={e => setForm(f => ({ ...f, customerStartNumber: parseInt(e.target.value) || 10000 }))} placeholder="z.B. 10000" />
+                        <p className="text-xs text-muted-foreground">Neuer Kunde bekommt mindestens Kundennummer {form.customerStartNumber}</p>
                       </div>
                     </div>
                   </CardContent>
