@@ -596,3 +596,31 @@ export const inquiryItems = mysqlTable("inquiry_items", {
 });
 export type InsertInquiryItem = typeof inquiryItems.$inferInsert;
 export type InquiryItem = typeof inquiryItems.$inferSelect;
+
+// ─── Kundenakte (Google Drive) ────────────────────────────────────────────────
+export const customerFiles = mysqlTable("customer_files", {
+  id: int("id").autoincrement().notNull(),
+  customerId: int("customer_id").notNull(),
+  projectId: int("project_id"),
+  category: mysqlEnum("category", [
+    "cad_data",         // CAD-Daten (.STP, .STL, .STEP)
+    "drawing",          // Zeichnungen (PDF, DXF, DWG)
+    "photo",            // Fotos / Bilder
+    "nda",              // NDA / Geheimhaltung
+    "protocol",         // Protokolle / Berichte
+    "supplier_quote",   // Lieferantenangebote
+    "contract",         // Verträge
+    "invoice",          // Rechnungen
+    "other",            // Sonstiges
+  ]).default("other").notNull(),
+  filename: varchar("filename", { length: 512 }).notNull(),
+  driveFileId: varchar("drive_file_id", { length: 255 }).notNull(),  // Google Drive File ID
+  driveFileUrl: text("drive_file_url").notNull(),                     // Google Drive View URL
+  fileSize: bigint("file_size", { mode: "number" }),
+  mimeType: varchar("mime_type", { length: 128 }),
+  notes: text("notes"),
+  uploadedBy: varchar("uploaded_by", { length: 255 }),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+});
+export type InsertCustomerFile = typeof customerFiles.$inferInsert;
+export type CustomerFile = typeof customerFiles.$inferSelect;

@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `customer_files` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `customer_id` int NOT NULL,\n  `project_id` int,\n  `category` enum('cad_data','drawing','photo','nda','protocol','supplier_quote','contract','invoice','other') NOT NULL DEFAULT 'other',\n  `filename` varchar(512) NOT NULL,\n  `drive_file_id` varchar(255) NOT NULL,\n  `drive_file_url` text NOT NULL,\n  `file_size` bigint,\n  `mime_type` varchar(128),\n  `notes` text,\n  `uploaded_by` varchar(255),\n  `created_at` bigint NOT NULL,\n  CONSTRAINT `customer_files_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 9NNjvn7NV7enobv.7ea640e70a8c --database YMZow7uQxpBVyBGbmbpvvd --execute CREATE TABLE IF NOT EXISTS `customer_files` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `customer_id` int NOT NULL,\n  `project_id` int,\n  `category` enum('cad_data','drawing','photo','nda','protocol','supplier_quote','contract','invoice','other') NOT NULL DEFAULT 'other',\n  `filename` varchar(512) NOT NULL,\n  `drive_file_id` varchar(255) NOT NULL,\n  `drive_file_url` text NOT NULL,\n  `file_size` bigint,\n  `mime_type` varchar(128),\n  `notes` text,\n  `uploaded_by` varchar(255),\n  `created_at` bigint NOT NULL,\n  CONSTRAINT `customer_files_id` PRIMARY KEY(`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 202
+}

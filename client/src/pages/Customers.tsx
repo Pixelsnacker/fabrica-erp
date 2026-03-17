@@ -12,9 +12,12 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Plus, Search, Users, Mail, Phone, Building2, MapPin, Edit2, Trash2, User,
   Upload, FileSpreadsheet, CheckCircle2, AlertCircle, X, ChevronDown, ChevronUp,
+  FolderOpen, Download, FileText, Image, File, Shield, ClipboardList, Package,
+  Loader2, ExternalLink, FolderSync, Wifi, WifiOff,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -562,12 +565,282 @@ function CustomerDialog({
   );
 }
 
+// ─── Kategorie-Konfiguration ─────────────────────────────────────────────────
+const FILE_CATEGORIES: Record<string, { label: string; icon: React.ElementType; color: string }> = {
+  cad_data:       { label: 'CAD-Daten',          icon: FolderSync,    color: 'text-blue-400' },
+  drawing:        { label: 'Zeichnungen',         icon: FileText,      color: 'text-purple-400' },
+  photo:          { label: 'Fotos',               icon: Image,         color: 'text-green-400' },
+  nda:            { label: 'NDA / Verträge',      icon: Shield,        color: 'text-red-400' },
+  protocol:       { label: 'Protokolle',          icon: ClipboardList, color: 'text-yellow-400' },
+  supplier_quote: { label: 'Lieferantenangebote', icon: Package,       color: 'text-orange-400' },
+  contract:       { label: 'Verträge',            icon: Shield,        color: 'text-pink-400' },
+  invoice:        { label: 'Rechnungen',          icon: FileText,      color: 'text-cyan-400' },
+  other:          { label: 'Sonstiges',           icon: File,          color: 'text-muted-foreground' },
+};
+
+function formatFileSize(bytes?: number | null): string {
+  if (!bytes) return '-';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+// ─── Kundenakte-Komponente ────────────────────────────────────────────────────
+function CustomerAkte({ customer }: { customer: { id: number; name: string; company?: string | null } }) {
+  const utils = trpc.useUtils();
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [uploadCategory, setUploadCategory] = useState<string>('other');
+  const [uploadNotes, setUploadNotes] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const customerDisplayName = customer.company || customer.name;
+
+  const { data: files = [], isLoading } = trpc.customerFiles.list.useQuery(
+    { customerId: customer.id },
+    { refetchOnWindowFocus: true }
+  );
+
+  const uploadMut = trpc.customerFiles.upload.useMutation({
+    onSuccess: () => {
+      utils.customerFiles.list.invalidate({ customerId: customer.id });
+      setUploadNotes('');
+      toast.success('Datei hochgeladen');
+    },
+    onError: (e) => toast.error(`Upload fehlgeschlagen: ${e.message}`),
+  });
+
+  const deleteMut = trpc.customerFiles.delete.useMutation({
+    onSuccess: () => {
+      utils.customerFiles.list.invalidate({ customerId: customer.id });
+      toast.success('Datei gelöscht');
+    },
+    onError: () => toast.error('Fehler beim Löschen'),
+  });
+
+  const handleFiles = async (fileList: FileList) => {
+    const MAX_SIZE = 50 * 1024 * 1024; // 50 MB
+    for (const file of Array.from(fileList)) {
+      if (file.size > MAX_SIZE) {
+        toast.error(`"${file.name}" ist zu groß (max. 50 MB)`);
+        continue;
+      }
+      setUploading(true);
+      try {
+        const buffer = await file.arrayBuffer();
+        const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+        await uploadMut.mutateAsync({
+          customerId: customer.id,
+          customerName: customerDisplayName,
+          category: uploadCategory as any,
+          filename: file.name,
+          mimeType: file.type || 'application/octet-stream',
+          fileBase64: base64,
+          fileSize: file.size,
+          notes: uploadNotes || undefined,
+        });
+      } catch (_) {
+        // Error already handled in onError
+      } finally {
+        setUploading(false);
+      }
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files.length > 0) handleFiles(e.dataTransfer.files);
+  };
+
+  const filteredFiles = selectedCategory === 'all'
+    ? files
+    : files.filter(f => f.category === selectedCategory);
+
+  const categoryCounts = files.reduce((acc, f) => {
+    acc[f.category] = (acc[f.category] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  return (
+    <div className="space-y-4 p-1">
+      {/* Upload-Bereich */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-3">
+          <div className="flex-1">
+            <Label className="text-xs text-muted-foreground mb-1 block">Kategorie</Label>
+            <Select value={uploadCategory} onValueChange={setUploadCategory}>
+              <SelectTrigger className="h-8 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(FILE_CATEGORIES).map(([v, { label }]) => (
+                  <SelectItem key={v} value={v}>{label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex-1">
+            <Label className="text-xs text-muted-foreground mb-1 block">Notiz (optional)</Label>
+            <Input
+              value={uploadNotes}
+              onChange={e => setUploadNotes(e.target.value)}
+              placeholder="z.B. Version 2, Rev. A..."
+              className="h-8 text-sm"
+            />
+          </div>
+        </div>
+
+        <div
+          className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer ${
+            isDragging ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
+          }`}
+          onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={handleDrop}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            className="hidden"
+            onChange={e => e.target.files && handleFiles(e.target.files)}
+          />
+          {uploading ? (
+            <div className="flex flex-col items-center gap-2">
+              <Loader2 className="h-8 w-8 text-primary animate-spin" />
+              <p className="text-sm text-muted-foreground">Wird hochgeladen...</p>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-2">
+              <Upload className="h-8 w-8 text-muted-foreground" />
+              <p className="text-sm font-medium">Dateien hier ablegen oder klicken</p>
+              <p className="text-xs text-muted-foreground">Alle Formate, max. 50 MB pro Datei</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* Kategorie-Filter */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <Button
+          variant={selectedCategory === 'all' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setSelectedCategory('all')}
+          className="h-7 text-xs"
+        >
+          Alle ({files.length})
+        </Button>
+        {Object.entries(categoryCounts).map(([cat, count]) => {
+          const cfg = FILE_CATEGORIES[cat];
+          if (!cfg) return null;
+          return (
+            <Button
+              key={cat}
+              variant={selectedCategory === cat ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setSelectedCategory(cat)}
+              className="h-7 text-xs gap-1"
+            >
+              <cfg.icon className={`h-3 w-3 ${cfg.color}`} />
+              {cfg.label} ({count})
+            </Button>
+          );
+        })}
+      </div>
+
+      {/* Dateiliste */}
+      {isLoading ? (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Lade Dateien...
+        </div>
+      ) : filteredFiles.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-10 gap-3">
+          <FolderOpen className="h-10 w-10 text-muted-foreground opacity-30" />
+          <p className="text-sm text-muted-foreground">
+            {selectedCategory === 'all' ? 'Noch keine Dateien in der Kundenakte' : `Keine ${FILE_CATEGORIES[selectedCategory]?.label ?? 'Dateien'} vorhanden`}
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {filteredFiles.map(file => {
+            const cfg = FILE_CATEGORIES[file.category] ?? FILE_CATEGORIES.other;
+            const Icon = cfg.icon;
+            return (
+              <div
+                key={file.id}
+                className="flex items-center gap-3 p-3 rounded-lg bg-card border border-border hover:border-primary/30 transition-all group"
+              >
+                <div className={`h-8 w-8 rounded flex items-center justify-center bg-card border border-border shrink-0`}>
+                  <Icon className={`h-4 w-4 ${cfg.color}`} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{file.filename}</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs text-muted-foreground">{cfg.label}</span>
+                    <span className="text-xs text-muted-foreground">·</span>
+                    <span className="text-xs text-muted-foreground">{formatFileSize(file.fileSize)}</span>
+                    <span className="text-xs text-muted-foreground">·</span>
+                    <span className="text-xs text-muted-foreground">{new Date(file.createdAt).toLocaleDateString('de-DE')}</span>
+                    {file.notes && (
+                      <>
+                        <span className="text-xs text-muted-foreground">·</span>
+                        <span className="text-xs text-muted-foreground italic">{file.notes}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button
+                    variant="ghost" size="sm"
+                    className="h-7 w-7 p-0 text-blue-400 hover:text-blue-300"
+                    onClick={() => window.open(file.driveFileUrl, '_blank')}
+                    title="In Google Drive öffnen"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost" size="sm"
+                    className="h-7 w-7 p-0 text-green-400 hover:text-green-300"
+                    onClick={() => window.open(`https://drive.google.com/uc?export=download&id=${file.driveFileId}`, '_blank')}
+                    title="Herunterladen"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost" size="sm"
+                    className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                    onClick={() => {
+                      if (confirm(`"${file.filename}" wirklich löschen?`)) {
+                        deleteMut.mutate({ id: file.id });
+                      }
+                    }}
+                    title="Löschen"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Hauptkomponente ──────────────────────────────────────────────────────────
 export default function Customers() {
   const [search, setSearch] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
+  const [akteCustomer, setAkteCustomer] = useState<{ id: number; name: string; company?: string | null } | null>(null);
   const utils = trpc.useUtils();
   const { data: customers = [], isLoading } = trpc.customers.list.useQuery();
 
@@ -761,6 +1034,14 @@ export default function Customers() {
                 <div className="flex items-center gap-2 shrink-0">
                   <Badge variant="secondary" className="text-xs">{TYPE_LABELS[customer.type] ?? customer.type}</Badge>
                   <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost" size="sm"
+                      className="h-7 px-2 text-xs text-blue-400 hover:text-blue-300 gap-1"
+                      onClick={() => setAkteCustomer({ id: customer.id, name: customer.name, company: (customer as any).company })}
+                      title="Kundenakte öffnen"
+                    >
+                      <FolderOpen className="h-3.5 w-3.5" />Akte
+                    </Button>
                     <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-yellow-400 hover:text-yellow-300" onClick={() => setEditId(customer.id)}>
                       <Edit2 className="h-3.5 w-3.5" />
                     </Button>
@@ -802,6 +1083,21 @@ export default function Customers() {
           title="Kunde bearbeiten"
           isPending={updateMutation.isPending}
         />
+      )}
+
+      {/* Kundenakte Dialog */}
+      {akteCustomer && (
+        <Dialog open={true} onOpenChange={open => { if (!open) setAkteCustomer(null); }}>
+          <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <FolderOpen className="h-5 w-5 text-blue-400" />
+                Kundenakte: {akteCustomer.company || akteCustomer.name}
+              </DialogTitle>
+            </DialogHeader>
+            <CustomerAkte customer={akteCustomer} />
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );

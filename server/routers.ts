@@ -2317,5 +2317,114 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
         return { url };
       }),
   }),
+
+  // ─── Kundenakte (Google Drive) ──────────────────────────────────────────────
+  customerFiles: router({
+    // Alle Dateien eines Kunden auflisten
+    list: protectedProcedure
+      .input(z.object({ customerId: z.number() }))
+      .query(async ({ input }) => {
+        const db = await (await import('./db')).getDb();
+        if (!db) throw new Error('DB nicht verfügbar');
+        const { customerFiles } = await import('../drizzle/schema');
+        const { eq, desc } = await import('drizzle-orm');
+        return db.select().from(customerFiles)
+          .where(eq(customerFiles.customerId, input.customerId))
+          .orderBy(desc(customerFiles.createdAt));
+      }),
+
+    // Datei hochladen (Base64-encoded)
+    upload: protectedProcedure
+      .input(z.object({
+        customerId: z.number(),
+        customerName: z.string(),
+        projectId: z.number().optional(),
+        category: z.enum(['cad_data','drawing','photo','nda','protocol','supplier_quote','contract','invoice','other']).default('other'),
+        filename: z.string(),
+        mimeType: z.string(),
+        fileBase64: z.string(), // Base64-encoded Dateiinhalt
+        fileSize: z.number().optional(),
+        notes: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const { uploadFileToDrive, getOrCreateCustomerFolder } = await import('./googleDrive');
+        const db = await (await import('./db')).getDb();
+        if (!db) throw new Error('DB nicht verfügbar');
+        const { customerFiles } = await import('../drizzle/schema');
+
+        // Base64 → Buffer
+        const buffer = Buffer.from(input.fileBase64, 'base64');
+
+        // In Google Drive hochladen
+        const { fileId, fileUrl } = await uploadFileToDrive({
+          filename: input.filename,
+          mimeType: input.mimeType,
+          buffer,
+          customerName: input.customerName,
+        });
+
+        // Metadaten in DB speichern
+        await db.insert(customerFiles).values({
+          customerId: input.customerId,
+          projectId: input.projectId || null,
+          category: input.category,
+          filename: input.filename,
+          driveFileId: fileId,
+          driveFileUrl: fileUrl,
+          fileSize: input.fileSize || buffer.length,
+          mimeType: input.mimeType,
+          notes: input.notes || null,
+          uploadedBy: ctx.user?.name || 'System',
+          createdAt: Date.now(),
+        });
+
+        return { success: true, fileId, fileUrl };
+      }),
+
+    // Datei löschen
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const { deleteFileFromDrive } = await import('./googleDrive');
+        const db = await (await import('./db')).getDb();
+        if (!db) throw new Error('DB nicht verfügbar');
+        const { customerFiles } = await import('../drizzle/schema');
+        const { eq } = await import('drizzle-orm');
+
+        // Datei in DB finden
+        const [file] = await db.select().from(customerFiles).where(eq(customerFiles.id, input.id)).limit(1);
+        if (!file) throw new Error('Datei nicht gefunden');
+
+        // Aus Google Drive löschen
+        try {
+          await deleteFileFromDrive(file.driveFileId);
+        } catch (err) {
+          console.warn('Google Drive Löschfehler (ignoriert):', err);
+        }
+
+        // Aus DB löschen
+        await db.delete(customerFiles).where(eq(customerFiles.id, input.id));
+        return { success: true };
+      }),
+
+    // Notiz aktualisieren
+    updateNote: protectedProcedure
+      .input(z.object({ id: z.number(), notes: z.string() }))
+      .mutation(async ({ input }) => {
+        const db = await (await import('./db')).getDb();
+        if (!db) throw new Error('DB nicht verfügbar');
+        const { customerFiles } = await import('../drizzle/schema');
+        const { eq } = await import('drizzle-orm');
+        await db.update(customerFiles).set({ notes: input.notes }).where(eq(customerFiles.id, input.id));
+        return { success: true };
+      }),
+
+    // Google Drive Verbindung testen
+    testConnection: protectedProcedure
+      .query(async () => {
+        const { testDriveConnection } = await import('./googleDrive');
+        return testDriveConnection();
+      }),
+  }),
 });
 export type AppRouter = typeof appRouter;

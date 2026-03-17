@@ -774,3 +774,26 @@
 - [x] Backend: invoices.duplicate Procedure (kopiert alle Felder + Items, neue Nummer, heutiges Datum, Status=draft)
 - [x] Frontend: "Duplizieren"-Button (blau, Copy-Icon) in der Angebotsliste für alle Dokumenttypen
 - [x] Nach Duplizieren: Kopie direkt zum Bearbeiten geöffnet (Kunde änderbar)
+
+## Feature: Kundenakte mit Google Drive
+- [ ] Google Drive API Credentials (OAuth2 Refresh Token) einrichten
+- [ ] Backend: Google Drive Helper (Upload, Ordner erstellen, Download-Link, Löschen)
+- [ ] DB-Schema: customer_files Tabelle (customerId, projectId, driveFileId, driveUrl, filename, category, notes)
+- [ ] Backend: customers.files Procedures (list, upload, delete, updateNote)
+- [ ] Frontend: "Akte"-Tab in Customers.tsx (Upload, Dateiliste, Download, Löschen, Notiz bearbeiten)
+- [ ] Ordnerstruktur in Google Drive: Fabrica ERP / Kunden / Kundenname / Kategorie /
+- [ ] Backup-Button: Metadaten-CSV der Kundenakte in bestehenden Gesamt-Backup integrieren
+
+## Phase 24: Kundenakte mit Google Drive Integration
+- [x] Google Drive OAuth2 Web-Client erstellt (Fabrica ERP Web)
+- [x] Refresh Token generiert und als GOOGLE_DRIVE_REFRESH_TOKEN Secret gespeichert
+- [x] DB: customer_files Tabelle (id, customer_id, project_id, category, filename, drive_file_id, drive_file_url, file_size, mime_type, notes, uploaded_by, created_at)
+- [x] server/googleDrive.ts: Ordner-Struktur (Fabrica ERP/Kunden/[Name]/), Upload, Delete, testConnection
+- [x] tRPC Router: customerFiles.list, upload, delete, updateNote, testConnection
+- [x] Frontend: "Akte"-Button pro Kunden-Karte (blau, FolderOpen-Icon)
+- [x] Kundenakte-Dialog: Drag & Drop Upload, Kategorie-Auswahl, Notiz-Feld
+- [x] Kategorie-Filter: CAD-Daten, Zeichnungen, Fotos, NDA, Protokolle, Lieferantenangebote, Verträge, Rechnungen, Sonstiges
+- [x] Datei-Aktionen: In Google Drive öffnen (ExternalLink), Herunterladen, Löschen
+- [x] Max. 50 MB Dateigrößen-Validierung
+- [x] Vitest: 3 neue Tests für customerFiles Router (alle grün)
+- [x] 222 Tests grün, 0 TypeScript-Fehler
