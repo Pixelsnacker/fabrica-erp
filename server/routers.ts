@@ -559,11 +559,15 @@ export const appRouter = router({
           const customer = await getCustomerById(project.customerId);
           if (customer) {
             const { uploadFileToDrive } = await import('./googleDrive');
+            const projectName = project.projectNumber
+              ? `${project.projectNumber} ${project.title}`.substring(0, 100)
+              : project.title.substring(0, 100);
             await uploadFileToDrive({
               filename: input.filename,
               mimeType: input.mimeType,
               buffer,
               customerName: customer.company || customer.name,
+              projectName,
             });
           }
         }
@@ -1915,11 +1919,15 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
             const customer = await getCustomerById(project.customerId);
             if (customer) {
               const { uploadFileToDrive } = await import('./googleDrive');
+              const projectName = project.projectNumber
+                ? `${project.projectNumber} ${project.title}`.substring(0, 100)
+                : project.title.substring(0, 100);
               await uploadFileToDrive({
                 filename: input.filename,
                 mimeType: input.mimeType,
                 buffer,
                 customerName: customer.company || customer.name,
+                projectName,
               });
             }
           }
@@ -2528,7 +2536,7 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
         notes: z.string().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
-        const { uploadFileToDrive, getOrCreateCustomerFolder } = await import('./googleDrive');
+        const { uploadFileToDrive } = await import('./googleDrive');
         const db = await (await import('./db')).getDb();
         if (!db) throw new Error('DB nicht verfügbar');
         const { customerFiles } = await import('../drizzle/schema');
@@ -2536,12 +2544,25 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
         // Base64 → Buffer
         const buffer = Buffer.from(input.fileBase64, 'base64');
 
+        // Projektname für Unterordner ermitteln (wenn projectId angegeben)
+        let projectName: string | undefined;
+        if (input.projectId) {
+          const { getProjectById } = await import('./db');
+          const project = await getProjectById(input.projectId);
+          if (project) {
+            projectName = project.projectNumber
+              ? `${project.projectNumber} ${project.title}`.substring(0, 100)
+              : project.title.substring(0, 100);
+          }
+        }
+
         // In Google Drive hochladen
         const { fileId, fileUrl } = await uploadFileToDrive({
           filename: input.filename,
           mimeType: input.mimeType,
           buffer,
           customerName: input.customerName,
+          projectName,
         });
 
         // Metadaten in DB speichern

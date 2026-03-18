@@ -1,6 +1,6 @@
 /**
  * Google Drive Service für Kundenakte
- * Verwaltet Dateien in Google Drive unter: Fabrica ERP/Kunden/[Kundenname]/
+ * Verwaltet Dateien in Google Drive unter: Fabrica ERP/Kunden/[Kundenname]/[Projektname]/
  */
 import { google } from 'googleapis';
 import { Readable } from 'stream';
@@ -26,9 +26,11 @@ function getDriveClient() {
  * Findet oder erstellt einen Ordner mit gegebenem Namen unter einem Parent
  */
 async function findOrCreateFolder(drive: ReturnType<typeof getDriveClient>, name: string, parentId?: string): Promise<string> {
+  // Sonderzeichen im Ordnernamen für die Query escapen
+  const safeName = name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
   const query = parentId
-    ? `name='${name.replace(/'/g, "\\'")}' and mimeType='application/vnd.google-apps.folder' and '${parentId}' in parents and trashed=false`
-    : `name='${name.replace(/'/g, "\\'")}' and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+    ? `name='${safeName}' and mimeType='application/vnd.google-apps.folder' and '${parentId}' in parents and trashed=false`
+    : `name='${safeName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`;
 
   const res = await drive.files.list({
     q: query,
@@ -77,6 +79,28 @@ export async function getOrCreateCustomerFolder(customerName: string): Promise<s
 }
 
 /**
+ * Gibt die Folder-ID für ein Projekt unter einem Kunden zurück (erstellt Ordner wenn nötig)
+ * Struktur: Fabrica ERP/Kunden/[Kundenname]/[Projektname]/
+ */
+export async function getOrCreateProjectFolder(customerName: string, projectName: string): Promise<string> {
+  const drive = getDriveClient();
+
+  // Root-Ordner: "Fabrica ERP"
+  const rootId = await findOrCreateFolder(drive, ROOT_FOLDER_NAME);
+
+  // Kunden-Ordner: "Fabrica ERP/Kunden"
+  const customersId = await findOrCreateFolder(drive, CUSTOMERS_FOLDER_NAME, rootId);
+
+  // Kunden-spezifischer Ordner: "Fabrica ERP/Kunden/[Kundenname]"
+  const customerFolderId = await findOrCreateFolder(drive, customerName, customersId);
+
+  // Projekt-Unterordner: "Fabrica ERP/Kunden/[Kundenname]/[Projektname]"
+  const projectFolderId = await findOrCreateFolder(drive, projectName, customerFolderId);
+
+  return projectFolderId;
+}
+
+/**
  * Datei in Google Drive hochladen
  */
 export async function uploadFileToDrive(params: {
@@ -84,11 +108,19 @@ export async function uploadFileToDrive(params: {
   mimeType: string;
   buffer: Buffer;
   customerName: string;
+  projectName?: string; // Optional: wenn angegeben, wird Projekt-Unterordner verwendet
   folderId?: string;
 }): Promise<{ fileId: string; fileUrl: string; webViewLink: string }> {
   const drive = getDriveClient();
 
-  const folderId = params.folderId || await getOrCreateCustomerFolder(params.customerName);
+  let folderId: string;
+  if (params.folderId) {
+    folderId = params.folderId;
+  } else if (params.projectName) {
+    folderId = await getOrCreateProjectFolder(params.customerName, params.projectName);
+  } else {
+    folderId = await getOrCreateCustomerFolder(params.customerName);
+  }
 
   const stream = new Readable();
   stream.push(params.buffer);

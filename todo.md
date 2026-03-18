@@ -839,3 +839,9 @@
 - [x] Jede Zeile: Name + farbiger Kategorie-Badge + Eigenschaften-Vorschau (truncated)
 - [x] Aufgeklappt: Eigenschaften, Anwendung, Vorteile, Notizen mit Bearbeiten/Löschen-Buttons
 - [x] Suche bleibt erhalten, 0 TypeScript-Fehler
+
+## Phase 30: Google Drive Projekt-Unterordner
+- [x] Google Drive Service: Projekt-Unterordner unter Kunden-Ordner erstellen
+- [x] Struktur: Fabrica ERP/Kunden/[Kundenname]/[Projektname]/[Datei]
+- [x] Alle Upload-Funktionen (CAD, Dokumente) auf neue Struktur anpassen
+- [x] Bestehende Tests grün halten (222 Tests grün)
