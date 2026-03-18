@@ -201,6 +201,54 @@ export async function listCustomerFolderFiles(customerName: string): Promise<Arr
 }
 
 /**
+ * Verschiebt eine Datei in einen anderen Ordner in Google Drive
+ */
+export async function moveFileToDriveFolder(fileId: string, newFolderId: string): Promise<void> {
+  const drive = getDriveClient();
+
+  // Aktuelle Parent-Ordner der Datei ermitteln
+  const file = await drive.files.get({
+    fileId,
+    fields: 'parents',
+  });
+
+  const previousParents = (file.data.parents || []).join(',');
+
+  // Datei in neuen Ordner verschieben
+  await drive.files.update({
+    fileId,
+    addParents: newFolderId,
+    removeParents: previousParents,
+    fields: 'id, parents',
+  });
+}
+
+/**
+ * Listet alle Dateien direkt im Kunden-Ordner auf (nicht in Unterordnern)
+ * Wird für die Migration verwendet
+ */
+export async function listFilesInCustomerRootFolder(customerName: string): Promise<Array<{
+  id: string;
+  name: string;
+  mimeType: string;
+}>> {
+  const drive = getDriveClient();
+  const folderId = await getOrCreateCustomerFolder(customerName);
+
+  const res = await drive.files.list({
+    q: `'${folderId}' in parents and mimeType!='application/vnd.google-apps.folder' and trashed=false`,
+    fields: 'files(id, name, mimeType)',
+    spaces: 'drive',
+  });
+
+  return (res.data.files || []).map(f => ({
+    id: f.id!,
+    name: f.name!,
+    mimeType: f.mimeType!,
+  }));
+}
+
+/**
  * Prüft ob die Google Drive Verbindung funktioniert
  */
 export async function testDriveConnection(): Promise<{ ok: boolean; connected?: boolean; email?: string; storageUsed?: string; error?: string }> {

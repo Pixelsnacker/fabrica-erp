@@ -562,13 +562,29 @@ export const appRouter = router({
             const projectName = project.projectNumber
               ? `${project.projectNumber} ${project.title}`.substring(0, 100)
               : project.title.substring(0, 100);
-            await uploadFileToDrive({
+            const driveResult = await uploadFileToDrive({
               filename: input.filename,
               mimeType: input.mimeType,
               buffer,
               customerName: customer.company || customer.name,
               projectName,
             });
+            // Drive-Status in DB speichern
+            const db2 = await (await import('./db')).getDb();
+            if (db2) {
+              const { cadFiles: cadFilesTable } = await import('../drizzle/schema');
+              const { eq: eq2, desc: desc2 } = await import('drizzle-orm');
+              const [lastFile] = await db2.select({ id: cadFilesTable.id })
+                .from(cadFilesTable)
+                .where(eq2(cadFilesTable.projectId, input.projectId))
+                .orderBy(desc2(cadFilesTable.id))
+                .limit(1);
+              if (lastFile) {
+                await db2.update(cadFilesTable)
+                  .set({ driveFileId: driveResult.fileId, driveSynced: 1 })
+                  .where(eq2(cadFilesTable.id, lastFile.id));
+              }
+            }
           }
         }
       } catch (e) {
@@ -1922,13 +1938,29 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
               const projectName = project.projectNumber
                 ? `${project.projectNumber} ${project.title}`.substring(0, 100)
                 : project.title.substring(0, 100);
-              await uploadFileToDrive({
+              const driveResult = await uploadFileToDrive({
                 filename: input.filename,
                 mimeType: input.mimeType,
                 buffer,
                 customerName: customer.company || customer.name,
                 projectName,
               });
+              // Drive-Status in DB speichern
+              const db2 = await (await import('./db')).getDb();
+              if (db2) {
+                const { projectDocuments: pdTable } = await import('../drizzle/schema');
+                const { eq: eq2, desc: desc2 } = await import('drizzle-orm');
+                const [lastDoc] = await db2.select({ id: pdTable.id })
+                  .from(pdTable)
+                  .where(eq2(pdTable.projectId, input.projectId))
+                  .orderBy(desc2(pdTable.createdAt))
+                  .limit(1);
+                if (lastDoc) {
+                  await db2.update(pdTable)
+                    .set({ driveFileId: driveResult.fileId, driveSynced: 1 })
+                    .where(eq2(pdTable.id, lastDoc.id));
+                }
+              }
             }
           }
         } catch (e) {
@@ -2720,6 +2752,71 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
       .query(async () => {
         const { testDriveConnection } = await import('./googleDrive');
         return testDriveConnection();
+      }),
+
+    // Migrations-Endpunkt: Verschiebt bestehende Dateien aus dem Kunden-Root-Ordner in Projekt-Unterordner
+    migrateToProjectFolders: protectedProcedure
+      .mutation(async () => {
+        const db = await (await import('./db')).getDb();
+        if (!db) throw new Error('DB nicht verfügbar');
+        const { cadFiles: cadFilesTable, projectDocuments: pdTable } = await import('../drizzle/schema');
+        const { isNotNull } = await import('drizzle-orm');
+        const { getOrCreateProjectFolder, moveFileToDriveFolder } = await import('./googleDrive');
+        const { getProjectById, getCustomerById } = await import('./db');
+
+        let movedCount = 0;
+        let errorCount = 0;
+        const errors: string[] = [];
+
+        // CAD-Dateien mit Drive-ID aber ohne Projekt-Ordner-Sync migrieren
+        const cadFilesWithDrive = await db.select().from(cadFilesTable)
+          .where(isNotNull(cadFilesTable.driveFileId));
+
+        for (const file of cadFilesWithDrive) {
+          if (!file.driveFileId) continue;
+          try {
+            const project = await getProjectById(file.projectId);
+            if (!project?.customerId) continue;
+            const customer = await getCustomerById(project.customerId);
+            if (!customer) continue;
+            const customerName = customer.company || customer.name;
+            const projectName = project.projectNumber
+              ? `${project.projectNumber} ${project.title}`.substring(0, 100)
+              : project.title.substring(0, 100);
+            const targetFolderId = await getOrCreateProjectFolder(customerName, projectName);
+            await moveFileToDriveFolder(file.driveFileId, targetFolderId);
+            movedCount++;
+          } catch (e: any) {
+            errorCount++;
+            errors.push(`CAD ${file.id}: ${e.message}`);
+          }
+        }
+
+        // Projekt-Dokumente mit Drive-ID migrieren
+        const docsWithDrive = await db.select().from(pdTable)
+          .where(isNotNull(pdTable.driveFileId));
+
+        for (const doc of docsWithDrive) {
+          if (!doc.driveFileId) continue;
+          try {
+            const project = await getProjectById(doc.projectId);
+            if (!project?.customerId) continue;
+            const customer = await getCustomerById(project.customerId);
+            if (!customer) continue;
+            const customerName = customer.company || customer.name;
+            const projectName = project.projectNumber
+              ? `${project.projectNumber} ${project.title}`.substring(0, 100)
+              : project.title.substring(0, 100);
+            const targetFolderId = await getOrCreateProjectFolder(customerName, projectName);
+            await moveFileToDriveFolder(doc.driveFileId, targetFolderId);
+            movedCount++;
+          } catch (e: any) {
+            errorCount++;
+            errors.push(`Dok ${doc.id}: ${e.message}`);
+          }
+        }
+
+        return { success: true, movedCount, errorCount, errors };
       }),
   }),
 });

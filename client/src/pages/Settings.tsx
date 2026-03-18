@@ -11,7 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { trpc } from "@/lib/trpc";
 import {
   Download, Trash2,
-  Database, Shield, Building2, Upload, X, Loader2, FileText, Table2, Code2, CheckSquare, Square, FolderOpen, FileJson,
+  Database, Shield, Building2, Upload, X, Loader2, FileText, Table2, Code2, CheckSquare, Square, FolderOpen, FileJson, RefreshCw, CheckCircle2, AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useState, useEffect, useRef } from "react";
@@ -23,6 +23,8 @@ export default function Settings() {
   const [exportSections, setExportSections] = useState<string[]>(["kunden", "projekte", "rechnungen", "wissensdatenbank", "materialien", "lieferanten", "notizen"]);
   const [exportProgress, setExportProgress] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isMigrating, setIsMigrating] = useState(false);
+  const [migrationResult, setMigrationResult] = useState<{ movedCount: number; errorCount: number; errors: string[] } | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
@@ -188,6 +190,28 @@ export default function Settings() {
       uploadLogo.mutate({ base64, mimeType: file.type, filename: file.name });
     };
     reader.readAsDataURL(file);
+  };
+
+  const migrateMut = trpc.customerFiles.migrateToProjectFolders.useMutation({
+    onSuccess: (result) => {
+      setIsMigrating(false);
+      setMigrationResult(result);
+      if (result.errorCount === 0) {
+        toast.success(`Migration abgeschlossen: ${result.movedCount} Datei${result.movedCount !== 1 ? 'en' : ''} verschoben`);
+      } else {
+        toast.warning(`Migration: ${result.movedCount} verschoben, ${result.errorCount} Fehler`);
+      }
+    },
+    onError: (e: any) => {
+      setIsMigrating(false);
+      toast.error('Migrationsfehler: ' + e.message);
+    },
+  });
+
+  const handleMigrate = () => {
+    setIsMigrating(true);
+    setMigrationResult(null);
+    migrateMut.mutate();
   };
 
   const handleExport = async () => {
@@ -787,6 +811,70 @@ export default function Settings() {
                   Empfehlung: Einmal pro Woche exportieren und in Google Drive oder einem lokalen Ordner sichern.
                   Der Code ist zusätzlich über den GitHub-Export in den Manus-Einstellungen sicherbar.
                 </p>
+              </CardContent>
+            </Card>
+
+            {/* Google Drive Migration */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <svg className="h-4 w-4" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg">
+                    <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
+                    <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/>
+                    <path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/>
+                    <path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/>
+                    <path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/>
+                    <path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 28h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/>
+                  </svg>
+                  Google Drive – Ordnerstruktur migrieren
+                </CardTitle>
+                <CardDescription>
+                  Verschiebt bereits hochgeladene Dateien aus dem Kunden-Root-Ordner in die richtigen Projekt-Unterordner.
+                  Neue Struktur: <code className="text-xs bg-muted px-1 rounded">Fabrica ERP / Kunden / [Kunde] / [Projekt] / Datei</code>
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-start gap-4">
+                  <div className="flex-1">
+                    {migrationResult && (
+                      <div className={`flex items-start gap-2 p-3 rounded-lg text-sm mb-3 ${
+                        migrationResult.errorCount === 0
+                          ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                          : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                      }`}>
+                        {migrationResult.errorCount === 0
+                          ? <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" />
+                          : <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />}
+                        <div>
+                          <p className="font-medium">
+                            {migrationResult.movedCount} Datei{migrationResult.movedCount !== 1 ? 'en' : ''} erfolgreich verschoben
+                            {migrationResult.errorCount > 0 ? `, ${migrationResult.errorCount} Fehler` : ''}
+                          </p>
+                          {migrationResult.errors.length > 0 && (
+                            <ul className="mt-1 text-xs space-y-0.5 opacity-80">
+                              {migrationResult.errors.slice(0, 5).map((e, i) => <li key={i}>{e}</li>)}
+                              {migrationResult.errors.length > 5 && <li>... und {migrationResult.errors.length - 5} weitere</li>}
+                            </ul>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      Nur einmalig nötig. Dateien die bereits in Projektordnern liegen werden nicht doppelt verschoben.
+                    </p>
+                  </div>
+                  <Button
+                    onClick={handleMigrate}
+                    disabled={isMigrating}
+                    variant="outline"
+                    className="gap-2 shrink-0"
+                  >
+                    {isMigrating
+                      ? <Loader2 className="h-4 w-4 animate-spin" />
+                      : <RefreshCw className="h-4 w-4" />}
+                    {isMigrating ? 'Migriere...' : 'Migration starten'}
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

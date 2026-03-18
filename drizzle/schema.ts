@@ -27,6 +27,8 @@ export const cadFiles = mysqlTable("cad_files", {
 	versionNote: text("version_note"),
 	parentFileId: int("parent_file_id"),
 	uploadedBy: varchar("uploaded_by", { length: 255 }),
+	driveFileId: varchar("drive_file_id", { length: 255 }),
+	driveSynced: tinyint("drive_synced").default(0).notNull(),
 	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
 });
 
@@ -534,6 +536,8 @@ export const projectDocuments = mysqlTable("project_documents", {
   mimeType: varchar("mime_type", { length: 128 }),
   notes: text("notes"),
   uploadedBy: varchar("uploaded_by", { length: 255 }),
+  driveFileId: varchar("drive_file_id", { length: 255 }),
+  driveSynced: tinyint("drive_synced").default(0).notNull(),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
 });
 export type InsertProjectDocument = typeof projectDocuments.$inferInsert;

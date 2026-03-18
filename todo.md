@@ -845,3 +845,13 @@
 - [x] Struktur: Fabrica ERP/Kunden/[Kundenname]/[Projektname]/[Datei]
 - [x] Alle Upload-Funktionen (CAD, Dokumente) auf neue Struktur anpassen
 - [x] Bestehende Tests grün halten (222 Tests grün)
+
+## Phase 31: Drive-Migration + Sync-Status
+- [x] DB: cad_files – Spalte drive_file_id, drive_synced (boolean) hinzugefügt
+- [x] DB: project_documents – Spalte drive_file_id, drive_synced (boolean) hinzugefügt
+- [x] Backend: Google Drive Migrations-Endpunkt (verschiebt Dateien in Projektordner)
+- [x] Backend: CAD-Upload und Dokument-Upload speichern drive_file_id + drive_synced=true
+- [x] Frontend: Sync-Status-Icon in CAD-Dateiliste (Google Drive Icon wenn synced, klickbar)
+- [x] Frontend: Sync-Status-Icon in Projekt-Dokument-Liste
+- [x] Frontend: Migrations-Button in Einstellungen (Datensicherung-Tab) mit Ergebnis-Anzeige
+- [x] 222 Tests grün
