@@ -833,3 +833,9 @@
 - [x] Frontend: Kunden-Zuweisungs-Dialog im Projekt-Detail (EntitySearch, sofortige Speicherung)
 - [x] Backend: projects.update unterstützt bereits customerId (kein Änderungsbedarf)
 - [x] 222 Tests grün, 0 Fehler
+
+## Phase 29: Materialbibliothek Accordion-Liste
+- [x] Frontend: Materialbibliothek von Karten-Ansicht auf aufklappbare Accordion-Liste umbauen
+- [x] Jede Zeile: Name + farbiger Kategorie-Badge + Eigenschaften-Vorschau (truncated)
+- [x] Aufgeklappt: Eigenschaften, Anwendung, Vorteile, Notizen mit Bearbeiten/Löschen-Buttons
+- [x] Suche bleibt erhalten, 0 TypeScript-Fehler

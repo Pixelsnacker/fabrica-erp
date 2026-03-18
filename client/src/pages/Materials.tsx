@@ -7,12 +7,22 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Plus, Search, FlaskConical, Trash2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 const CATEGORY_LABELS: Record<string, string> = {
   plastic: "Kunststoff", metal: "Metall", composite: "Verbundwerkstoff",
   surface_treatment: "Oberflächenbehandlung", process: "Verfahren", other: "Sonstige",
+};
+
+const CATEGORY_COLORS: Record<string, string> = {
+  plastic: "bg-blue-500/15 text-blue-400 border-blue-500/20",
+  metal: "bg-zinc-500/15 text-zinc-300 border-zinc-500/20",
+  composite: "bg-purple-500/15 text-purple-400 border-purple-500/20",
+  surface_treatment: "bg-amber-500/15 text-amber-400 border-amber-500/20",
+  process: "bg-green-500/15 text-green-400 border-green-500/20",
+  other: "bg-muted text-muted-foreground border-border",
 };
 
 type MaterialForm = {
@@ -70,7 +80,8 @@ export default function Materials() {
     (m.applications ?? "").toLowerCase().includes(search.toLowerCase())
   );
 
-  function openEdit(mat: typeof materials[0]) {
+  function openEdit(mat: typeof materials[0], e: React.MouseEvent) {
+    e.stopPropagation();
     setForm({
       name: mat.name,
       category: mat.category,
@@ -112,54 +123,106 @@ export default function Materials() {
           </p>
           <Button onClick={() => setShowCreate(true)}>Erstes Material anlegen</Button>
         </div>
+      ) : filtered.length === 0 && search ? (
+        <div className="text-center text-muted-foreground py-8 text-sm">
+          Keine Materialien für „{search}" gefunden.
+        </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {filtered.map(mat => (
-            <div key={mat.id} className="p-4 rounded-lg bg-card border border-border hover:border-primary/50 transition-all group">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <div className="font-medium text-sm">{mat.name}</div>
-                  <Badge variant="secondary" className="text-xs mt-1">{CATEGORY_LABELS[mat.category] ?? mat.category}</Badge>
+        <div className="rounded-lg border border-border overflow-hidden">
+          <Accordion type="multiple" className="w-full">
+            {filtered.map((mat, idx) => (
+              <AccordionItem
+                key={mat.id}
+                value={String(mat.id)}
+                className={idx < filtered.length - 1 ? "border-b border-border" : "border-none"}
+              >
+                <div className="flex items-center group hover:bg-muted/30 transition-colors">
+                  <AccordionTrigger className="flex-1 px-4 py-3 hover:no-underline [&>svg]:ml-2 [&>svg]:shrink-0">
+                    <div className="flex items-center gap-3 text-left">
+                      <span className="font-medium text-sm">{mat.name}</span>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${CATEGORY_COLORS[mat.category] ?? CATEGORY_COLORS.other}`}>
+                        {CATEGORY_LABELS[mat.category] ?? mat.category}
+                      </span>
+                      {mat.properties && (
+                        <span className="text-xs text-muted-foreground truncate max-w-xs hidden md:block">
+                          {mat.properties.slice(0, 80)}{mat.properties.length > 80 ? "…" : ""}
+                        </span>
+                      )}
+                    </div>
+                  </AccordionTrigger>
+                  <div className="flex gap-1 pr-4 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                      onClick={(e) => openEdit(mat, e)}
+                      title="Bearbeiten"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                      onClick={(e) => { e.stopPropagation(); setDeleteId(mat.id); }}
+                      title="Löschen"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
-                    onClick={() => openEdit(mat)}
-                    title="Bearbeiten"
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-                    onClick={() => setDeleteId(mat.id)}
-                    title="Löschen"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </div>
-              {mat.notes && <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{mat.notes}</p>}
-              {mat.properties && (
-                <div className="mt-2 text-xs text-muted-foreground">
-                  <span className="text-foreground/60">Eigenschaften:</span> {mat.properties}
-                </div>
-              )}
-              {mat.applications && (
-                <div className="mt-1 text-xs text-muted-foreground">
-                  <span className="text-foreground/60">Anwendung:</span> {mat.applications}
-                </div>
-              )}
-            </div>
-          ))}
-          {filtered.length === 0 && search && (
-            <div className="col-span-2 text-center text-muted-foreground py-8 text-sm">
-              Keine Materialien für „{search}" gefunden.
-            </div>
-          )}
+                <AccordionContent className="px-4 pb-4 pt-0">
+                  <div className="space-y-2.5 text-sm border-t border-border/50 pt-3 mt-0">
+                    {mat.properties && (
+                      <div>
+                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Eigenschaften</span>
+                        <p className="text-foreground/80 mt-1 leading-relaxed">{mat.properties}</p>
+                      </div>
+                    )}
+                    {mat.applications && (
+                      <div>
+                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Typische Anwendungen</span>
+                        <p className="text-foreground/80 mt-1 leading-relaxed">{mat.applications}</p>
+                      </div>
+                    )}
+                    {(mat as any).advantages && (
+                      <div>
+                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Vorteile</span>
+                        <p className="text-foreground/80 mt-1 leading-relaxed">{(mat as any).advantages}</p>
+                      </div>
+                    )}
+                    {mat.notes && (
+                      <div>
+                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Notizen</span>
+                        <p className="text-foreground/80 mt-1 leading-relaxed">{mat.notes}</p>
+                      </div>
+                    )}
+                    {!mat.properties && !mat.applications && !(mat as any).advantages && !mat.notes && (
+                      <p className="text-muted-foreground text-xs italic">Keine weiteren Details hinterlegt.</p>
+                    )}
+                    <div className="flex gap-2 pt-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 gap-1.5 text-xs"
+                        onClick={(e) => openEdit(mat, e)}
+                      >
+                        <Pencil className="h-3 w-3" />Bearbeiten
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 gap-1.5 text-xs text-destructive hover:text-destructive border-destructive/30 hover:border-destructive/60"
+                        onClick={(e) => { e.stopPropagation(); setDeleteId(mat.id); }}
+                      >
+                        <Trash2 className="h-3 w-3" />Löschen
+                      </Button>
+                    </div>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
         </div>
       )}
 
