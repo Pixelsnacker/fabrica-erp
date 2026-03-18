@@ -552,6 +552,24 @@ export const appRouter = router({
         parentFileId: input.parentFileId,
         uploadedBy: input.uploadedBy ?? ctx.user.name ?? "Unknown",
       });
+      // Auto-Sync nach Google Drive (im Hintergrund, kein Fehler wenn Drive nicht verfügbar)
+      try {
+        const project = await getProjectById(input.projectId);
+        if (project?.customerId) {
+          const customer = await getCustomerById(project.customerId);
+          if (customer) {
+            const { uploadFileToDrive } = await import('./googleDrive');
+            await uploadFileToDrive({
+              filename: input.filename,
+              mimeType: input.mimeType,
+              buffer,
+              customerName: customer.company || customer.name,
+            });
+          }
+        }
+      } catch (e) {
+        console.warn('[Drive Sync] CAD-Upload Sync fehlgeschlagen:', e);
+      }
       return { success: true, url };
     }),
     delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => { await deleteCadFile(input.id); return { success: true }; }),
@@ -1890,6 +1908,24 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
           uploadedBy: ctx.user.name ?? 'Unknown',
           createdAt: Date.now(),
         });
+        // Auto-Sync nach Google Drive (im Hintergrund)
+        try {
+          const project = await getProjectById(input.projectId);
+          if (project?.customerId) {
+            const customer = await getCustomerById(project.customerId);
+            if (customer) {
+              const { uploadFileToDrive } = await import('./googleDrive');
+              await uploadFileToDrive({
+                filename: input.filename,
+                mimeType: input.mimeType,
+                buffer,
+                customerName: customer.company || customer.name,
+              });
+            }
+          }
+        } catch (e) {
+          console.warn('[Drive Sync] Dokument-Upload Sync fehlgeschlagen:', e);
+        }
         return { success: true, url, fileKey };
       }),
 
@@ -2320,17 +2356,124 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
 
   // ─── Kundenakte (Google Drive) ──────────────────────────────────────────────
   customerFiles: router({
-    // Alle Dateien eines Kunden auflisten
+    // Alle Dateien eines Kunden auflisten (aggregiert aus allen Quellen)
     list: protectedProcedure
       .input(z.object({ customerId: z.number() }))
       .query(async ({ input }) => {
         const db = await (await import('./db')).getDb();
         if (!db) throw new Error('DB nicht verfügbar');
-        const { customerFiles } = await import('../drizzle/schema');
-        const { eq, desc } = await import('drizzle-orm');
-        return db.select().from(customerFiles)
-          .where(eq(customerFiles.customerId, input.customerId))
-          .orderBy(desc(customerFiles.createdAt));
+        const { cadFiles, projectDocuments, invoices, projects } = await import('../drizzle/schema');
+        const { eq, and, isNotNull, desc, inArray } = await import('drizzle-orm');
+
+        // Alle Projekte des Kunden ermitteln
+        const customerProjects = await db.select({ id: projects.id, title: projects.title, projectNumber: projects.projectNumber })
+          .from(projects)
+          .where(eq(projects.customerId, input.customerId));
+        const projectIds = customerProjects.map(p => p.id);
+        const projectMap = Object.fromEntries(customerProjects.map(p => [p.id, p]));
+
+        if (projectIds.length === 0) return [];
+
+        // CAD-Dateien
+        const cad = await db.select().from(cadFiles)
+          .where(inArray(cadFiles.projectId, projectIds))
+          .orderBy(desc(cadFiles.createdAt));
+
+        // Projekt-Dokumente
+        const docs = await db.select().from(projectDocuments)
+          .where(inArray(projectDocuments.projectId, projectIds))
+          .orderBy(desc(projectDocuments.createdAt));
+
+        // Rechnungen mit PDF
+        const invs = await db.select().from(invoices)
+          .where(and(eq(invoices.customerId, input.customerId), isNotNull(invoices.pdfUrl)))
+          .orderBy(desc(invoices.createdAt));
+
+        // Kategorie-Mapping für projectDocuments
+        const docCategoryMap: Record<string, string> = {
+          supplier_offer: 'supplier_quote',
+          nda: 'nda',
+          order: 'other',
+          delivery_note: 'other',
+          invoice: 'invoice',
+          contract: 'contract',
+          drawing: 'drawing',
+          cad_data: 'cad_data',
+          other: 'other',
+        };
+
+        type AkteFile = {
+          id: string;
+          source: 'cad' | 'doc' | 'invoice';
+          sourceId: number;
+          projectId: number;
+          projectTitle: string;
+          projectNumber: string | null;
+          category: string;
+          filename: string;
+          fileUrl: string;
+          fileSize: number | null;
+          mimeType: string | null;
+          notes: string | null;
+          createdAt: string | number;
+        };
+
+        const result: AkteFile[] = [
+          ...cad.map(f => ({
+            id: `cad-${f.id}`,
+            source: 'cad' as const,
+            sourceId: f.id,
+            projectId: f.projectId,
+            projectTitle: projectMap[f.projectId]?.title ?? '',
+            projectNumber: projectMap[f.projectId]?.projectNumber ?? null,
+            category: 'cad_data',
+            filename: f.filename,
+            fileUrl: f.fileUrl,
+            fileSize: f.fileSize ?? null,
+            mimeType: f.mimeType ?? null,
+            notes: f.versionNote ?? null,
+            createdAt: f.createdAt,
+          })),
+          ...docs.map(f => ({
+            id: `doc-${f.id}`,
+            source: 'doc' as const,
+            sourceId: f.id,
+            projectId: f.projectId,
+            projectTitle: projectMap[f.projectId]?.title ?? '',
+            projectNumber: projectMap[f.projectId]?.projectNumber ?? null,
+            category: docCategoryMap[f.category] ?? 'other',
+            filename: f.filename,
+            fileUrl: f.fileUrl,
+            fileSize: f.fileSize ?? null,
+            mimeType: f.mimeType ?? null,
+            notes: f.notes ?? null,
+            createdAt: f.createdAt,
+          })),
+          ...invs.filter(f => f.pdfUrl).map(f => ({
+            id: `inv-${f.id}`,
+            source: 'invoice' as const,
+            sourceId: f.id,
+            projectId: f.projectId ?? 0,
+            projectTitle: f.projectId ? (projectMap[f.projectId]?.title ?? '') : '',
+            projectNumber: f.projectId ? (projectMap[f.projectId]?.projectNumber ?? null) : null,
+            category: 'invoice',
+            filename: `Rechnung-${f.invoiceNumber ?? f.id}.pdf`,
+            fileUrl: f.pdfUrl!,
+            fileSize: null,
+            mimeType: 'application/pdf',
+            notes: null,
+            createdAt: f.createdAt,
+          })),
+        ];
+
+        // Sortierung: neueste zuerst
+        result.sort((a, b) => {
+          const ta = typeof a.createdAt === 'number' ? a.createdAt : new Date(a.createdAt).getTime();
+          const tb = typeof b.createdAt === 'number' ? b.createdAt : new Date(b.createdAt).getTime();
+          return tb - ta;
+        });
+
+        return result;
       }),
 
     // Datei hochladen (Base64-encoded)

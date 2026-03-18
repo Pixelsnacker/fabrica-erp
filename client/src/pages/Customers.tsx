@@ -587,23 +587,15 @@ function formatFileSize(bytes?: number | null): string {
 
 // ─── Kundenakte-Komponente ────────────────────────────────────────────────────
 function CustomerAkte({ customer }: { customer: { id: number; name: string; company?: string | null } }) {
-  const utils = trpc.useUtils();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [uploadCategory, setUploadCategory] = useState<string>('other');
-  const [uploadNotes, setUploadNotes] = useState('');
-  const [isDragging, setIsDragging] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const customerDisplayName = customer.company || customer.name;
   const [zipping, setZipping] = useState(false);
 
   const zipMut = trpc.customerFiles.zipExport.useMutation({
-    onSuccess: ({ url, fileCount }) => {
+    onSuccess: ({ url, fileCount }: { url: string; fileCount: number }) => {
       window.open(url, '_blank');
       toast.success(`ZIP mit ${fileCount} Dateien wird heruntergeladen`);
     },
-    onError: (e) => toast.error(`ZIP-Export fehlgeschlagen: ${e.message}`),
+    onError: (e: any) => toast.error(`ZIP-Export fehlgeschlagen: ${e.message}`),
     onSettled: () => setZipping(false),
   });
 
@@ -612,128 +604,22 @@ function CustomerAkte({ customer }: { customer: { id: number; name: string; comp
     { refetchOnWindowFocus: true }
   );
 
-  const uploadMut = trpc.customerFiles.upload.useMutation({
-    onSuccess: () => {
-      utils.customerFiles.list.invalidate({ customerId: customer.id });
-      setUploadNotes('');
-      toast.success('Datei hochgeladen');
-    },
-    onError: (e) => toast.error(`Upload fehlgeschlagen: ${e.message}`),
-  });
-
-  const deleteMut = trpc.customerFiles.delete.useMutation({
-    onSuccess: () => {
-      utils.customerFiles.list.invalidate({ customerId: customer.id });
-      toast.success('Datei gelöscht');
-    },
-    onError: () => toast.error('Fehler beim Löschen'),
-  });
-
-  const handleFiles = async (fileList: FileList) => {
-    const MAX_SIZE = 50 * 1024 * 1024; // 50 MB
-    for (const file of Array.from(fileList)) {
-      if (file.size > MAX_SIZE) {
-        toast.error(`"${file.name}" ist zu groß (max. 50 MB)`);
-        continue;
-      }
-      setUploading(true);
-      try {
-        const buffer = await file.arrayBuffer();
-        const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
-        await uploadMut.mutateAsync({
-          customerId: customer.id,
-          customerName: customerDisplayName,
-          category: uploadCategory as any,
-          filename: file.name,
-          mimeType: file.type || 'application/octet-stream',
-          fileBase64: base64,
-          fileSize: file.size,
-          notes: uploadNotes || undefined,
-        });
-      } catch (_) {
-        // Error already handled in onError
-      } finally {
-        setUploading(false);
-      }
-    }
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    if (e.dataTransfer.files.length > 0) handleFiles(e.dataTransfer.files);
-  };
-
   const filteredFiles = selectedCategory === 'all'
     ? files
-    : files.filter(f => f.category === selectedCategory);
+    : (files as any[]).filter((f: any) => f.category === selectedCategory);
 
-  const categoryCounts = files.reduce((acc, f) => {
+  const categoryCounts = (files as any[]).reduce((acc: Record<string, number>, f: any) => {
     acc[f.category] = (acc[f.category] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
 
   return (
     <div className="space-y-4 p-1">
-      {/* Upload-Bereich */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-3">
-          <div className="flex-1">
-            <Label className="text-xs text-muted-foreground mb-1 block">Kategorie</Label>
-            <Select value={uploadCategory} onValueChange={setUploadCategory}>
-              <SelectTrigger className="h-8 text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(FILE_CATEGORIES).map(([v, { label }]) => (
-                  <SelectItem key={v} value={v}>{label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex-1">
-            <Label className="text-xs text-muted-foreground mb-1 block">Notiz (optional)</Label>
-            <Input
-              value={uploadNotes}
-              onChange={e => setUploadNotes(e.target.value)}
-              placeholder="z.B. Version 2, Rev. A..."
-              className="h-8 text-sm"
-            />
-          </div>
-        </div>
-
-        <div
-          className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer ${
-            isDragging ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
-          }`}
-          onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
-          onDragLeave={() => setIsDragging(false)}
-          onDrop={handleDrop}
-          onClick={() => fileInputRef.current?.click()}
-        >
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            className="hidden"
-            onChange={e => e.target.files && handleFiles(e.target.files)}
-          />
-          {uploading ? (
-            <div className="flex flex-col items-center gap-2">
-              <Loader2 className="h-8 w-8 text-primary animate-spin" />
-              <p className="text-sm text-muted-foreground">Wird hochgeladen...</p>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center gap-2">
-              <Upload className="h-8 w-8 text-muted-foreground" />
-              <p className="text-sm font-medium">Dateien hier ablegen oder klicken</p>
-              <p className="text-xs text-muted-foreground">Alle Formate, max. 50 MB pro Datei</p>
-            </div>
-          )}
-        </div>
+      {/* Info-Banner */}
+      <div className="flex items-center gap-2 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-xs text-blue-400">
+        <FolderSync className="h-4 w-4 shrink-0" />
+        <span>Alle Dateien werden automatisch aus den Projekten dieses Kunden zusammengeführt. Uploads erfolgen direkt im jeweiligen Projekt (CAD-Daten, Dokumente).</span>
       </div>
-
-      <Separator />
 
       {/* Kategorie-Filter + ZIP-Export */}
       <div className="flex items-center gap-2 flex-wrap">
@@ -743,7 +629,7 @@ function CustomerAkte({ customer }: { customer: { id: number; name: string; comp
           onClick={() => setSelectedCategory('all')}
           className="h-7 text-xs"
         >
-          Alle ({files.length})
+          Alle ({(files as any[]).length})
         </Button>
         {Object.entries(categoryCounts).map(([cat, count]) => {
           const cfg = FILE_CATEGORIES[cat];
@@ -761,7 +647,7 @@ function CustomerAkte({ customer }: { customer: { id: number; name: string; comp
             </Button>
           );
         })}
-        {files.length > 0 && (
+        {(files as any[]).length > 0 && (
           <Button
             variant="outline"
             size="sm"
@@ -782,34 +668,51 @@ function CustomerAkte({ customer }: { customer: { id: number; name: string; comp
           <Loader2 className="h-4 w-4 animate-spin" />
           Lade Dateien...
         </div>
-      ) : filteredFiles.length === 0 ? (
+      ) : (filteredFiles as any[]).length === 0 ? (
         <div className="flex flex-col items-center justify-center py-10 gap-3">
           <FolderOpen className="h-10 w-10 text-muted-foreground opacity-30" />
           <p className="text-sm text-muted-foreground">
-            {selectedCategory === 'all' ? 'Noch keine Dateien in der Kundenakte' : `Keine ${FILE_CATEGORIES[selectedCategory]?.label ?? 'Dateien'} vorhanden`}
+            {selectedCategory === 'all'
+              ? 'Noch keine Dateien in den Projekten dieses Kunden'
+              : `Keine ${FILE_CATEGORIES[selectedCategory]?.label ?? 'Dateien'} vorhanden`}
           </p>
+          <p className="text-xs text-muted-foreground">Lade Dateien direkt im Projekt hoch (CAD-Daten, Dokumente)</p>
         </div>
       ) : (
         <div className="space-y-2">
-          {filteredFiles.map(file => {
+          {(filteredFiles as any[]).map((file: any) => {
             const cfg = FILE_CATEGORIES[file.category] ?? FILE_CATEGORIES.other;
             const Icon = cfg.icon;
             return (
               <div
-                key={file.id}
+                key={`${file.source}-${file.id}`}
                 className="flex items-center gap-3 p-3 rounded-lg bg-card border border-border hover:border-primary/30 transition-all group"
               >
-                <div className={`h-8 w-8 rounded flex items-center justify-center bg-card border border-border shrink-0`}>
+                <div className="h-8 w-8 rounded flex items-center justify-center bg-card border border-border shrink-0">
                   <Icon className={`h-4 w-4 ${cfg.color}`} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{file.filename}</p>
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs text-muted-foreground">{cfg.label}</span>
+                    {file.projectTitle && (
+                      <>
+                        <span className="text-xs text-muted-foreground">·</span>
+                        <span className="text-xs text-primary/70 truncate max-w-[160px]" title={file.projectTitle}>
+                          {file.projectNumber ? `#${file.projectNumber} ` : ''}{file.projectTitle}
+                        </span>
+                      </>
+                    )}
+                    {file.fileSize && (
+                      <>
+                        <span className="text-xs text-muted-foreground">·</span>
+                        <span className="text-xs text-muted-foreground">{formatFileSize(file.fileSize)}</span>
+                      </>
+                    )}
                     <span className="text-xs text-muted-foreground">·</span>
-                    <span className="text-xs text-muted-foreground">{formatFileSize(file.fileSize)}</span>
-                    <span className="text-xs text-muted-foreground">·</span>
-                    <span className="text-xs text-muted-foreground">{new Date(file.createdAt).toLocaleDateString('de-DE')}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(file.createdAt).toLocaleDateString('de-DE')}
+                    </span>
                     {file.notes && (
                       <>
                         <span className="text-xs text-muted-foreground">·</span>
@@ -822,30 +725,24 @@ function CustomerAkte({ customer }: { customer: { id: number; name: string; comp
                   <Button
                     variant="ghost" size="sm"
                     className="h-7 w-7 p-0 text-blue-400 hover:text-blue-300"
-                    onClick={() => window.open(file.driveFileUrl, '_blank')}
-                    title="In Google Drive öffnen"
+                    onClick={() => window.open(file.fileUrl, '_blank')}
+                    title="Datei öffnen"
                   >
                     <ExternalLink className="h-3.5 w-3.5" />
                   </Button>
                   <Button
                     variant="ghost" size="sm"
                     className="h-7 w-7 p-0 text-green-400 hover:text-green-300"
-                    onClick={() => window.open(`https://drive.google.com/uc?export=download&id=${file.driveFileId}`, '_blank')}
+                    onClick={() => {
+                      const a = document.createElement('a');
+                      a.href = file.fileUrl;
+                      a.download = file.filename;
+                      a.target = '_blank';
+                      a.click();
+                    }}
                     title="Herunterladen"
                   >
                     <Download className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost" size="sm"
-                    className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-                    onClick={() => {
-                      if (confirm(`"${file.filename}" wirklich löschen?`)) {
-                        deleteMut.mutate({ id: file.id });
-                      }
-                    }}
-                    title="Löschen"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               </div>

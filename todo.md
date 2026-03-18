@@ -806,3 +806,12 @@
 - [x] Frontend: Akte-Dialog – ZIP-Download-Button für alle Dateien der Kundenakte
 ## Bugs Phase 25
 - [x] Bug: Upload fehlgeschlagen – behoben (neuer Refresh Token mit Web-Client generiert)
+
+## Phase 26: Kundenakte Umbau – Automatische Aggregation (kein separater Upload)
+- [x] Analyse: Alle Datei-Quellen im Projekt inventarisiert (cad_files, project_documents, invoices)
+- [x] Backend: customerFiles.list – aggregiert alle Projekt-Dateien eines Kunden aus cad_files, project_documents, invoices
+- [x] Backend: Google Drive Auto-Sync beim Upload aus dem Projekt (cad_files, project_documents)
+- [x] Frontend: Kundenakte-Dialog – Upload-Bereich entfernt, nur Lese-Ansicht mit aggregierten Dateien + Projekt-Info
+- [x] Frontend: Info-Banner erklärt dass Uploads direkt im Projekt erfolgen
+- [x] ZIP-Export weiterhin funktionsfähig
+- [x] 222 Tests grün, 0 TypeScript-Fehler
