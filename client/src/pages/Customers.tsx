@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import {
   Plus, Search, Users, Mail, Phone, Building2, MapPin, Edit2, Trash2, User,
   Upload, FileSpreadsheet, CheckCircle2, AlertCircle, X, ChevronDown, ChevronUp,
@@ -585,10 +586,85 @@ function formatFileSize(bytes?: number | null): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+// ─── Datei-Zeile ─────────────────────────────────────────────────────────────
+function AkteFileRow({ file }: { file: any }) {
+  const cfg = FILE_CATEGORIES[file.category] ?? FILE_CATEGORIES.other;
+  const Icon = cfg.icon;
+  const isProtocol = file.source === 'protocol';
+  const isPhoto = file.source === 'photo' || (file.mimeType && file.mimeType.startsWith('image/'));
+
+  return (
+    <div className="flex items-start gap-3 p-3 rounded-lg bg-card border border-border hover:border-primary/30 transition-all group">
+      {/* Thumbnail für Fotos, Icon für alles andere */}
+      {isPhoto && file.fileUrl ? (
+        <div className="h-10 w-10 rounded overflow-hidden border border-border shrink-0 cursor-pointer"
+          onClick={() => window.open(file.fileUrl, '_blank')}>
+          <img src={file.fileUrl} alt={file.filename} className="h-full w-full object-cover" />
+        </div>
+      ) : (
+        <div className="h-8 w-8 rounded flex items-center justify-center bg-card border border-border shrink-0">
+          <Icon className={`h-4 w-4 ${cfg.color}`} />
+        </div>
+      )}
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium truncate">{file.filename}</p>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className={`text-xs ${cfg.color}`}>{cfg.label}</span>
+          {file.fileSize && (
+            <>
+              <span className="text-xs text-muted-foreground">·</span>
+              <span className="text-xs text-muted-foreground">{formatFileSize(file.fileSize)}</span>
+            </>
+          )}
+          <span className="text-xs text-muted-foreground">·</span>
+          <span className="text-xs text-muted-foreground">
+            {new Date(file.createdAt).toLocaleDateString('de-DE')}
+          </span>
+        </div>
+        {/* Protokoll-Inhalt als Vorschau */}
+        {isProtocol && file.notes && (
+          <p className="text-xs text-muted-foreground mt-1 italic line-clamp-2">{file.notes}</p>
+        )}
+        {/* Notiz für andere Dateien */}
+        {!isProtocol && file.notes && (
+          <p className="text-xs text-muted-foreground mt-0.5 italic truncate">{file.notes}</p>
+        )}
+      </div>
+      {!isProtocol && file.fileUrl && (
+        <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+          <Button
+            variant="ghost" size="sm"
+            className="h-7 w-7 p-0 text-blue-400 hover:text-blue-300"
+            onClick={() => window.open(file.fileUrl, '_blank')}
+            title="Datei öffnen"
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="ghost" size="sm"
+            className="h-7 w-7 p-0 text-green-400 hover:text-green-300"
+            onClick={() => {
+              const a = document.createElement('a');
+              a.href = file.fileUrl;
+              a.download = file.filename;
+              a.target = '_blank';
+              a.click();
+            }}
+            title="Herunterladen"
+          >
+            <Download className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Kundenakte-Komponente ────────────────────────────────────────────────────
 function CustomerAkte({ customer }: { customer: { id: number; name: string; company?: string | null } }) {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [zipping, setZipping] = useState(false);
+  const [openProjects, setOpenProjects] = useState<string[]>([]);
 
   const zipMut = trpc.customerFiles.zipExport.useMutation({
     onSuccess: ({ url, fileCount }: { url: string; fileCount: number }) => {
@@ -605,13 +681,23 @@ function CustomerAkte({ customer }: { customer: { id: number; name: string; comp
   );
 
   const filteredFiles = selectedCategory === 'all'
-    ? files
+    ? (files as any[])
     : (files as any[]).filter((f: any) => f.category === selectedCategory);
 
   const categoryCounts = (files as any[]).reduce((acc: Record<string, number>, f: any) => {
     acc[f.category] = (acc[f.category] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
+
+  // Dateien nach Projekt gruppieren
+  const projectGroups = filteredFiles.reduce((acc: Record<string, { title: string; number: string | null; files: any[] }>, f: any) => {
+    const key = f.projectId ? String(f.projectId) : 'no-project';
+    if (!acc[key]) acc[key] = { title: f.projectTitle || 'Ohne Projekt', number: f.projectNumber, files: [] };
+    acc[key].files.push(f);
+    return acc;
+  }, {});
+
+  const projectGroupEntries = Object.entries(projectGroups);
 
   return (
     <div className="space-y-4 p-1">
@@ -662,13 +748,13 @@ function CustomerAkte({ customer }: { customer: { id: number; name: string; comp
         )}
       </div>
 
-      {/* Dateiliste */}
+      {/* Dateiliste – nach Projekt gruppiert */}
       {isLoading ? (
         <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
           <Loader2 className="h-4 w-4 animate-spin" />
           Lade Dateien...
         </div>
-      ) : (filteredFiles as any[]).length === 0 ? (
+      ) : filteredFiles.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-10 gap-3">
           <FolderOpen className="h-10 w-10 text-muted-foreground opacity-30" />
           <p className="text-sm text-muted-foreground">
@@ -679,76 +765,40 @@ function CustomerAkte({ customer }: { customer: { id: number; name: string; comp
           <p className="text-xs text-muted-foreground">Lade Dateien direkt im Projekt hoch (CAD-Daten, Dokumente)</p>
         </div>
       ) : (
-        <div className="space-y-2">
-          {(filteredFiles as any[]).map((file: any) => {
-            const cfg = FILE_CATEGORIES[file.category] ?? FILE_CATEGORIES.other;
-            const Icon = cfg.icon;
-            return (
-              <div
-                key={`${file.source}-${file.id}`}
-                className="flex items-center gap-3 p-3 rounded-lg bg-card border border-border hover:border-primary/30 transition-all group"
-              >
-                <div className="h-8 w-8 rounded flex items-center justify-center bg-card border border-border shrink-0">
-                  <Icon className={`h-4 w-4 ${cfg.color}`} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{file.filename}</p>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs text-muted-foreground">{cfg.label}</span>
-                    {file.projectTitle && (
-                      <>
-                        <span className="text-xs text-muted-foreground">·</span>
-                        <span className="text-xs text-primary/70 truncate max-w-[160px]" title={file.projectTitle}>
-                          {file.projectNumber ? `#${file.projectNumber} ` : ''}{file.projectTitle}
-                        </span>
-                      </>
-                    )}
-                    {file.fileSize && (
-                      <>
-                        <span className="text-xs text-muted-foreground">·</span>
-                        <span className="text-xs text-muted-foreground">{formatFileSize(file.fileSize)}</span>
-                      </>
-                    )}
-                    <span className="text-xs text-muted-foreground">·</span>
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(file.createdAt).toLocaleDateString('de-DE')}
+        <Accordion
+          type="multiple"
+          value={openProjects.length > 0 ? openProjects : projectGroupEntries.map(([k]) => k)}
+          onValueChange={setOpenProjects}
+          className="space-y-2"
+        >
+          {projectGroupEntries.map(([projectKey, group]) => (
+            <AccordionItem
+              key={projectKey}
+              value={projectKey}
+              className="border border-border rounded-lg overflow-hidden"
+            >
+              <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/30 [&[data-state=open]]:bg-muted/20">
+                <div className="flex items-center gap-3 text-left">
+                  <FolderOpen className="h-4 w-4 text-primary shrink-0" />
+                  <div>
+                    <span className="text-sm font-medium">
+                      {group.number ? <span className="text-primary/60 mr-1">#{group.number}</span> : null}
+                      {group.title}
                     </span>
-                    {file.notes && (
-                      <>
-                        <span className="text-xs text-muted-foreground">·</span>
-                        <span className="text-xs text-muted-foreground italic">{file.notes}</span>
-                      </>
-                    )}
+                    <span className="ml-2 text-xs text-muted-foreground">{group.files.length} Datei{group.files.length !== 1 ? 'en' : ''}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Button
-                    variant="ghost" size="sm"
-                    className="h-7 w-7 p-0 text-blue-400 hover:text-blue-300"
-                    onClick={() => window.open(file.fileUrl, '_blank')}
-                    title="Datei öffnen"
-                  >
-                    <ExternalLink className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost" size="sm"
-                    className="h-7 w-7 p-0 text-green-400 hover:text-green-300"
-                    onClick={() => {
-                      const a = document.createElement('a');
-                      a.href = file.fileUrl;
-                      a.download = file.filename;
-                      a.target = '_blank';
-                      a.click();
-                    }}
-                    title="Herunterladen"
-                  >
-                    <Download className="h-3.5 w-3.5" />
-                  </Button>
+              </AccordionTrigger>
+              <AccordionContent className="px-3 pb-3 pt-1">
+                <div className="space-y-2">
+                  {group.files.map((file: any) => (
+                    <AkteFileRow key={`${file.source}-${file.id}`} file={file} />
+                  ))}
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
       )}
     </div>
   );

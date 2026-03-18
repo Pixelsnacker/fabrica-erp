@@ -2362,7 +2362,7 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
       .query(async ({ input }) => {
         const db = await (await import('./db')).getDb();
         if (!db) throw new Error('DB nicht verfügbar');
-        const { cadFiles, projectDocuments, invoices, projects } = await import('../drizzle/schema');
+        const { cadFiles, projectDocuments, invoices, projects, consultationEntries } = await import('../drizzle/schema');
         const { eq, and, isNotNull, desc, inArray } = await import('drizzle-orm');
 
         // Alle Projekte des Kunden ermitteln
@@ -2389,6 +2389,11 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
           .where(and(eq(invoices.customerId, input.customerId), isNotNull(invoices.pdfUrl)))
           .orderBy(desc(invoices.createdAt));
 
+        // Beratungsprotokolle
+        const consultations = await db.select().from(consultationEntries)
+          .where(inArray(consultationEntries.projectId, projectIds))
+          .orderBy(desc(consultationEntries.createdAt));
+
         // Kategorie-Mapping für projectDocuments
         const docCategoryMap: Record<string, string> = {
           supplier_offer: 'supplier_quote',
@@ -2404,7 +2409,7 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
 
         type AkteFile = {
           id: string;
-          source: 'cad' | 'doc' | 'invoice';
+          source: 'cad' | 'doc' | 'invoice' | 'photo' | 'protocol';
           sourceId: number;
           projectId: number;
           projectTitle: string;
@@ -2434,7 +2439,24 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
             notes: f.versionNote ?? null,
             createdAt: f.createdAt,
           })),
-          ...docs.map(f => ({
+          // Fotos: Projekt-Dokumente mit Bild-MIME-Type
+          ...docs.filter(f => f.mimeType && f.mimeType.startsWith('image/')).map(f => ({
+            id: `photo-${f.id}`,
+            source: 'photo' as const,
+            sourceId: f.id,
+            projectId: f.projectId,
+            projectTitle: projectMap[f.projectId]?.title ?? '',
+            projectNumber: projectMap[f.projectId]?.projectNumber ?? null,
+            category: 'photo',
+            filename: f.filename,
+            fileUrl: f.fileUrl,
+            fileSize: f.fileSize ?? null,
+            mimeType: f.mimeType ?? null,
+            notes: f.notes ?? null,
+            createdAt: f.createdAt,
+          })),
+          // Nicht-Bild Dokumente
+          ...docs.filter(f => !f.mimeType || !f.mimeType.startsWith('image/')).map(f => ({
             id: `doc-${f.id}`,
             source: 'doc' as const,
             sourceId: f.id,
@@ -2447,6 +2469,22 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
             fileSize: f.fileSize ?? null,
             mimeType: f.mimeType ?? null,
             notes: f.notes ?? null,
+            createdAt: f.createdAt,
+          })),
+          // Beratungsprotokolle
+          ...consultations.map(f => ({
+            id: `protocol-${f.id}`,
+            source: 'protocol' as const,
+            sourceId: f.id,
+            projectId: f.projectId ?? 0,
+            projectTitle: f.projectId ? (projectMap[f.projectId]?.title ?? '') : '',
+            projectNumber: f.projectId ? (projectMap[f.projectId]?.projectNumber ?? null) : null,
+            category: 'protocol',
+            filename: f.title,
+            fileUrl: '',
+            fileSize: null,
+            mimeType: 'text/plain',
+            notes: f.content ? (f.content.substring(0, 200) + (f.content.length > 200 ? '...' : '')) : null,
             createdAt: f.createdAt,
           })),
           ...invs.filter(f => f.pdfUrl).map(f => ({
@@ -2462,7 +2500,7 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
             fileSize: null,
             mimeType: 'application/pdf',
             notes: null,
-            createdAt: f.createdAt,
+            createdAt: f.createdAt ?? 0,
           })),
         ];
 

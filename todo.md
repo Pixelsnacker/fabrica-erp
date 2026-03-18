@@ -815,3 +815,11 @@
 - [x] Frontend: Info-Banner erklärt dass Uploads direkt im Projekt erfolgen
 - [x] ZIP-Export weiterhin funktionsfähig
 - [x] 222 Tests grün, 0 TypeScript-Fehler
+
+## Phase 27: Kundenakte Erweiterungen (Fotos, Protokolle, Accordion-Gruppierung)
+- [x] Backend: Beratungsprotokolle (consultation_entries) in Aggregations-Query eingebunden
+- [x] Backend: Fotos (Bild-MIME-Type aus project_documents) als eigene Kategorie
+- [x] Backend: TypeScript-Fehler behoben (AkteFile source-Typ, createdAt null-Fallback, Uint8Array-Spread)
+- [x] Frontend: Kundenakte-Dialog nach Projekt gruppiert (Accordion, aufklappbar)
+- [x] Frontend: Protokoll-Inhalt als Vorschau-Text in der Dateiliste
+- [x] 222 Tests grün, 0 TypeScript-Fehler

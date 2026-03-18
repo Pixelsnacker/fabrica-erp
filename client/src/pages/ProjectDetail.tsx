@@ -86,7 +86,8 @@ function ProjectAkteTab({ customerId, projectId, customerName }: {
       setUploading(true);
       try {
         const buffer = await file.arrayBuffer();
-        const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+        const uint8 = new Uint8Array(buffer);
+        const base64 = btoa(Array.from(uint8).map(b => String.fromCharCode(b)).join(''));
         await uploadMut.mutateAsync({
           customerId,
           customerName,
