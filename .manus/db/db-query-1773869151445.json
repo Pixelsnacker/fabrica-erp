@@ -1,0 +1,9 @@
+{
+  "query": "\n-- Projekte des Kunden\nSELECT id, title, project_number, customer_id FROM projects WHERE customer_id = 1;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 9NNjvn7NV7enobv.7ea640e70a8c --database YMZow7uQxpBVyBGbmbpvvd --execute \n-- Projekte des Kunden\nSELECT id, title, project_number, customer_id FROM projects WHERE customer_id = 1;\n",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 61
+}

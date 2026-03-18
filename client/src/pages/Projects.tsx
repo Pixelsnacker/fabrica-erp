@@ -211,7 +211,7 @@ export default function Projects() {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Kunde (optional)</Label>
+              <Label>Kunde <span className="text-destructive">*</span></Label>
               <EntitySearch
                 options={customers.map((c: any) => ({ id: c.id, label: c.company || c.name, sublabel: c.company ? c.name : undefined }))}
                 value={form.customerId ? parseInt(form.customerId) : undefined}
@@ -227,7 +227,7 @@ export default function Projects() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCreate(false)}>Abbrechen</Button>
-            <Button onClick={() => createMutation.mutate({ title: form.title, projectNumber: form.projectNumber || undefined, type: form.type as any, notes: form.notes || undefined, status: form.status as any, customerId: form.customerId ? parseInt(form.customerId) : undefined })} disabled={!form.title || createMutation.isPending}>
+            <Button onClick={() => createMutation.mutate({ title: form.title, projectNumber: form.projectNumber || undefined, type: form.type as any, notes: form.notes || undefined, status: form.status as any, customerId: form.customerId ? parseInt(form.customerId) : undefined })} disabled={!form.title || !form.customerId || createMutation.isPending}>
               {createMutation.isPending ? "Wird angelegt..." : "Anlegen"}
             </Button>
           </DialogFooter>

@@ -1,0 +1,15 @@
+{
+  "query": "\nSELECT c.id AS customer_id, c.name, c.company\nFROM customers c\nWHERE c.company LIKE '%Sepia%' OR c.name LIKE '%Keck%' OR c.name LIKE '%Sepia%';\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 9NNjvn7NV7enobv.7ea640e70a8c --database YMZow7uQxpBVyBGbmbpvvd --execute \nSELECT c.id AS customer_id, c.name, c.company\nFROM customers c\nWHERE c.company LIKE '%Sepia%' OR c.name LIKE '%Keck%' OR c.name LIKE '%Sepia%';\n",
+  "rows": [
+    {
+      "customer_id": "1",
+      "name": "Andreas Keck",
+      "company": "Gruppe Sepia"
+    }
+  ],
+  "messages": [],
+  "stdout": "customer_id\tname\tcompany\n1\tAndreas Keck\tGruppe Sepia\n",
+  "stderr": "",
+  "execution_time_ms": 1102
+}

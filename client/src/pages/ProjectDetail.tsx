@@ -368,6 +368,13 @@ export default function ProjectDetail() {
   const [generatedDatasheet, setGeneratedDatasheet] = useState('');
   const [showDsEntrySelector, setShowDsEntrySelector] = useState(false);
   const { data: companySettings } = trpc.companySettings.get.useQuery();
+  const { data: allCustomers = [] } = trpc.customers.list.useQuery();
+  const [showAssignCustomer, setShowAssignCustomer] = useState(false);
+  const [assignCustomerId, setAssignCustomerId] = useState<string>('');
+  const assignCustomerMut = trpc.projects.update.useMutation({
+    onSuccess: () => { utils.projects.byId.invalidate({ id }); toast.success('Kunde zugewiesen'); setShowAssignCustomer(false); },
+    onError: () => toast.error('Fehler beim Zuweisen'),
+  });
   const { data: knowledgeEntries = [] } = trpc.knowledge.list.useQuery({});
   const generateDsMut = trpc.knowledge.generateDatasheet.useMutation({
     onSuccess: (data) => {
@@ -538,6 +545,28 @@ export default function ProjectDetail() {
             <Badge className={`status-${project.status}`}>{STATUS_LABELS[project.status]}</Badge>
           </div>
           {project.notes && <p className="text-sm text-muted-foreground mt-1">{project.notes}</p>}
+          {/* Kunden-Badge / Zuweisungs-Button */}
+          <div className="mt-1.5">
+            {(project as any).customer ? (
+              <button
+                onClick={() => { setAssignCustomerId(String(project.customerId ?? '')); setShowAssignCustomer(true); }}
+                className="inline-flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 border border-blue-400/30 hover:border-blue-400/60 rounded-full px-2.5 py-0.5 transition-colors"
+                title="Kunden-Zuordnung ändern"
+              >
+                <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                {(project as any).customer?.company || (project as any).customer?.name}
+              </button>
+            ) : (
+              <button
+                onClick={() => { setAssignCustomerId(''); setShowAssignCustomer(true); }}
+                className="inline-flex items-center gap-1.5 text-xs text-amber-400 hover:text-amber-300 border border-amber-400/30 hover:border-amber-400/60 rounded-full px-2.5 py-0.5 transition-colors"
+                title="Kunden zuweisen — für Kundenakte erforderlich"
+              >
+                <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                Kunden zuweisen
+              </button>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {project.driveFolderUrl && (
@@ -1444,6 +1473,33 @@ export default function ProjectDetail() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowOrderConfirmation(false)}>Schließen</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Kunden-Zuweisungs-Dialog ── */}
+      <Dialog open={showAssignCustomer} onOpenChange={setShowAssignCustomer}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Kunden zuweisen</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <p className="text-sm text-muted-foreground">Wähle den Kunden für dieses Projekt. Die Kundenakte wird automatisch mit allen Projekt-Dateien befüllt.</p>
+            <EntitySearch
+              options={(allCustomers as any[]).map((c: any) => ({ id: c.id, label: c.company || c.name, sublabel: c.company ? c.name : undefined }))}
+              value={assignCustomerId ? parseInt(assignCustomerId) : undefined}
+              onChange={v => setAssignCustomerId(v ? String(v) : '')}
+              placeholder="Kunde suchen..."
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAssignCustomer(false)}>Abbrechen</Button>
+            <Button
+              onClick={() => assignCustomerMut.mutate({ id, customerId: assignCustomerId ? parseInt(assignCustomerId) : null })}
+              disabled={assignCustomerMut.isPending}
+            >
+              {assignCustomerMut.isPending ? 'Speichere...' : 'Zuweisen'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

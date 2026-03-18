@@ -823,3 +823,13 @@
 - [x] Frontend: Kundenakte-Dialog nach Projekt gruppiert (Accordion, aufklappbar)
 - [x] Frontend: Protokoll-Inhalt als Vorschau-Text in der Dateiliste
 - [x] 222 Tests grün, 0 TypeScript-Fehler
+
+## Bug Phase 27: Kundenakte leer trotz vorhandener Daten
+- [x] Bug: Ursache war customer_id = NULL in allen Projekten – behoben durch Kunden-Zuordnung als Pflichtfeld (Phase 28)
+
+## Phase 28: Kunden-Zuordnung in Projekten (Pflichtfeld)
+- [x] Frontend: Kunden-Feld im Projekt-Anlegen-Dialog als Pflichtfeld (* Markierung, Button deaktiviert ohne Kunde)
+- [x] Frontend: Kunden-Badge im Projekt-Header (blau = zugewiesen, amber = nicht zugewiesen, klickbar)
+- [x] Frontend: Kunden-Zuweisungs-Dialog im Projekt-Detail (EntitySearch, sofortige Speicherung)
+- [x] Backend: projects.update unterstützt bereits customerId (kein Änderungsbedarf)
+- [x] 222 Tests grün, 0 Fehler
