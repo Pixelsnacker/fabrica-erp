@@ -249,6 +249,96 @@ export async function listFilesInCustomerRootFolder(customerName: string): Promi
 }
 
 /**
+ * Listet ALLE Dateien im Fabrica ERP Ordner auf (rekursiv, alle Unterordner)
+ * Wird für die vollständige Migration verwendet
+ */
+export async function listAllFilesInFabricaERP(): Promise<Array<{
+  id: string;
+  name: string;
+  mimeType: string;
+  parents: string[];
+}>> {
+  const drive = getDriveClient();
+
+  // Root-Ordner finden
+  const rootId = await findOrCreateFolder(drive, ROOT_FOLDER_NAME);
+
+  // Alle Dateien (keine Ordner) im gesamten Fabrica ERP Ordner rekursiv suchen
+  const allFiles: Array<{ id: string; name: string; mimeType: string; parents: string[] }> = [];
+  let pageToken: string | undefined;
+
+  do {
+    const res: any = await drive.files.list({
+      q: `'${rootId}' in parents or mimeType!='application/vnd.google-apps.folder'`,
+      fields: 'nextPageToken, files(id, name, mimeType, parents)',
+      spaces: 'drive',
+      pageSize: 1000,
+      pageToken,
+    });
+
+    // Alle Dateien die NICHT Ordner sind und irgendwo unter Fabrica ERP liegen
+    const files = (res.data.files || []).filter((f: any) => f.mimeType !== 'application/vnd.google-apps.folder');
+    allFiles.push(...files.map((f: any) => ({
+      id: f.id!,
+      name: f.name!,
+      mimeType: f.mimeType!,
+      parents: f.parents || [],
+    })));
+    pageToken = res.data.nextPageToken || undefined;
+  } while (pageToken);
+
+  return allFiles;
+}
+
+/**
+ * Sucht alle Dateien direkt im Kunden-Root-Ordner (nicht in Unterordnern)
+ * und gibt sie mit ihrer Drive-ID zurück
+ */
+export async function listAllFilesInKundenFolder(): Promise<Array<{
+  id: string;
+  name: string;
+  mimeType: string;
+  customerFolderId: string;
+  customerName: string;
+}>> {
+  const drive = getDriveClient();
+
+  // Kunden-Ordner finden
+  const rootId = await findOrCreateFolder(drive, ROOT_FOLDER_NAME);
+  const customersId = await findOrCreateFolder(drive, CUSTOMERS_FOLDER_NAME, rootId);
+
+  // Alle Kunden-Unterordner auflisten
+  const customerFoldersRes = await drive.files.list({
+    q: `'${customersId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+    fields: 'files(id, name)',
+    spaces: 'drive',
+  });
+
+  const result: Array<{ id: string; name: string; mimeType: string; customerFolderId: string; customerName: string }> = [];
+
+  for (const customerFolder of (customerFoldersRes.data.files || [])) {
+    // Alle Dateien direkt im Kunden-Ordner (nicht in Unterordnern)
+    const filesRes = await drive.files.list({
+      q: `'${customerFolder.id}' in parents and mimeType!='application/vnd.google-apps.folder' and trashed=false`,
+      fields: 'files(id, name, mimeType)',
+      spaces: 'drive',
+    });
+
+    for (const file of (filesRes.data.files || [])) {
+      result.push({
+        id: file.id!,
+        name: file.name!,
+        mimeType: file.mimeType!,
+        customerFolderId: customerFolder.id!,
+        customerName: customerFolder.name!,
+      });
+    }
+  }
+
+  return result;
+}
+
+/**
  * Prüft ob die Google Drive Verbindung funktioniert
  */
 export async function testDriveConnection(): Promise<{ ok: boolean; connected?: boolean; email?: string; storageUsed?: string; error?: string }> {

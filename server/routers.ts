@@ -2886,19 +2886,21 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
         return testDriveConnection();
       }),
 
-    // Migrations-Endpunkt: Verschiebt ALLE bestehenden Dateien in die korrekte Projekt-Ordnerstruktur
+    // Migrations-Endpunkt: Durchsucht Google Drive direkt und verschiebt Dateien in Projektordner
+    // Strategie: DB-Dateinamen mit Drive-Dateien abgleichen (auch ohne gespeicherte driveFileId)
     migrateToProjectFolders: protectedProcedure
       .mutation(async () => {
         const db = await (await import('./db')).getDb();
         if (!db) throw new Error('DB nicht verfügbar');
-        const { cadFiles: cadFilesTable, projectDocuments: pdTable, customerFiles: cfTable } = await import('../drizzle/schema');
-        const { isNotNull } = await import('drizzle-orm');
-        const { getOrCreateProjectFolder, getOrCreateCustomerFolder, moveFileToDriveFolder } = await import('./googleDrive');
+        const { cadFiles: cadFilesTable, projectDocuments: pdTable } = await import('../drizzle/schema');
+        const { getOrCreateProjectFolder, listAllFilesInKundenFolder, moveFileToDriveFolder } = await import('./googleDrive');
         const { getProjectById, getCustomerById, getSupplierById } = await import('./db');
+        const { eq: eqOp } = await import('drizzle-orm');
 
         let movedCount = 0;
         let errorCount = 0;
         const errors: string[] = [];
+        const movedFiles: string[] = [];
 
         // Hilfsfunktion: Entitätsname aus Projekt ermitteln (Kunde oder Lieferant)
         async function getEntityName(project: any): Promise<string | null> {
@@ -2918,74 +2920,90 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
             : project.title.substring(0, 100);
         }
 
-        // 1. CAD-Dateien mit Drive-ID in Projekt-Unterordner verschieben
-        const cadFilesWithDrive = await db.select().from(cadFilesTable)
-          .where(isNotNull(cadFilesTable.driveFileId));
+        // Schritt 1: Alle Dateien die aktuell im Kunden-Root-Ordner liegen von Drive laden
+        // (das sind die Dateien die noch nicht in Projektordnern sind)
+        let driveFilesInRoot: Array<{ id: string; name: string; mimeType: string; customerName: string }> = [];
+        try {
+          driveFilesInRoot = await listAllFilesInKundenFolder();
+        } catch (e: any) {
+          return { success: false, movedCount: 0, errorCount: 1, errors: [`Drive-Zugriff fehlgeschlagen: ${e.message}`], movedFiles: [] };
+        }
 
-        for (const file of cadFilesWithDrive) {
-          if (!file.driveFileId) continue;
+        // Schritt 2: Alle CAD-Dateien aus DB laden und mit Drive-Dateien abgleichen
+        const allCadFiles = await db.select().from(cadFilesTable);
+        for (const file of allCadFiles) {
           try {
             const project = await getProjectById(file.projectId);
             if (!project) continue;
             const entityName = await getEntityName(project);
             if (!entityName) continue;
             const projectName = buildProjectName(project);
-            const targetFolderId = await getOrCreateProjectFolder(entityName, projectName);
-            await moveFileToDriveFolder(file.driveFileId, targetFolderId);
-            movedCount++;
+
+            // Drive-Datei anhand des Dateinamens suchen (im Kunden-Root-Ordner)
+            const driveFile = driveFilesInRoot.find(df =>
+              df.name === file.filename && df.customerName === entityName
+            );
+
+            if (driveFile) {
+              // Datei in Projektordner verschieben
+              const targetFolderId = await getOrCreateProjectFolder(entityName, projectName);
+              await moveFileToDriveFolder(driveFile.id, targetFolderId);
+              // Drive-ID in DB speichern
+              await db.update(cadFilesTable)
+                .set({ driveFileId: driveFile.id, driveSynced: 1 })
+                .where(eqOp(cadFilesTable.id, file.id));
+              movedCount++;
+              movedFiles.push(`CAD: ${file.filename} → ${entityName}/${projectName}`);
+            } else if (file.driveFileId) {
+              // Hat schon eine Drive-ID – trotzdem in Projektordner verschieben
+              const targetFolderId = await getOrCreateProjectFolder(entityName, projectName);
+              await moveFileToDriveFolder(file.driveFileId, targetFolderId);
+              movedCount++;
+              movedFiles.push(`CAD (re-move): ${file.filename} → ${entityName}/${projectName}`);
+            }
           } catch (e: any) {
             errorCount++;
             errors.push(`CAD ${file.id} (${file.filename}): ${e.message}`);
           }
         }
 
-        // 2. Projekt-Dokumente mit Drive-ID in Projekt-Unterordner verschieben
-        const docsWithDrive = await db.select().from(pdTable)
-          .where(isNotNull(pdTable.driveFileId));
-
-        for (const doc of docsWithDrive) {
-          if (!doc.driveFileId) continue;
+        // Schritt 3: Alle Projekt-Dokumente aus DB laden und mit Drive-Dateien abgleichen
+        const allDocs = await db.select().from(pdTable);
+        for (const doc of allDocs) {
           try {
             const project = await getProjectById(doc.projectId);
             if (!project) continue;
             const entityName = await getEntityName(project);
             if (!entityName) continue;
             const projectName = buildProjectName(project);
-            const targetFolderId = await getOrCreateProjectFolder(entityName, projectName);
-            await moveFileToDriveFolder(doc.driveFileId, targetFolderId);
-            movedCount++;
+
+            // Drive-Datei anhand des Dateinamens suchen
+            const driveFile = driveFilesInRoot.find(df =>
+              df.name === doc.filename && df.customerName === entityName
+            );
+
+            if (driveFile) {
+              const targetFolderId = await getOrCreateProjectFolder(entityName, projectName);
+              await moveFileToDriveFolder(driveFile.id, targetFolderId);
+              // Drive-ID in DB speichern
+              await db.update(pdTable)
+                .set({ driveFileId: driveFile.id, driveSynced: 1 })
+                .where(eqOp(pdTable.id, doc.id));
+              movedCount++;
+              movedFiles.push(`Dok: ${doc.filename} → ${entityName}/${projectName}`);
+            } else if (doc.driveFileId) {
+              const targetFolderId = await getOrCreateProjectFolder(entityName, projectName);
+              await moveFileToDriveFolder(doc.driveFileId, targetFolderId);
+              movedCount++;
+              movedFiles.push(`Dok (re-move): ${doc.filename} → ${entityName}/${projectName}`);
+            }
           } catch (e: any) {
             errorCount++;
             errors.push(`Dok ${doc.id} (${doc.filename}): ${e.message}`);
           }
         }
 
-        // 3. Kundenakte-Dateien in Projekt-Unterordner verschieben (wenn projectId vorhanden)
-        const cfWithDrive = await db.select().from(cfTable);
-        for (const cf of cfWithDrive) {
-          if (!cf.driveFileId) continue;
-          try {
-            if (cf.projectId) {
-              // Datei hat Projekt-Zuordnung → in Projekt-Unterordner verschieben
-              const project = await getProjectById(cf.projectId);
-              if (!project) continue;
-              const entityName = await getEntityName(project);
-              if (!entityName) continue;
-              const projectName = buildProjectName(project);
-              const targetFolderId = await getOrCreateProjectFolder(entityName, projectName);
-              await moveFileToDriveFolder(cf.driveFileId, targetFolderId);
-              movedCount++;
-            } else {
-              // Keine Projekt-Zuordnung → in Kunden-Root-Ordner (korrekte Position)
-              // Nur verschieben wenn Datei im falschen Ort liegt – skip
-            }
-          } catch (e: any) {
-            errorCount++;
-            errors.push(`Akte ${cf.id} (${cf.filename}): ${e.message}`);
-          }
-        }
-
-        return { success: true, movedCount, errorCount, errors };
+        return { success: true, movedCount, errorCount, errors, movedFiles };
       }),
   }),
 });

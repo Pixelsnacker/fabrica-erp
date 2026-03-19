@@ -24,7 +24,7 @@ export default function Settings() {
   const [exportProgress, setExportProgress] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isMigrating, setIsMigrating] = useState(false);
-  const [migrationResult, setMigrationResult] = useState<{ movedCount: number; errorCount: number; errors: string[] } | null>(null);
+  const [migrationResult, setMigrationResult] = useState<{ movedCount: number; errorCount: number; errors: string[]; movedFiles?: string[] } | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
@@ -850,10 +850,15 @@ export default function Settings() {
                             {migrationResult.movedCount} Datei{migrationResult.movedCount !== 1 ? 'en' : ''} erfolgreich verschoben
                             {migrationResult.errorCount > 0 ? `, ${migrationResult.errorCount} Fehler` : ''}
                           </p>
-                          {migrationResult.errors.length > 0 && (
+                          {migrationResult.movedFiles && migrationResult.movedFiles.length > 0 && (
                             <ul className="mt-1 text-xs space-y-0.5 opacity-80">
-                              {migrationResult.errors.slice(0, 5).map((e, i) => <li key={i}>{e}</li>)}
-                              {migrationResult.errors.length > 5 && <li>... und {migrationResult.errors.length - 5} weitere</li>}
+                              {migrationResult.movedFiles.slice(0, 8).map((f, i) => <li key={i} className="truncate">✓ {f}</li>)}
+                              {migrationResult.movedFiles.length > 8 && <li>... und {migrationResult.movedFiles.length - 8} weitere</li>}
+                            </ul>
+                          )}
+                          {migrationResult.errors.length > 0 && (
+                            <ul className="mt-1 text-xs space-y-0.5 opacity-60">
+                              {migrationResult.errors.slice(0, 3).map((e, i) => <li key={i} className="text-red-400">⚠ {e}</li>)}
                             </ul>
                           )}
                         </div>

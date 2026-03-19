@@ -1,0 +1,25 @@
+{
+  "query": "\nSELECT 'cad_files' as tabelle, COUNT(*) as gesamt, SUM(CASE WHEN drive_file_id IS NOT NULL THEN 1 ELSE 0 END) as mit_drive_id FROM cad_files\nUNION ALL\nSELECT 'project_documents', COUNT(*), SUM(CASE WHEN drive_file_id IS NOT NULL THEN 1 ELSE 0 END) FROM project_documents\nUNION ALL\nSELECT 'customer_files', COUNT(*), COUNT(*) as mit_drive_id FROM customer_files;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 9NNjvn7NV7enobv.7ea640e70a8c --database YMZow7uQxpBVyBGbmbpvvd --execute \nSELECT 'cad_files' as tabelle, COUNT(*) as gesamt, SUM(CASE WHEN drive_file_id IS NOT NULL THEN 1 ELSE 0 END) as mit_drive_id FROM cad_files\nUNION ALL\nSELECT 'project_documents', COUNT(*), SUM(CASE WHEN drive_file_id IS NOT NULL THEN 1 ELSE 0 END) FROM project_documents\nUNION ALL\nSELECT 'customer_files', COUNT(*), COUNT(*) as mit_drive_id FROM customer_files;\n",
+  "rows": [
+    {
+      "tabelle": "cad_files",
+      "gesamt": "2",
+      "mit_drive_id": "0"
+    },
+    {
+      "tabelle": "project_documents",
+      "gesamt": "15",
+      "mit_drive_id": "0"
+    },
+    {
+      "tabelle": "customer_files",
+      "gesamt": "0",
+      "mit_drive_id": "0"
+    }
+  ],
+  "messages": [],
+  "stdout": "tabelle\tgesamt\tmit_drive_id\ncad_files\t2\t0\nproject_documents\t15\t0\ncustomer_files\t0\t0\n",
+  "stderr": "",
+  "execution_time_ms": 415
+}
