@@ -855,3 +855,11 @@
 - [x] Frontend: Sync-Status-Icon in Projekt-Dokument-Liste
 - [x] Frontend: Migrations-Button in Einstellungen (Datensicherung-Tab) mit Ergebnis-Anzeige
 - [x] 222 Tests grün
+
+## Phase 32: Manueller Re-Sync-Button
+
+- [x] Backend: cadFiles.syncToDrive Endpunkt (lädt einzelne Datei erneut zu Drive hoch)
+- [x] Backend: projectDocs.syncToDrive Endpunkt (lädt einzelnes Dokument erneut zu Drive hoch)
+- [x] Frontend: Re-Sync-Button in CAD-Dateiliste (nur sichtbar wenn driveSynced=0)
+- [x] Frontend: Re-Sync-Button in Projekt-Dokument-Liste (nur sichtbar wenn driveSynced=0)
+- [x] 222 Tests grün

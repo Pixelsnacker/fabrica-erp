@@ -1965,6 +1965,12 @@ function ProjectDocCard({ doc, onDelete, supplierName, onNoteUpdated }: {
     onError: (e: any) => toast.error("Fehler: " + e.message),
   });
 
+  const [isSyncing, setIsSyncing] = useState(false);
+  const syncDocMut = trpc.projectDocs.syncToDrive.useMutation({
+    onSuccess: () => { setIsSyncing(false); onNoteUpdated(); toast.success("Dokument zu Google Drive synchronisiert"); },
+    onError: (e: any) => { setIsSyncing(false); toast.error("Drive-Sync fehlgeschlagen: " + e.message); },
+  });
+
   return (
     <div className="flex gap-3 p-3 rounded-lg bg-card border border-border hover:border-primary/40 transition-all group">
       {/* Icon */}
@@ -2101,6 +2107,28 @@ function ProjectDocCard({ doc, onDelete, supplierName, onNoteUpdated }: {
 
       {/* Aktionen */}
       <div className="flex flex-col items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+        {/* Drive Re-Sync-Button (nur wenn noch nicht synced) */}
+        {!doc.driveSynced && (
+          <Button
+            variant="ghost" size="sm"
+            className="h-7 w-7 p-0 text-muted-foreground hover:text-blue-400"
+            title="Zu Google Drive hochladen"
+            disabled={isSyncing}
+            onClick={() => { setIsSyncing(true); syncDocMut.mutate({ id: doc.id }); }}
+          >
+            {isSyncing
+              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              : <svg viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 opacity-50">
+                  <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="currentColor"/>
+                  <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="currentColor"/>
+                  <path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="currentColor"/>
+                  <path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="currentColor"/>
+                  <path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="currentColor"/>
+                  <path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 28h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="currentColor"/>
+                </svg>
+            }
+          </Button>
+        )}
         {/* Vorschau-Button für PDF, Bilder und CAD */}
         {previewType !== 'none' && (
           <Button
@@ -2398,6 +2426,18 @@ function CadTabContent({ projectId, cadFiles, onRefresh }: {
     onSuccess: () => { onRefresh(); toast.success("Datei gelöscht"); },
     onError: () => toast.error("Fehler beim Löschen"),
   });
+  const [syncingIds, setSyncingIds] = useState<Set<number>>(new Set());
+  const syncMut = trpc.cadFiles.syncToDrive.useMutation({
+    onSuccess: (_data, vars) => {
+      setSyncingIds(prev => { const s = new Set(prev); s.delete(vars.id); return s; });
+      onRefresh();
+      toast.success("Datei zu Google Drive synchronisiert");
+    },
+    onError: (_err, vars) => {
+      setSyncingIds(prev => { const s = new Set(prev); s.delete(vars.id); return s; });
+      toast.error("Drive-Sync fehlgeschlagen");
+    },
+  });
 
   const ALLOWED_EXT = ["stl", "stp", "step", "obj", "3mf", "iges", "igs"];
   const MAX_SIZE = 100 * 1024 * 1024; // 100 MB
@@ -2482,7 +2522,7 @@ function CadTabContent({ projectId, cadFiles, onRefresh }: {
                   {f.uploadedBy ? ` · ${f.uploadedBy}` : ""}
                 </p>
               </div>
-              {/* Drive-Sync-Status-Icon */}
+              {/* Drive-Sync-Status-Icon oder Re-Sync-Button */}
               {f.driveSynced === 1 && f.driveFileId ? (
                 <a
                   href={`https://drive.google.com/file/d/${f.driveFileId}/view`}
@@ -2491,7 +2531,7 @@ function CadTabContent({ projectId, cadFiles, onRefresh }: {
                   title="In Google Drive gespeichert – klicken zum Öffnen"
                   className="shrink-0"
                 >
-                  <svg className="h-4 w-4 text-green-500" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg">
+                  <svg className="h-4 w-4" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg">
                     <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
                     <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/>
                     <path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/>
@@ -2501,7 +2541,26 @@ function CadTabContent({ projectId, cadFiles, onRefresh }: {
                   </svg>
                 </a>
               ) : (
-                <div className="h-4 w-4 shrink-0" />
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-6 w-6 shrink-0 text-muted-foreground hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                  title="Zu Google Drive hochladen"
+                  disabled={syncingIds.has(f.id)}
+                  onClick={() => { setSyncingIds(prev => new Set(prev).add(f.id)); syncMut.mutate({ id: f.id }); }}
+                >
+                  {syncingIds.has(f.id)
+                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    : <svg viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 opacity-40">
+                        <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="currentColor"/>
+                        <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="currentColor"/>
+                        <path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="currentColor"/>
+                        <path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="currentColor"/>
+                        <path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="currentColor"/>
+                        <path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 28h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="currentColor"/>
+                      </svg>
+                  }
+                </Button>
               )}
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 {(getExt(f.filename) === "stl" || getExt(f.filename) === "obj") && (

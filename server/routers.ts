@@ -593,6 +593,52 @@ export const appRouter = router({
       return { success: true, url };
     }),
     delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => { await deleteCadFile(input.id); return { success: true }; }),
+
+    // Manueller Re-Sync einer einzelnen CAD-Datei zu Google Drive
+    syncToDrive: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const db = await (await import('./db')).getDb();
+        if (!db) throw new Error('DB nicht verfügbar');
+        const { cadFiles: cadFilesTable } = await import('../drizzle/schema');
+        const { eq } = await import('drizzle-orm');
+        const { getProjectById, getCustomerById } = await import('./db');
+
+        // Datei aus DB laden
+        const [file] = await db.select().from(cadFilesTable).where(eq(cadFilesTable.id, input.id)).limit(1);
+        if (!file) throw new Error('Datei nicht gefunden');
+
+        // Datei von S3 herunterladen
+        const fetchRes = await fetch(file.fileUrl);
+        if (!fetchRes.ok) throw new Error('Datei konnte nicht von S3 geladen werden');
+        const buffer = Buffer.from(await fetchRes.arrayBuffer());
+
+        // Projekt und Kunde laden
+        const project = await getProjectById(file.projectId);
+        if (!project?.customerId) throw new Error('Projekt oder Kunde nicht gefunden');
+        const customer = await getCustomerById(project.customerId);
+        if (!customer) throw new Error('Kunde nicht gefunden');
+
+        const { uploadFileToDrive } = await import('./googleDrive');
+        const projectName = project.projectNumber
+          ? `${project.projectNumber} ${project.title}`.substring(0, 100)
+          : project.title.substring(0, 100);
+
+        const driveResult = await uploadFileToDrive({
+          filename: file.filename,
+          mimeType: file.mimeType || 'application/octet-stream',
+          buffer,
+          customerName: customer.company || customer.name,
+          projectName,
+        });
+
+        // Drive-Status in DB speichern
+        await db.update(cadFilesTable)
+          .set({ driveFileId: driveResult.fileId, driveSynced: 1 })
+          .where(eq(cadFilesTable.id, input.id));
+
+        return { success: true, driveFileId: driveResult.fileId };
+      }),
   }),
 
   // ─── Consultation ────────────────────────────────────────────────────────────
@@ -2145,6 +2191,52 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
           .where(eq(projectDocuments.supplierId, input.supplierId))
           .orderBy(desc(projectDocuments.createdAt));
         return rows;
+      }),
+
+    // Manueller Re-Sync eines einzelnen Dokuments zu Google Drive
+    syncToDrive: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const db = await (await import('./db')).getDb();
+        if (!db) throw new Error('DB nicht verfügbar');
+        const { projectDocuments: pdTable } = await import('../drizzle/schema');
+        const { eq } = await import('drizzle-orm');
+        const { getProjectById, getCustomerById } = await import('./db');
+
+        // Dokument aus DB laden
+        const [doc] = await db.select().from(pdTable).where(eq(pdTable.id, input.id)).limit(1);
+        if (!doc) throw new Error('Dokument nicht gefunden');
+
+        // Datei von S3 herunterladen
+        const fetchRes = await fetch(doc.fileUrl);
+        if (!fetchRes.ok) throw new Error('Datei konnte nicht von S3 geladen werden');
+        const buffer = Buffer.from(await fetchRes.arrayBuffer());
+
+        // Projekt und Kunde laden
+        const project = await getProjectById(doc.projectId);
+        if (!project?.customerId) throw new Error('Projekt oder Kunde nicht gefunden');
+        const customer = await getCustomerById(project.customerId);
+        if (!customer) throw new Error('Kunde nicht gefunden');
+
+        const { uploadFileToDrive } = await import('./googleDrive');
+        const projectName = project.projectNumber
+          ? `${project.projectNumber} ${project.title}`.substring(0, 100)
+          : project.title.substring(0, 100);
+
+        const driveResult = await uploadFileToDrive({
+          filename: doc.filename,
+          mimeType: doc.mimeType || 'application/octet-stream',
+          buffer,
+          customerName: customer.company || customer.name,
+          projectName,
+        });
+
+        // Drive-Status in DB speichern
+        await db.update(pdTable)
+          .set({ driveFileId: driveResult.fileId, driveSynced: 1 })
+          .where(eq(pdTable.id, input.id));
+
+        return { success: true, driveFileId: driveResult.fileId };
       }),
   }),
 
