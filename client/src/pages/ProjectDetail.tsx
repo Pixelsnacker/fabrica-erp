@@ -55,6 +55,9 @@ function ProjectAkteTab({ customerId, projectId, customerName }: {
   const [uploadNotes, setUploadNotes] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadCurrent, setUploadCurrent] = useState(0);
+  const [uploadTotal, setUploadTotal] = useState(0);
+  const [uploadCurrentName, setUploadCurrentName] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: files = [], isLoading } = trpc.customerFiles.listByProject.useQuery(
@@ -63,11 +66,6 @@ function ProjectAkteTab({ customerId, projectId, customerName }: {
   );
 
   const uploadMut = trpc.customerFiles.upload.useMutation({
-    onSuccess: () => {
-      utils.customerFiles.listByProject.invalidate({ customerId, projectId });
-      setUploadNotes('');
-      toast.success('Datei hochgeladen');
-    },
     onError: (e) => toast.error(`Upload fehlgeschlagen: ${e.message}`),
   });
 
@@ -79,11 +77,22 @@ function ProjectAkteTab({ customerId, projectId, customerName }: {
     onError: () => toast.error('Fehler beim Löschen'),
   });
 
-  const handleFiles = async (fileList: FileList) => {
+  const handleFiles = async (fileList: FileList | File[]) => {
     const MAX_SIZE = 50 * 1024 * 1024;
-    for (const file of Array.from(fileList)) {
-      if (file.size > MAX_SIZE) { toast.error(`"${file.name}" ist zu groß (max. 50 MB)`); continue; }
-      setUploading(true);
+    const arr = Array.from(fileList);
+    const valid = arr.filter(f => {
+      if (f.size > MAX_SIZE) { toast.error(`"${f.name}" ist zu groß (max. 50 MB)`); return false; }
+      return true;
+    });
+    if (!valid.length) return;
+    setUploading(true);
+    setUploadTotal(valid.length);
+    setUploadCurrent(0);
+    let success = 0;
+    for (let i = 0; i < valid.length; i++) {
+      const file = valid[i];
+      setUploadCurrent(i + 1);
+      setUploadCurrentName(file.name);
       try {
         const buffer = await file.arrayBuffer();
         const uint8 = new Uint8Array(buffer);
@@ -99,9 +108,18 @@ function ProjectAkteTab({ customerId, projectId, customerName }: {
           fileSize: file.size,
           notes: uploadNotes || undefined,
         });
+        success++;
       } catch (_) {}
-      finally { setUploading(false); }
     }
+    utils.customerFiles.listByProject.invalidate({ customerId, projectId });
+    if (success > 0) {
+      setUploadNotes('');
+      toast.success(valid.length === 1 ? 'Datei hochgeladen' : `${success} von ${valid.length} Dateien hochgeladen`);
+    }
+    setUploading(false);
+    setUploadCurrent(0);
+    setUploadTotal(0);
+    setUploadCurrentName('');
   };
 
   const filteredFiles = selectedCategory === 'all' ? files : files.filter(f => f.category === selectedCategory);
@@ -145,9 +163,17 @@ function ProjectAkteTab({ customerId, projectId, customerName }: {
         >
           <input ref={fileInputRef} type="file" multiple className="hidden" onChange={e => e.target.files && handleFiles(e.target.files)} />
           {uploading ? (
-            <div className="flex flex-col items-center gap-2"><Loader2 className="h-7 w-7 text-primary animate-spin" /><p className="text-sm text-muted-foreground">Wird hochgeladen...</p></div>
+            <div className="flex flex-col items-center gap-2">
+              <Loader2 className="h-7 w-7 text-primary animate-spin" />
+              <p className="text-sm font-medium">{uploadTotal > 1 ? `${uploadCurrent} / ${uploadTotal} Dateien` : 'Wird hochgeladen...'}</p>
+              <p className="text-xs text-muted-foreground truncate max-w-xs">{uploadCurrentName}</p>
+            </div>
           ) : (
-            <div className="flex flex-col items-center gap-2"><Upload className="h-7 w-7 text-muted-foreground" /><p className="text-sm font-medium">Dateien ablegen oder klicken</p><p className="text-xs text-muted-foreground">Alle Formate, max. 50 MB</p></div>
+            <div className="flex flex-col items-center gap-2">
+              <Upload className="h-7 w-7 text-muted-foreground" />
+              <p className="text-sm font-medium">Dateien ablegen oder klicken</p>
+              <p className="text-xs text-muted-foreground">Alle Formate, max. 50 MB · Mehrfachauswahl möglich</p>
+            </div>
           )}
         </div>
       </div>
@@ -2274,42 +2300,68 @@ function ProjectDocUploadDialog({
   const [dragOver, setDragOver] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [uploadCurrent, setUploadCurrent] = useState(0);
+  const [uploadTotal, setUploadTotal] = useState(0);
+  const [uploadCurrentName, setUploadCurrentName] = useState('');
   const [category, setCategory] = useState<string>("supplier_offer");
   const [notes, setNotes] = useState("");
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [supplierId, setSupplierId] = useState<string>("none");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { data: supplierList = [] } = trpc.suppliers.list.useQuery();
 
-  const upload = trpc.projectDocs.upload.useMutation({
-    onSuccess: () => { setIsUploading(false); setProgress(0); toast.success("Dokument hochgeladen"); onSuccess(); },
-    onError: (e) => { setIsUploading(false); setProgress(0); toast.error("Upload fehlgeschlagen: " + e.message); },
-  });
+  const upload = trpc.projectDocs.upload.useMutation({ onError: (e) => toast.error("Upload fehlgeschlagen: " + e.message) });
 
-  const handleFile = (file: File) => {
-    if (file.size > 25 * 1024 * 1024) { toast.error("Max. 25 MB"); return; }
-    setSelectedFile(file);
+  const handleFiles = (files: File[]) => {
+    const valid = files.filter(f => {
+      if (f.size > 25 * 1024 * 1024) { toast.error(`${f.name}: Max. 25 MB`); return false; }
+      return true;
+    });
+    setSelectedFiles(prev => [...prev, ...valid]);
   };
 
-  const handleUpload = () => {
-    if (!selectedFile) return;
+  const uploadSingleDoc = (file: File): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const base64 = (e.target?.result as string).split(",")[1];
+        try {
+          await upload.mutateAsync({
+            projectId,
+            supplierId: supplierId && supplierId !== "none" ? parseInt(supplierId) : null,
+            category: category as any,
+            filename: file.name,
+            fileBase64: base64,
+            mimeType: file.type || "application/octet-stream",
+            notes: notes || undefined,
+          });
+          resolve();
+        } catch { reject(); }
+      };
+      reader.onerror = () => reject();
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleUpload = async () => {
+    if (!selectedFiles.length) return;
     setIsUploading(true);
-    setProgress(20);
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setProgress(60);
-      const base64 = (e.target?.result as string).split(",")[1];
-      upload.mutate({
-        projectId,
-        supplierId: supplierId && supplierId !== "none" ? parseInt(supplierId) : null,
-        category: category as any,
-        filename: selectedFile.name,
-        fileBase64: base64,
-        mimeType: selectedFile.type || "application/octet-stream",
-        notes: notes || undefined,
-      });
-    };
-    reader.readAsDataURL(selectedFile);
+    setUploadTotal(selectedFiles.length);
+    setUploadCurrent(0);
+    setProgress(0);
+    let success = 0;
+    for (let i = 0; i < selectedFiles.length; i++) {
+      setUploadCurrent(i + 1);
+      setUploadCurrentName(selectedFiles[i].name);
+      setProgress(Math.round((i / selectedFiles.length) * 100));
+      try { await uploadSingleDoc(selectedFiles[i]); success++; } catch { /* already toasted */ }
+    }
+    setProgress(100);
+    setIsUploading(false);
+    if (success > 0) {
+      toast.success(selectedFiles.length === 1 ? "Dokument hochgeladen" : `${success} von ${selectedFiles.length} Dokumente hochgeladen`);
+      onSuccess();
+    }
   };
 
   return (
@@ -2340,41 +2392,52 @@ function ProjectDocUploadDialog({
           </div>
 
           {/* Upload-Zone */}
-          {!selectedFile ? (
-            <div
-              className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${dragOver ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}
-              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={(e) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if (f) handleFile(f); }}
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.webp,.zip,.rar"
-                className="hidden"
-                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }}
-              />
-              <div className="flex justify-center gap-2 mb-2">
-                <FileText className="h-5 w-5 text-muted-foreground" />
-                <Image className="h-5 w-5 text-muted-foreground" />
-              </div>
-              <p className="text-sm text-muted-foreground">Datei hier ablegen oder <span className="text-primary">klicken</span></p>
-              <p className="text-xs text-muted-foreground/60 mt-1">PDF, Word, Excel, Bilder, ZIP · max. 25 MB</p>
+          <div
+            className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${dragOver ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={(e) => { e.preventDefault(); setDragOver(false); handleFiles(Array.from(e.dataTransfer.files)); }}
+            onClick={() => !isUploading && fileInputRef.current?.click()}
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.webp,.zip,.rar"
+              className="hidden"
+              onChange={(e) => { handleFiles(Array.from(e.target.files ?? [])); e.target.value = ""; }}
+            />
+            <div className="flex justify-center gap-2 mb-2">
+              <FileText className="h-5 w-5 text-muted-foreground" />
+              <Image className="h-5 w-5 text-muted-foreground" />
             </div>
-          ) : (
-            <div className="border border-border rounded-lg p-4 bg-muted/20">
-              <div className="flex items-center gap-3">
-                <FileText className="h-8 w-8 text-primary shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{selectedFile.name}</p>
-                  <p className="text-xs text-muted-foreground">{Math.round(selectedFile.size / 1024)} KB</p>
+            <p className="text-sm text-muted-foreground">Dateien hier ablegen oder <span className="text-primary">klicken</span></p>
+            <p className="text-xs text-muted-foreground/60 mt-1">PDF, Word, Excel, Bilder, ZIP · max. 25 MB · Mehrfachauswahl möglich</p>
+          </div>
+
+          {/* Ausgewählte Dateien */}
+          {selectedFiles.length > 0 && (
+            <div className="space-y-1.5 max-h-40 overflow-y-auto">
+              {selectedFiles.map((f, i) => (
+                <div key={i} className="flex items-center gap-2 border border-border rounded px-3 py-1.5 bg-muted/20">
+                  <FileText className="h-4 w-4 text-primary shrink-0" />
+                  <span className="flex-1 text-xs truncate">{f.name}</span>
+                  <span className="text-xs text-muted-foreground shrink-0">{Math.round(f.size / 1024)} KB</span>
+                  {!isUploading && (
+                    <button className="text-muted-foreground hover:text-destructive" onClick={() => setSelectedFiles(prev => prev.filter((_, j) => j !== i))}>
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                 </div>
-                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setSelectedFile(null)}>
-                  <X className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-              {isUploading && <Progress value={progress} className="h-1 mt-2" />}
+              ))}
+            </div>
+          )}
+
+          {/* Fortschritt */}
+          {isUploading && (
+            <div className="space-y-1.5">
+              <p className="text-xs text-muted-foreground">{uploadTotal > 1 ? `${uploadCurrent} / ${uploadTotal}` : ''} {uploadCurrentName}</p>
+              <Progress value={progress} className="h-1.5" />
             </div>
           )}
 
@@ -2410,7 +2473,7 @@ function ProjectDocUploadDialog({
           <Button variant="outline" onClick={onClose}>Abbrechen</Button>
           <Button
             onClick={handleUpload}
-            disabled={!selectedFile || isUploading}
+            disabled={!selectedFiles.length || isUploading}
             className="gap-2"
           >
             {isUploading ? (
@@ -2433,12 +2496,12 @@ function CadTabContent({ projectId, cadFiles, onRefresh }: {
 }) {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadCurrent, setUploadCurrent] = useState(0);
+  const [uploadTotal, setUploadTotal] = useState(0);
+  const [uploadCurrentName, setUploadCurrentName] = useState('');
   const [viewerFile, setViewerFile] = useState<{ url: string; filename: string; fileSize?: number | null } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const uploadMut = trpc.cadFiles.upload.useMutation({
-    onSuccess: () => { onRefresh(); setUploading(false); setUploadProgress(0); toast.success("CAD-Datei hochgeladen"); },
-    onError: () => { setUploading(false); setUploadProgress(0); toast.error("Upload fehlgeschlagen"); },
-  });
+  const uploadMut = trpc.cadFiles.upload.useMutation({ onError: () => toast.error("Upload fehlgeschlagen") });
   const deleteMut = trpc.cadFiles.delete.useMutation({
     onSuccess: () => { onRefresh(); toast.success("Datei gelöscht"); },
     onError: () => toast.error("Fehler beim Löschen"),
@@ -2459,37 +2522,54 @@ function CadTabContent({ projectId, cadFiles, onRefresh }: {
   const ALLOWED_EXT = ["stl", "stp", "step", "obj", "3mf", "iges", "igs"];
   const MAX_SIZE = 100 * 1024 * 1024; // 100 MB
 
-  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
-    if (!ALLOWED_EXT.includes(ext)) {
-      toast.error(`Nicht unterstütztes Format. Erlaubt: ${ALLOWED_EXT.join(", ").toUpperCase()}`);
-      return;
-    }
-    if (file.size > MAX_SIZE) {
-      toast.error("Datei zu groß (max. 100 MB)");
-      return;
-    }
-    setUploading(true);
-    setUploadProgress(10);
-    const reader = new FileReader();
-    reader.onprogress = (ev) => { if (ev.lengthComputable) setUploadProgress(10 + Math.round((ev.loaded / ev.total) * 60)); };
-    reader.onload = async () => {
-      setUploadProgress(75);
-      const base64 = (reader.result as string).split(",")[1];
-      await uploadMut.mutateAsync({
-        projectId,
-        filename: file.name,
-        fileData: base64,
-        mimeType: file.type || "application/octet-stream",
-        version: 1,
-      });
-      setUploadProgress(100);
-    };
-    reader.readAsDataURL(file);
-    e.target.value = "";
+  const uploadSingleFile = useCallback((file: File): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+      if (!ALLOWED_EXT.includes(ext)) {
+        toast.error(`${file.name}: Nicht unterstütztes Format`);
+        resolve(); return;
+      }
+      if (file.size > MAX_SIZE) {
+        toast.error(`${file.name}: Datei zu groß (max. 100 MB)`);
+        resolve(); return;
+      }
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const base64 = (reader.result as string).split(",")[1];
+        try {
+          await uploadMut.mutateAsync({ projectId, filename: file.name, fileData: base64, mimeType: file.type || "application/octet-stream", version: 1 });
+          resolve();
+        } catch { reject(); }
+      };
+      reader.onerror = () => reject();
+      reader.readAsDataURL(file);
+    });
   }, [projectId, uploadMut]);
+
+  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    setUploading(true);
+    setUploadTotal(files.length);
+    setUploadCurrent(0);
+    setUploadProgress(0);
+    let success = 0;
+    for (let i = 0; i < files.length; i++) {
+      setUploadCurrent(i + 1);
+      setUploadCurrentName(files[i].name);
+      setUploadProgress(Math.round(((i) / files.length) * 100));
+      try { await uploadSingleFile(files[i]); success++; } catch { /* already toasted */ }
+    }
+    setUploadProgress(100);
+    onRefresh();
+    if (success > 0) toast.success(files.length === 1 ? "CAD-Datei hochgeladen" : `${success} von ${files.length} Dateien hochgeladen`);
+    setUploading(false);
+    setUploadProgress(0);
+    setUploadCurrent(0);
+    setUploadTotal(0);
+    setUploadCurrentName('');
+    e.target.value = "";
+  }, [uploadSingleFile, onRefresh]);
 
   const formatBytes = (b: number) => b < 1024 ? `${b} B` : b < 1024 * 1024 ? `${(b / 1024).toFixed(1)} KB` : `${(b / (1024 * 1024)).toFixed(1)} MB`;
   const getExt = (fn: string) => fn.split(".").pop()?.toLowerCase() ?? "";
@@ -2503,15 +2583,16 @@ function CadTabContent({ projectId, cadFiles, onRefresh }: {
         onDragOver={e => e.preventDefault()}
         onDrop={e => {
           e.preventDefault();
-          const file = e.dataTransfer.files[0];
-          if (file) handleFileChange({ target: { files: [file], value: "" } } as unknown as React.ChangeEvent<HTMLInputElement>);
+          const dropped = Array.from(e.dataTransfer.files);
+          if (dropped.length) handleFileChange({ target: { files: e.dataTransfer.files, value: "" } } as unknown as React.ChangeEvent<HTMLInputElement>);
         }}
       >
-        <input ref={fileInputRef} type="file" className="hidden" accept=".stl,.stp,.step,.obj,.3mf,.iges,.igs" onChange={handleFileChange} />
+        <input ref={fileInputRef} type="file" multiple className="hidden" accept=".stl,.stp,.step,.obj,.3mf,.iges,.igs" onChange={handleFileChange} />
         {uploading ? (
           <div className="space-y-3">
             <Loader2 className="h-8 w-8 mx-auto animate-spin text-primary" />
-            <p className="text-sm text-muted-foreground">Wird hochgeladen... {uploadProgress}%</p>
+            <p className="text-sm font-medium">{uploadTotal > 1 ? `${uploadCurrent} / ${uploadTotal} Dateien` : 'Wird hochgeladen...'}</p>
+            <p className="text-xs text-muted-foreground truncate max-w-xs mx-auto">{uploadCurrentName}</p>
             <div className="w-full max-w-xs mx-auto bg-secondary rounded-full h-2">
               <div className="bg-primary h-2 rounded-full transition-all" style={{ width: `${uploadProgress}%` }} />
             </div>
@@ -2519,9 +2600,9 @@ function CadTabContent({ projectId, cadFiles, onRefresh }: {
         ) : (
           <div className="space-y-2">
             <Upload className="h-8 w-8 mx-auto text-muted-foreground" />
-            <p className="text-sm font-medium">CAD-Datei hochladen</p>
+            <p className="text-sm font-medium">CAD-Dateien hochladen</p>
             <p className="text-xs text-muted-foreground">STL, STP, STEP, OBJ, 3MF, IGES · max. 100 MB</p>
-            <p className="text-xs text-muted-foreground">Klicken oder Datei hierher ziehen</p>
+            <p className="text-xs text-muted-foreground">Klicken oder Dateien hierher ziehen · Mehrfachauswahl möglich</p>
           </div>
         )}
       </div>

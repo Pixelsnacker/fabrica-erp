@@ -870,3 +870,9 @@
 - [ ] Frontend: Kundenauswahl in Projekt-Erstellung zeigt Kunden + Lieferanten (gruppiert)
 - [ ] Frontend: Kundenauswahl in Projekt-Bearbeitung zeigt Kunden + Lieferanten (gruppiert)
 - [ ] 222+ Tests grün
+
+## Phase 34: Mehrfachauswahl beim Upload
+
+- [x] CAD-Datei-Upload: multiple Dateiauswahl + sequenzieller Upload mit Fortschrittsanzeige
+- [x] Projekt-Dokument-Upload: multiple Dateiauswahl + sequenzieller Upload mit Fortschrittsanzeige
+- [x] Kundenakte-Datei-Upload: multiple Dateiauswahl + sequenzieller Upload mit Fortschrittsanzeige
