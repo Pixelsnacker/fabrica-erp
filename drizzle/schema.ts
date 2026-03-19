@@ -183,6 +183,7 @@ export const projects = mysqlTable("projects", {
 	type: mysqlEnum(['serial_part','spare_part','museum','consulting','cad_work','other']).default('other').notNull(),
 	status: mysqlEnum(['inquiry','calculation','offer','order','production','shipping','completed','cancelled']).default('inquiry').notNull(),
 	customerId: int("customer_id"),
+	supplierId: int("supplier_id"),
 	leadSourceId: int("lead_source_id"),
 	driveFolderUrl: varchar("drive_folder_url", { length: 1024 }),
 	notes: text(),

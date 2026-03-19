@@ -368,11 +368,11 @@ export default function ProjectDetail() {
   const [generatedDatasheet, setGeneratedDatasheet] = useState('');
   const [showDsEntrySelector, setShowDsEntrySelector] = useState(false);
   const { data: companySettings } = trpc.companySettings.get.useQuery();
-  const { data: allCustomers = [] } = trpc.customers.list.useQuery();
+  const { data: projectEntities = [] } = trpc.customers.listForProjects.useQuery();
   const [showAssignCustomer, setShowAssignCustomer] = useState(false);
-  const [assignCustomerId, setAssignCustomerId] = useState<string>('');
+  const [assignCompositeId, setAssignCompositeId] = useState<string>(''); // 'c:123' oder 's:456'
   const assignCustomerMut = trpc.projects.update.useMutation({
-    onSuccess: () => { utils.projects.byId.invalidate({ id }); toast.success('Kunde zugewiesen'); setShowAssignCustomer(false); },
+    onSuccess: () => { utils.projects.byId.invalidate({ id }); toast.success('Zugewiesen'); setShowAssignCustomer(false); },
     onError: () => toast.error('Fehler beim Zuweisen'),
   });
   const { data: knowledgeEntries = [] } = trpc.knowledge.list.useQuery({});
@@ -549,18 +549,27 @@ export default function ProjectDetail() {
           <div className="mt-1.5">
             {(project as any).customer ? (
               <button
-                onClick={() => { setAssignCustomerId(String(project.customerId ?? '')); setShowAssignCustomer(true); }}
+                onClick={() => {
+                  const c = (project as any).customer;
+                  const isSupplier = c?._isSupplier;
+                  const cid = isSupplier
+                    ? `s:${(project as any).supplierId ?? ''}`
+                    : `c:${project.customerId ?? ''}`;
+                  setAssignCompositeId(cid);
+                  setShowAssignCustomer(true);
+                }}
                 className="inline-flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 border border-blue-400/30 hover:border-blue-400/60 rounded-full px-2.5 py-0.5 transition-colors"
-                title="Kunden-Zuordnung ändern"
+                title="Zuordnung ändern"
               >
                 <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                 {(project as any).customer?.company || (project as any).customer?.name}
+                {(project as any).customer?._isSupplier && <span className="ml-1 text-amber-400">(Lieferant)</span>}
               </button>
             ) : (
               <button
-                onClick={() => { setAssignCustomerId(''); setShowAssignCustomer(true); }}
+                onClick={() => { setAssignCompositeId(''); setShowAssignCustomer(true); }}
                 className="inline-flex items-center gap-1.5 text-xs text-amber-400 hover:text-amber-300 border border-amber-400/30 hover:border-amber-400/60 rounded-full px-2.5 py-0.5 transition-colors"
-                title="Kunden zuweisen — für Kundenakte erforderlich"
+                title="Kunden oder Lieferant zuweisen"
               >
                 <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                 Kunden zuweisen
@@ -1486,16 +1495,24 @@ export default function ProjectDetail() {
           <div className="space-y-3 py-2">
             <p className="text-sm text-muted-foreground">Wähle den Kunden für dieses Projekt. Die Kundenakte wird automatisch mit allen Projekt-Dateien befüllt.</p>
             <EntitySearch
-              options={(allCustomers as any[]).map((c: any) => ({ id: c.id, label: c.company || c.name, sublabel: c.company ? c.name : undefined }))}
-              value={assignCustomerId ? parseInt(assignCustomerId) : undefined}
-              onChange={v => setAssignCustomerId(v ? String(v) : '')}
-              placeholder="Kunde suchen..."
+              options={(projectEntities as any[]).map((e: any) => ({ id: e.compositeId, label: e.label, sublabel: e.group }))}
+              value={assignCompositeId || undefined}
+              onChange={v => setAssignCompositeId(v ? String(v) : '')}
+              placeholder="Kunde oder Lieferant suchen..."
             />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAssignCustomer(false)}>Abbrechen</Button>
             <Button
-              onClick={() => assignCustomerMut.mutate({ id, customerId: assignCustomerId ? parseInt(assignCustomerId) : null })}
+              onClick={() => {
+                const isSupplier = assignCompositeId.startsWith('s:');
+                const rawId = assignCompositeId ? parseInt(assignCompositeId.replace(/^[cs]:/, '')) : null;
+                assignCustomerMut.mutate({
+                  id,
+                  customerId: isSupplier ? null : rawId,
+                  supplierId: isSupplier ? rawId : null,
+                });
+              }}
               disabled={assignCustomerMut.isPending}
             >
               {assignCustomerMut.isPending ? 'Speichere...' : 'Zuweisen'}

@@ -3,15 +3,15 @@ import { Search, X, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface EntityOption {
-  id: number;
+  id: number | string;
   label: string;       // Hauptname (Firma oder Personenname)
   sublabel?: string;   // Zweite Zeile (z.B. Ansprechpartner, Kundennummer)
 }
 
 interface EntitySearchProps {
   options: EntityOption[];
-  value?: number;
-  onChange: (id: number | undefined) => void;
+  value?: number | string;
+  onChange: (id: number | string | undefined) => void;
   placeholder?: string;
   emptyLabel?: string;
   disabled?: boolean;
@@ -32,7 +32,7 @@ export function EntitySearch({
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const selected = options.find((o) => o.id === value);
+  const selected = options.find((o) => String(o.id) === String(value));
 
   // Gefilterte Vorschläge
   const filtered = query.trim()
@@ -147,7 +147,7 @@ export function EntitySearch({
                 onClick={() => handleSelect(option)}
                 className={cn(
                   "w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors",
-                  value === option.id && "bg-accent/60 font-medium"
+                  String(value) === String(option.id) && "bg-accent/60 font-medium"
                 )}
               >
                 <div className="truncate">{option.label}</div>

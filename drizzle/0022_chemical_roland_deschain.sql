@@ -1,0 +1,1 @@
+ALTER TABLE `projects` ADD `supplier_id` int;

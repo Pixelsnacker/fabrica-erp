@@ -62,6 +62,42 @@ export const appRouter = router({
   customers: router({
     list: protectedProcedure.query(async () => getCustomers()),
     byId: protectedProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => getCustomerById(input.id)),
+
+    // Kunden + Lieferanten kombiniert für Projektauswahl
+    listForProjects: protectedProcedure.query(async () => {
+      const db = await (await import('./db')).getDb();
+      if (!db) return [];
+      const { customers: customersTable, suppliers: suppliersTable } = await import('../drizzle/schema');
+      const { asc } = await import('drizzle-orm');
+      const customerRows = await db
+        .select({ id: customersTable.id, name: customersTable.name, company: customersTable.company })
+        .from(customersTable)
+        .orderBy(asc(customersTable.name));
+      const supplierRows = await db
+        .select({ id: suppliersTable.id, name: suppliersTable.name, company: suppliersTable.company })
+        .from(suppliersTable)
+        .orderBy(asc(suppliersTable.name));
+      const customers_ = customerRows.map(r => ({
+        id: r.id,
+        label: r.company ? `${r.company} (${r.name})` : r.name,
+        group: 'Kunden' as const,
+        sourceType: 'customer' as const,
+        supplierId: null as null,
+      }));
+      const suppliers_ = supplierRows.map(r => ({
+        id: null as null,  // Lieferanten haben keine customerId
+        label: r.company ? `${r.company} (${r.name})` : r.name,
+        group: 'Lieferanten' as const,
+        sourceType: 'supplier' as const,
+        supplierId: r.id,
+      }));
+      // Gemeinsame Liste mit eindeutiger Composite-ID für Frontend
+      const combined = [
+        ...customers_.map(c => ({ compositeId: `c:${c.id}`, label: c.label, group: c.group, customerId: c.id, supplierId: null as number | null })),
+        ...suppliers_.map(s => ({ compositeId: `s:${s.supplierId}`, label: s.label, group: s.group, customerId: null as number | null, supplierId: s.supplierId })),
+      ].sort((a, b) => a.label.localeCompare(b.label, 'de'));
+      return combined;
+    }),
     create: protectedProcedure.input(z.object({
       name: z.string().min(1),
       company: z.string().optional(),
@@ -213,6 +249,7 @@ export const appRouter = router({
       type: z.enum(["serial_part", "spare_part", "museum", "consulting", "cad_work", "other"]).default("other"),
       status: z.enum(["inquiry", "calculation", "offer", "order", "production", "shipping", "completed", "cancelled"]).default("inquiry"),
       customerId: z.number().optional(),
+      supplierId: z.number().optional(),
       leadSourceId: z.number().optional(),
       driveFolderUrl: z.string().optional(),
       notes: z.string().optional(),
@@ -226,6 +263,7 @@ export const appRouter = router({
       type: z.enum(["serial_part", "spare_part", "museum", "consulting", "cad_work", "other"]).optional(),
       status: z.enum(["inquiry", "calculation", "offer", "order", "production", "shipping", "completed", "cancelled"]).optional(),
       customerId: z.number().nullable().optional(),
+      supplierId: z.number().nullable().optional(),
       leadSourceId: z.number().nullable().optional(),
       driveFolderUrl: z.string().optional(),
       notes: z.string().optional(),
@@ -555,38 +593,39 @@ export const appRouter = router({
       // Auto-Sync nach Google Drive (im Hintergrund, kein Fehler wenn Drive nicht verfügbar)
       try {
         const project = await getProjectById(input.projectId);
-        if (project?.customerId) {
-          const customer = await getCustomerById(project.customerId);
-          if (customer) {
-            const { uploadFileToDrive } = await import('./googleDrive');
-            const projectName = project.projectNumber
-              ? `${project.projectNumber} ${project.title}`.substring(0, 100)
-              : project.title.substring(0, 100);
-            const driveResult = await uploadFileToDrive({
-              filename: input.filename,
-              mimeType: input.mimeType,
-              buffer,
-              customerName: customer.company || customer.name,
-              projectName,
-            });
-            // Drive-Status in DB speichern
-            const db2 = await (await import('./db')).getDb();
-            if (db2) {
-              const { cadFiles: cadFilesTable } = await import('../drizzle/schema');
-              const { eq: eq2, desc: desc2 } = await import('drizzle-orm');
-              const [lastFile] = await db2.select({ id: cadFilesTable.id })
-                .from(cadFilesTable)
-                .where(eq2(cadFilesTable.projectId, input.projectId))
-                .orderBy(desc2(cadFilesTable.id))
-                .limit(1);
-              if (lastFile) {
-                await db2.update(cadFilesTable)
-                  .set({ driveFileId: driveResult.fileId, driveSynced: 1 })
-                  .where(eq2(cadFilesTable.id, lastFile.id));
-              }
+        const { getSupplierById } = await import('./db');
+        const customer = project?.customerId ? await getCustomerById(project.customerId) : null;
+        const supplier = !customer && (project as any)?.supplierId ? await getSupplierById((project as any).supplierId) : null;
+        const entityName = customer ? (customer.company || customer.name) : (supplier ? (supplier.company || supplier.name) : null);
+        if (entityName && project) {
+          const { uploadFileToDrive } = await import('./googleDrive');
+          const projectName = project.projectNumber
+            ? `${project.projectNumber} ${project.title}`.substring(0, 100)
+            : project.title.substring(0, 100);
+          const driveResult = await uploadFileToDrive({
+            filename: input.filename,
+            mimeType: input.mimeType,
+            buffer,
+            customerName: entityName,
+            projectName,
+          });
+          // Drive-Status in DB speichern
+          const db2 = await (await import('./db')).getDb();
+          if (db2) {
+            const { cadFiles: cadFilesTable } = await import('../drizzle/schema');
+            const { eq: eq2, desc: desc2 } = await import('drizzle-orm');
+            const [lastFile] = await db2.select({ id: cadFilesTable.id })
+              .from(cadFilesTable)
+              .where(eq2(cadFilesTable.projectId, input.projectId))
+              .orderBy(desc2(cadFilesTable.id))
+              .limit(1);
+            if (lastFile) {
+              await db2.update(cadFilesTable)
+                .set({ driveFileId: driveResult.fileId, driveSynced: 1 })
+                .where(eq2(cadFilesTable.id, lastFile.id));
             }
           }
-        }
+        } // end if entityName
       } catch (e) {
         console.warn('[Drive Sync] CAD-Upload Sync fehlgeschlagen:', e);
       }
@@ -1977,20 +2016,22 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
         // Auto-Sync nach Google Drive (im Hintergrund)
         try {
           const project = await getProjectById(input.projectId);
-          if (project?.customerId) {
-            const customer = await getCustomerById(project.customerId);
-            if (customer) {
-              const { uploadFileToDrive } = await import('./googleDrive');
-              const projectName = project.projectNumber
-                ? `${project.projectNumber} ${project.title}`.substring(0, 100)
-                : project.title.substring(0, 100);
-              const driveResult = await uploadFileToDrive({
-                filename: input.filename,
-                mimeType: input.mimeType,
-                buffer,
-                customerName: customer.company || customer.name,
-                projectName,
-              });
+          const { getSupplierById: getSupplierById2 } = await import('./db');
+          const customer2 = project?.customerId ? await getCustomerById(project.customerId) : null;
+          const supplier2 = !customer2 && (project as any)?.supplierId ? await getSupplierById2((project as any).supplierId) : null;
+          const entityName2 = customer2 ? (customer2.company || customer2.name) : (supplier2 ? (supplier2.company || supplier2.name) : null);
+          if (entityName2 && project) {
+            const { uploadFileToDrive } = await import('./googleDrive');
+            const projectName = project.projectNumber
+              ? `${project.projectNumber} ${project.title}`.substring(0, 100)
+              : project.title.substring(0, 100);
+            const driveResult = await uploadFileToDrive({
+              filename: input.filename,
+              mimeType: input.mimeType,
+              buffer,
+              customerName: entityName2,
+              projectName,
+            });
               // Drive-Status in DB speichern
               const db2 = await (await import('./db')).getDb();
               if (db2) {
@@ -2007,8 +2048,7 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
                     .where(eq2(pdTable.id, lastDoc.id));
                 }
               }
-            }
-          }
+          } // end if entityName2
         } catch (e) {
           console.warn('[Drive Sync] Dokument-Upload Sync fehlgeschlagen:', e);
         }

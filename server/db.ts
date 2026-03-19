@@ -155,7 +155,21 @@ export async function getProjectById(id: number) {
   const db = await getDb();
   if (!db) return undefined;
   const result = await db.select().from(projects).where(eq(projects.id, id)).limit(1);
-  return result[0];
+  const project = result[0];
+  if (!project) return undefined;
+  // Customer oder Supplier als 'customer'-Objekt anreichern
+  let customerObj: any = null;
+  if (project.customerId) {
+    const cRows = await db.select().from(customers).where(eq(customers.id, project.customerId)).limit(1);
+    customerObj = cRows[0] ?? null;
+  } else if ((project as any).supplierId) {
+    const sRows = await db.select().from(suppliers).where(eq(suppliers.id, (project as any).supplierId)).limit(1);
+    if (sRows[0]) {
+      // Lieferant als customer-kompatibles Objekt
+      customerObj = { ...sRows[0], _isSupplier: true };
+    }
+  }
+  return { ...project, customer: customerObj };
 }
 
 export async function createProject(data: InsertProject) {

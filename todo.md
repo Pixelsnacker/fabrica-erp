@@ -863,3 +863,10 @@
 - [x] Frontend: Re-Sync-Button in CAD-Dateiliste (nur sichtbar wenn driveSynced=0)
 - [x] Frontend: Re-Sync-Button in Projekt-Dokument-Liste (nur sichtbar wenn driveSynced=0)
 - [x] 222 Tests grün
+
+## Phase 33: Lieferanten als Kunden auswählbar
+
+- [ ] Backend: customers.listAll Endpunkt erweitern um auch Lieferanten zurückzugeben (mit Typ-Label)
+- [ ] Frontend: Kundenauswahl in Projekt-Erstellung zeigt Kunden + Lieferanten (gruppiert)
+- [ ] Frontend: Kundenauswahl in Projekt-Bearbeitung zeigt Kunden + Lieferanten (gruppiert)
+- [ ] 222+ Tests grün

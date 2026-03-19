@@ -31,7 +31,8 @@ export default function Projects() {
   const [viewMode, setViewMode] = useState<"kanban" | "list">("list");
   const [showCreate, setShowCreate] = useState(false);
   const [isBackingUp, setIsBackingUp] = useState(false);
-  const [form, setForm] = useState({ title: "", projectNumber: "", type: "other", notes: "", status: "inquiry", customerId: "" });
+  const [form, setForm] = useState({ title: "", projectNumber: "", type: "other", notes: "", status: "inquiry", compositeId: "" });
+  // compositeId: 'c:123' = Kunde, 's:456' = Lieferant
 
   const handleFullBackup = async () => {
     setIsBackingUp(true);
@@ -58,10 +59,10 @@ export default function Projects() {
 
   const utils = trpc.useUtils();
   const { data: projects = [], isLoading } = trpc.projects.list.useQuery({});
-  const { data: customers = [] } = trpc.customers.list.useQuery();
+  const { data: projectEntities = [] } = trpc.customers.listForProjects.useQuery();
   const { data: leadSources = [] } = trpc.leadSources.list.useQuery();
   const createMutation = trpc.projects.create.useMutation({
-    onSuccess: () => { utils.projects.list.invalidate(); setShowCreate(false); setForm({ title: "", projectNumber: "", type: "other", notes: "", status: "inquiry", customerId: "" }); toast.success("Projekt angelegt"); },
+    onSuccess: () => { utils.projects.list.invalidate(); setShowCreate(false); setForm({ title: "", projectNumber: "", type: "other", notes: "", status: "inquiry", compositeId: "" }); toast.success("Projekt angelegt"); },
     onError: () => toast.error("Fehler beim Anlegen"),
   });
 
@@ -213,11 +214,11 @@ export default function Projects() {
             <div className="space-y-1.5">
               <Label>Kunde <span className="text-destructive">*</span></Label>
               <EntitySearch
-                options={customers.map((c: any) => ({ id: c.id, label: c.company || c.name, sublabel: c.company ? c.name : undefined }))}
-                value={form.customerId ? parseInt(form.customerId) : undefined}
-                onChange={v => setForm(f => ({ ...f, customerId: v ? String(v) : '' }))}
-                placeholder="Kunde suchen..."
-                emptyLabel="Kein Kunde"
+                options={(projectEntities as any[]).map((e: any) => ({ id: e.compositeId, label: e.label, sublabel: e.group }))}
+                value={form.compositeId || undefined}
+                onChange={v => setForm(f => ({ ...f, compositeId: v ? String(v) : '' }))}
+                placeholder="Kunde oder Lieferant suchen..."
+                emptyLabel="Kein Eintrag"
               />
             </div>
             <div className="space-y-1.5">
@@ -227,7 +228,19 @@ export default function Projects() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCreate(false)}>Abbrechen</Button>
-            <Button onClick={() => createMutation.mutate({ title: form.title, projectNumber: form.projectNumber || undefined, type: form.type as any, notes: form.notes || undefined, status: form.status as any, customerId: form.customerId ? parseInt(form.customerId) : undefined })} disabled={!form.title || !form.customerId || createMutation.isPending}>
+            <Button onClick={() => {
+                const isSupplier = form.compositeId.startsWith('s:');
+                const rawId = parseInt(form.compositeId.replace(/^[cs]:/, ''));
+                createMutation.mutate({
+                  title: form.title,
+                  projectNumber: form.projectNumber || undefined,
+                  type: form.type as any,
+                  notes: form.notes || undefined,
+                  status: form.status as any,
+                  customerId: isSupplier ? undefined : rawId,
+                  supplierId: isSupplier ? rawId : undefined,
+                });
+              }} disabled={!form.title || !form.compositeId || createMutation.isPending}>
               {createMutation.isPending ? "Wird angelegt..." : "Anlegen"}
             </Button>
           </DialogFooter>
