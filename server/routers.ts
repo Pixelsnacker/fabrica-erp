@@ -2886,21 +2886,39 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
         return testDriveConnection();
       }),
 
-    // Migrations-Endpunkt: Verschiebt bestehende Dateien aus dem Kunden-Root-Ordner in Projekt-Unterordner
+    // Migrations-Endpunkt: Verschiebt ALLE bestehenden Dateien in die korrekte Projekt-Ordnerstruktur
     migrateToProjectFolders: protectedProcedure
       .mutation(async () => {
         const db = await (await import('./db')).getDb();
         if (!db) throw new Error('DB nicht verfügbar');
-        const { cadFiles: cadFilesTable, projectDocuments: pdTable } = await import('../drizzle/schema');
+        const { cadFiles: cadFilesTable, projectDocuments: pdTable, customerFiles: cfTable } = await import('../drizzle/schema');
         const { isNotNull } = await import('drizzle-orm');
-        const { getOrCreateProjectFolder, moveFileToDriveFolder } = await import('./googleDrive');
-        const { getProjectById, getCustomerById } = await import('./db');
+        const { getOrCreateProjectFolder, getOrCreateCustomerFolder, moveFileToDriveFolder } = await import('./googleDrive');
+        const { getProjectById, getCustomerById, getSupplierById } = await import('./db');
 
         let movedCount = 0;
         let errorCount = 0;
         const errors: string[] = [];
 
-        // CAD-Dateien mit Drive-ID aber ohne Projekt-Ordner-Sync migrieren
+        // Hilfsfunktion: Entitätsname aus Projekt ermitteln (Kunde oder Lieferant)
+        async function getEntityName(project: any): Promise<string | null> {
+          if (project.customerId) {
+            const customer = await getCustomerById(project.customerId);
+            return customer ? (customer.company || customer.name) : null;
+          } else if ((project as any).supplierId) {
+            const supplier = await getSupplierById((project as any).supplierId);
+            return supplier ? (supplier.company || supplier.name) : null;
+          }
+          return null;
+        }
+
+        function buildProjectName(project: any): string {
+          return project.projectNumber
+            ? `${project.projectNumber} ${project.title}`.substring(0, 100)
+            : project.title.substring(0, 100);
+        }
+
+        // 1. CAD-Dateien mit Drive-ID in Projekt-Unterordner verschieben
         const cadFilesWithDrive = await db.select().from(cadFilesTable)
           .where(isNotNull(cadFilesTable.driveFileId));
 
@@ -2908,23 +2926,20 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
           if (!file.driveFileId) continue;
           try {
             const project = await getProjectById(file.projectId);
-            if (!project?.customerId) continue;
-            const customer = await getCustomerById(project.customerId);
-            if (!customer) continue;
-            const customerName = customer.company || customer.name;
-            const projectName = project.projectNumber
-              ? `${project.projectNumber} ${project.title}`.substring(0, 100)
-              : project.title.substring(0, 100);
-            const targetFolderId = await getOrCreateProjectFolder(customerName, projectName);
+            if (!project) continue;
+            const entityName = await getEntityName(project);
+            if (!entityName) continue;
+            const projectName = buildProjectName(project);
+            const targetFolderId = await getOrCreateProjectFolder(entityName, projectName);
             await moveFileToDriveFolder(file.driveFileId, targetFolderId);
             movedCount++;
           } catch (e: any) {
             errorCount++;
-            errors.push(`CAD ${file.id}: ${e.message}`);
+            errors.push(`CAD ${file.id} (${file.filename}): ${e.message}`);
           }
         }
 
-        // Projekt-Dokumente mit Drive-ID migrieren
+        // 2. Projekt-Dokumente mit Drive-ID in Projekt-Unterordner verschieben
         const docsWithDrive = await db.select().from(pdTable)
           .where(isNotNull(pdTable.driveFileId));
 
@@ -2932,19 +2947,41 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
           if (!doc.driveFileId) continue;
           try {
             const project = await getProjectById(doc.projectId);
-            if (!project?.customerId) continue;
-            const customer = await getCustomerById(project.customerId);
-            if (!customer) continue;
-            const customerName = customer.company || customer.name;
-            const projectName = project.projectNumber
-              ? `${project.projectNumber} ${project.title}`.substring(0, 100)
-              : project.title.substring(0, 100);
-            const targetFolderId = await getOrCreateProjectFolder(customerName, projectName);
+            if (!project) continue;
+            const entityName = await getEntityName(project);
+            if (!entityName) continue;
+            const projectName = buildProjectName(project);
+            const targetFolderId = await getOrCreateProjectFolder(entityName, projectName);
             await moveFileToDriveFolder(doc.driveFileId, targetFolderId);
             movedCount++;
           } catch (e: any) {
             errorCount++;
-            errors.push(`Dok ${doc.id}: ${e.message}`);
+            errors.push(`Dok ${doc.id} (${doc.filename}): ${e.message}`);
+          }
+        }
+
+        // 3. Kundenakte-Dateien in Projekt-Unterordner verschieben (wenn projectId vorhanden)
+        const cfWithDrive = await db.select().from(cfTable);
+        for (const cf of cfWithDrive) {
+          if (!cf.driveFileId) continue;
+          try {
+            if (cf.projectId) {
+              // Datei hat Projekt-Zuordnung → in Projekt-Unterordner verschieben
+              const project = await getProjectById(cf.projectId);
+              if (!project) continue;
+              const entityName = await getEntityName(project);
+              if (!entityName) continue;
+              const projectName = buildProjectName(project);
+              const targetFolderId = await getOrCreateProjectFolder(entityName, projectName);
+              await moveFileToDriveFolder(cf.driveFileId, targetFolderId);
+              movedCount++;
+            } else {
+              // Keine Projekt-Zuordnung → in Kunden-Root-Ordner (korrekte Position)
+              // Nur verschieben wenn Datei im falschen Ort liegt – skip
+            }
+          } catch (e: any) {
+            errorCount++;
+            errors.push(`Akte ${cf.id} (${cf.filename}): ${e.message}`);
           }
         }
 

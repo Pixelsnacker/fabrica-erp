@@ -876,3 +876,10 @@
 - [x] CAD-Datei-Upload: multiple Dateiauswahl + sequenzieller Upload mit Fortschrittsanzeige
 - [x] Projekt-Dokument-Upload: multiple Dateiauswahl + sequenzieller Upload mit Fortschrittsanzeige
 - [x] Kundenakte-Datei-Upload: multiple Dateiauswahl + sequenzieller Upload mit Fortschrittsanzeige
+
+## Phase 35: Drive-Ordnerstruktur Bugfix
+
+- [x] Migrations-Endpunkt: customerFiles ebenfalls in Projektordner verschieben
+- [x] Migrations-Endpunkt: Lieferanten-Projekte berücksichtigen (supplierId)
+- [x] customerFiles.upload: Fehler-Logging verbessern (Drive-Fehler sichtbar machen)
+- [x] Migrations-UI: Detailliertere Rückmeldung (welche Dateien wurden verschoben)

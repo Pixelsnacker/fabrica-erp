@@ -829,7 +829,7 @@ export default function Settings() {
                   Google Drive – Ordnerstruktur migrieren
                 </CardTitle>
                 <CardDescription>
-                  Verschiebt bereits hochgeladene Dateien aus dem Kunden-Root-Ordner in die richtigen Projekt-Unterordner.
+                  Verschiebt <strong>alle</strong> bereits hochgeladenen Dateien (CAD-Daten, Projekt-Dokumente, Kundenakte) in die richtigen Projekt-Unterordner.
                   Neue Struktur: <code className="text-xs bg-muted px-1 rounded">Fabrica ERP / Kunden / [Kunde] / [Projekt] / Datei</code>
                 </CardDescription>
               </CardHeader>
@@ -860,7 +860,7 @@ export default function Settings() {
                       </div>
                     )}
                     <p className="text-xs text-muted-foreground">
-                      Nur einmalig nötig. Dateien die bereits in Projektordnern liegen werden nicht doppelt verschoben.
+                      Einmalig ausführen um alle bestehenden Dateien zu reorganisieren. Neue Uploads landen automatisch im richtigen Projektordner. Dateien ohne Projekt-Zuordnung bleiben im Kunden-Root-Ordner.
                     </p>
                   </div>
                   <Button
@@ -872,7 +872,7 @@ export default function Settings() {
                     {isMigrating
                       ? <Loader2 className="h-4 w-4 animate-spin" />
                       : <RefreshCw className="h-4 w-4" />}
-                    {isMigrating ? 'Migriere...' : 'Migration starten'}
+                    {isMigrating ? 'Migriere...' : 'Jetzt alle Dateien reorganisieren'}
                   </Button>
                 </div>
               </CardContent>
