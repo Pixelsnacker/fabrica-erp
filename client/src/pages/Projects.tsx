@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Search, FolderKanban, Euro, Calendar, LayoutGrid, List, ArchiveRestore } from "lucide-react";
+import { Plus, Search, FolderKanban, Euro, Calendar, LayoutGrid, List, ArchiveRestore, CheckCircle2 } from "lucide-react";
 import { EntitySearch } from "@/components/EntitySearch";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
@@ -120,9 +120,14 @@ export default function Projects() {
       ) : viewMode === "list" ? (
         <div className="space-y-2">
           {filtered.map(project => (
-            <div key={project.id} className="flex items-center gap-2 md:gap-4 p-3 md:p-4 rounded-lg bg-card border border-border hover:border-primary/50 cursor-pointer transition-all" onClick={() => setLocation(`/projects/${project.id}`)}>
+            <div key={project.id} className={`flex items-center gap-2 md:gap-4 p-3 md:p-4 rounded-lg bg-card border cursor-pointer transition-all ${
+                project.status === 'completed'
+                  ? 'border-emerald-500/30 hover:border-emerald-500/60 opacity-75 hover:opacity-100'
+                  : 'border-border hover:border-primary/50'
+              }`} onClick={() => setLocation(`/projects/${project.id}`)}>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
+                  {project.status === 'completed' && <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />}
                   <span className="font-medium truncate">{project.title}</span>
                   {project.projectNumber && <span className="text-xs text-muted-foreground">#{project.projectNumber}</span>}
                 </div>

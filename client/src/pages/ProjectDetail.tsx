@@ -18,7 +18,7 @@ import {
   ExternalLink, Bell, StickyNote, Clock, Paperclip, CheckCircle2, Circle,
   AlertCircle, Upload, FileText, Image, X, Edit2, Save, AlertTriangle,
   ShieldAlert, Receipt, BookOpen, Loader2, Printer, ChevronDown, ChevronUp,
-  Download, FolderOpen, Shield, ClipboardList, FolderSync, Wifi, WifiOff, Archive,
+  Download, FolderOpen, Shield, ClipboardList, FolderSync, Wifi, WifiOff, Archive, RotateCcw,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
@@ -620,6 +620,36 @@ export default function ProjectDetail() {
             >
               <Edit2 className="h-3.5 w-3.5" />
             </Button>
+            {/* Abschließen / Wieder öffnen Button */}
+            {project.status === 'completed' ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1.5 text-xs text-amber-400 border-amber-400/40 hover:bg-amber-400/10 hover:border-amber-400/70"
+                title="Projekt wieder öffnen (Status zurücksetzen)"
+                disabled={changeStatus.isPending}
+                onClick={() => changeStatus.mutate({ id, status: 'shipping' as any })}
+              >
+                <RotateCcw className="h-3 w-3" />
+                <span>Wieder öffnen</span>
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1.5 text-xs text-emerald-400 border-emerald-400/40 hover:bg-emerald-400/10 hover:border-emerald-400/70"
+                title="Projekt als abgeschlossen markieren"
+                disabled={changeStatus.isPending}
+                onClick={() => {
+                  if (confirm(`Projekt "${project.title}" als abgeschlossen markieren?\n\nDas Projekt bleibt vollständig bearbeitbar und kann jederzeit wieder geöffnet werden.`)) {
+                    changeStatus.mutate({ id, status: 'completed' as any });
+                  }
+                }}
+              >
+                <CheckCircle2 className="h-3 w-3" />
+                <span>Abschließen</span>
+              </Button>
+            )}
           </div>
           {project.notes && <p className="text-sm text-muted-foreground mt-1">{project.notes}</p>}
           {/* Kunden-Badge / Zuweisungs-Button */}

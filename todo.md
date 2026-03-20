@@ -923,3 +923,11 @@
 
 ## Phase 43: PDF-Layout Abstand
 - [x] Abstand zwischen Rechnungsnummer und Positions-Tabelle vergrößern
+
+## Phase 44: Projekt-Status "Abgeschlossen"
+- [ ] Backend: Status-Enum um 'abgeschlossen' erweitern
+- [ ] Backend: DB-Migration pushen
+- [ ] Frontend: "Als abgeschlossen markieren"-Button im Projekt-Detail Header
+- [ ] Frontend: Abgeschlossen-Badge in Projektliste (grüner Haken)
+- [ ] Frontend: Status umkehrbar (Button wechselt zu "Wieder öffnen")
+- [ ] Frontend: Abgeschlossene Projekte in Kanban/Liste klar kennzeichnen
