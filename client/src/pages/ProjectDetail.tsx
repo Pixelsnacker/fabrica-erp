@@ -642,7 +642,6 @@ export default function ProjectDetail() {
                 size="sm"
                 className="h-7 gap-1.5 text-xs text-emerald-400 border-emerald-400/40 hover:bg-emerald-400/10 hover:border-emerald-400/70"
                 title="Projekt als abgeschlossen markieren"
-                disabled={changeStatus.isPending}
                 onClick={() => setShowCompleteConfirm(true)}
               >
                 <CheckCircle2 className="h-3 w-3" />
@@ -762,7 +761,7 @@ export default function ProjectDetail() {
 
       {/* Status Pipeline */}
       <div className="flex items-center gap-1 overflow-x-auto pb-1">
-        {STATUS_ORDER.slice(0, 7).map(s => (
+        {STATUS_ORDER.filter(s => s !== 'completed' && s !== 'cancelled').map(s => (
           <button key={s} onClick={() => changeStatus.mutate({ id, status: s as any })}
             className={`flex-shrink-0 px-2.5 py-1 rounded-full text-xs font-medium transition-all border ${project.status === s ? `status-${s} scale-105` : "border-border text-muted-foreground hover:border-primary/50"}`}>
             {STATUS_LABELS[s]}

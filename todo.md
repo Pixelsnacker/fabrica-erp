@@ -931,3 +931,6 @@
 - [ ] Frontend: Abgeschlossen-Badge in Projektliste (grüner Haken)
 - [ ] Frontend: Status umkehrbar (Button wechselt zu "Wieder öffnen")
 - [ ] Frontend: Abgeschlossene Projekte in Kanban/Liste klar kennzeichnen
+
+## Phase 46: Bug Abschließen-Button (weiterhin)
+- [ ] Bug: Abschließen-Button dreht sich endlos auch nach AlertDialog-Fix
