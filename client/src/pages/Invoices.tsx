@@ -867,7 +867,7 @@ export default function Invoices() {
             <div key={inv.id} className="bg-card border border-border rounded-lg p-4 hover:border-primary/40 transition-colors">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div className="flex items-center gap-3 flex-wrap">
-                  <span className="font-mono font-semibold text-sm">{inv.invoiceNumber}</span>
+                  <span className={`font-mono font-semibold text-sm ${inv.invoiceNumber === 'ENTWURF' ? 'text-yellow-400/80 italic' : ''}`}>{inv.invoiceNumber}</span>
                   <Badge variant="outline" className="text-xs">{TYPE_LABELS[inv.type as InvoiceType]}</Badge>
                   <Badge className={`text-xs border ${STATUS_COLORS[inv.status as InvoiceStatus]}`}>
                     {STATUS_LABELS[inv.status as InvoiceStatus]}
@@ -947,8 +947,16 @@ export default function Invoices() {
                   <Copy className="w-3 h-3 mr-1" />
                   Duplizieren
                 </Button>
-                {inv.status === 'draft' && (
-                  <Button size="sm" variant="outline" className="text-red-400 border-red-400/30" onClick={() => { if (confirm('Entwurf löschen?')) deleteMut.mutate({ id: inv.id }); }}>
+                {/* Angebote/Bestellungen/Lieferscheine: immer löschbar (keine GoBD-Pflicht) */}
+                {/* Rechnungen/Gutschriften/AB: nur im Entwurf löschbar (keine Nummer verbraucht) */}
+                {(inv.status === 'draft' || ['offer','purchase_order','delivery_note'].includes(inv.type)) && !inv.isLocked && (
+                  <Button size="sm" variant="outline" className="text-red-400 border-red-400/30" onClick={() => {
+                    const isOffer = ['offer','purchase_order','delivery_note'].includes(inv.type);
+                    const msg = isOffer
+                      ? `"${inv.invoiceNumber}" löschen?`
+                      : `Entwurf löschen? (Keine Nummer wird verbraucht)`;
+                    if (confirm(msg)) deleteMut.mutate({ id: inv.id });
+                  }}>
                     <Trash2 className="w-3 h-3 mr-1" /> Löschen
                   </Button>
                 )}

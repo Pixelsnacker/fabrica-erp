@@ -1125,9 +1125,26 @@ export async function deleteInvoiceDraft(id: number) {
   const db = await getDb();
   if (!db) return;
   const inv = await db.select().from(invoices).where(eq(invoices.id, id));
-  if (inv[0]?.isLocked || inv[0]?.status !== 'draft') throw new Error("Nur Entwürfe können gelöscht werden.");
+  if (!inv[0]) return;
+  // Gesperrte Dokumente können nie gelöscht werden
+  if (inv[0].isLocked) throw new Error("Gesperrte Dokumente können nicht gelöscht werden.");
+  // Rechnungen/Gutschriften/AB: nur im Entwurf löschbar (GoBD)
+  const requiresDraft = ['invoice', 'credit_note', 'order_confirmation'].includes(inv[0].type ?? '');
+  if (requiresDraft && inv[0].status !== 'draft') throw new Error("Nur Entwürfe können gelöscht werden.");
+  // Angebote, Bestellungen, Lieferscheine: immer löschbar
   await db.delete(invoiceItems).where(eq(invoiceItems.invoiceId, id));
   await db.delete(invoices).where(eq(invoices.id, id));
+}
+
+/** Vergibt die nächste fortlaufende Nummer an einen Entwurf (z.B. beim Senden einer Rechnung) */
+export async function assignInvoiceNumber(id: number): Promise<string | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const inv = await db.select().from(invoices).where(eq(invoices.id, id)).limit(1);
+  if (!inv[0] || inv[0].invoiceNumber !== 'ENTWURF') return inv[0]?.invoiceNumber ?? null;
+  const newNumber = await getNextInvoiceNumber(inv[0].type as any);
+  await db.update(invoices).set({ invoiceNumber: newNumber, updatedAt: Date.now() }).where(eq(invoices.id, id));
+  return newNumber;
 }
 
 export async function getInvoiceAuditLog(invoiceId: number) {

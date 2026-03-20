@@ -31,7 +31,7 @@ import {
   getComplaintsByProject, getAllComplaints, createComplaint, updateComplaint, deleteComplaint,
   addComplaintAttachment, deleteComplaintAttachment,
   getInvoices, getInvoiceById, createInvoice, updateInvoice, changeInvoiceStatus,
-  lockInvoice, cancelInvoice, deleteInvoiceDraft, getInvoiceAuditLog, getNextInvoiceNumber,
+  lockInvoice, cancelInvoice, deleteInvoiceDraft, getInvoiceAuditLog, getNextInvoiceNumber, assignInvoiceNumber,
   getCompanySettings, upsertCompanySettings,
   listCalendarEvents, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent, getCalendarEvent,
   getNextInquiryNumber, listInquiries, getInquiryById, getInquiryItems,
@@ -1309,7 +1309,10 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
       })).default([]),
     })).mutation(async ({ input, ctx }) => {
       const { items, ...invoiceData } = input;
-      const invoiceNumber = await getNextInvoiceNumber(input.type);
+      // Rechnungen, Gutschriften und Auftragsbestätigungen bekommen die Nummer erst beim Senden (nicht beim Erstellen als Entwurf)
+      // Angebote, Bestellungen und Lieferscheine bekommen die Nummer sofort
+      const needsNumberOnSend = ['invoice', 'credit_note', 'order_confirmation'].includes(input.type);
+      const invoiceNumber = needsNumberOnSend ? 'ENTWURF' : await getNextInvoiceNumber(input.type);
       const mappedItems = items.map(it => ({
         ...it,
         isOptional: it.isOptional ? 1 : 0,
@@ -1388,6 +1391,10 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
       return { id, success: true };
     }),
     changeStatus: protectedProcedure.input(z.object({ id: z.number(), status: z.string() })).mutation(async ({ input, ctx }) => {
+      // Wenn Rechnung/Gutschrift/AB vom Entwurf in aktiven Status wechselt → Nummer jetzt vergeben
+      if (input.status !== 'draft') {
+        await assignInvoiceNumber(input.id);
+      }
       await changeInvoiceStatus(input.id, input.status, ctx.user.email ?? 'system');
       return { success: true };
     }),

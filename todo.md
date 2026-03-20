@@ -913,3 +913,10 @@
 - [x] Bug: Bei Lieferanten-Auswahl wird name statt company als Firmenname gesetzt → Ansprechpartner erscheint als erste Zeile im PDF
 - [x] Fix: onSupplierSelect soll company als recipientCompany und name als recipientName setzen
 - [x] Fix: Lieferanten-Suche soll company-Name anzeigen wenn vorhanden
+
+## Phase 42: Nummernvergabe-Logik überarbeiten
+- [x] Analyse: Wie wird die Nummer aktuell vergeben (beim Erstellen oder beim Finalisieren)?
+- [x] Rechnung/Gutschrift/AB: Nummer erst beim Finalisieren (Status-Wechsel von Entwurf → Gesendet/Bezahlt) vergeben
+- [x] Angebot/Bestellung/Lieferschein: Nummer beim Erstellen vergeben, aber Löschen immer erlaubt (keine GoBD-Pflicht)
+- [x] Entwurf ohne Nummer: Rechnungs-Entwürfe zeigen "ENTWURF" statt Nummer bis zur Finalisierung
+- [x] UI: Hinweis beim Löschen einer Rechnung im Entwurf-Status (Nummer wird nicht verbraucht)
