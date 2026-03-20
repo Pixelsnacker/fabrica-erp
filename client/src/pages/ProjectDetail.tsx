@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -407,6 +408,7 @@ export default function ProjectDetail() {
   const [showOfferUpload, setShowOfferUpload] = useState<number | null>(null);
   const [showDocUpload, setShowDocUpload] = useState(false);
   const [showEditProject, setShowEditProject] = useState(false);
+  const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
   const [editProjectForm, setEditProjectForm] = useState({ title: '', projectNumber: '', type: 'other', notes: '' });
   const [showOrderConfirmation, setShowOrderConfirmation] = useState(false);
   const [ocForm, setOcForm] = useState({ to: '', cc: '', subject: '', body: '' });
@@ -528,6 +530,7 @@ export default function ProjectDetail() {
   });
   const changeStatus = trpc.projects.changeStatus.useMutation({
     onSuccess: () => { utils.projects.byId.invalidate({ id }); toast.success("Status aktualisiert"); },
+    onError: (e) => toast.error(`Fehler beim Statusändern: ${e.message}`),
   });
   const addItem = trpc.projectItems.create.useMutation({
     onSuccess: () => { utils.projectItems.list.invalidate({ projectId: id }); utils.projects.byId.invalidate({ id }); setShowAddItem(false); toast.success("Position hinzugefügt"); },
@@ -640,11 +643,7 @@ export default function ProjectDetail() {
                 className="h-7 gap-1.5 text-xs text-emerald-400 border-emerald-400/40 hover:bg-emerald-400/10 hover:border-emerald-400/70"
                 title="Projekt als abgeschlossen markieren"
                 disabled={changeStatus.isPending}
-                onClick={() => {
-                  if (confirm(`Projekt "${project.title}" als abgeschlossen markieren?\n\nDas Projekt bleibt vollständig bearbeitbar und kann jederzeit wieder geöffnet werden.`)) {
-                    changeStatus.mutate({ id, status: 'completed' as any });
-                  }
-                }}
+                onClick={() => setShowCompleteConfirm(true)}
               >
                 <CheckCircle2 className="h-3 w-3" />
                 <span>Abschließen</span>
@@ -1396,6 +1395,31 @@ export default function ProjectDetail() {
           </DialogContent>
         </Dialog>
       )}
+      {/* Abschließen-Bestätigungs-Dialog */}
+      <AlertDialog open={showCompleteConfirm} onOpenChange={setShowCompleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Projekt abschließen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Das Projekt wird als abgeschlossen markiert. Es bleibt vollständig bearbeitbar und kann jederzeit wieder geöffnet werden.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              onClick={() => {
+                setShowCompleteConfirm(false);
+                changeStatus.mutate({ id, status: 'completed' as any });
+              }}
+            >
+              <CheckCircle2 className="h-4 w-4 mr-1.5" />
+              Abschließen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Dokument-Upload-Dialog */}
       {showDocUpload && (
         <ProjectDocUploadDialog
