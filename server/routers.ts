@@ -2055,7 +2055,7 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
       .input(z.object({
         projectId: z.number(),
         supplierId: z.number().nullable().optional(),
-        category: z.enum(['supplier_offer','nda','order','delivery_note','invoice','contract','drawing','other']).default('other'),
+        category: z.enum(['supplier_offer','nda','order','delivery_note','invoice','contract','drawing','cad_data','photo','protocol','other']).default('other'),
         filename: z.string(),
         fileBase64: z.string(),
         mimeType: z.string().default('application/octet-stream'),
@@ -2153,7 +2153,7 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
     updateCategory: protectedProcedure
       .input(z.object({
         id: z.number(),
-        category: z.enum(['supplier_offer','nda','order','delivery_note','invoice','contract','drawing','cad_data','other']),
+        category: z.enum(['supplier_offer','nda','order','delivery_note','invoice','contract','drawing','cad_data','photo','protocol','other']),
       }))
       .mutation(async ({ input }) => {
         const db = await (await import('./db')).getDb();
