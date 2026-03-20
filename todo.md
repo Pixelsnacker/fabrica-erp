@@ -904,3 +904,7 @@
 - [x] Projekt-Detail: Projekt-Bearbeiten-Dialog mit allen Feldern
 - [x] Kunden: Bearbeiten-Button immer sichtbar (nicht nur beim Hover)
 - [x] Lieferanten: Bearbeiten-Button immer sichtbar (nicht nur beim Hover)
+
+## Phase 40: Projekt-Umbenennung Bug-Fix
+- [x] Bug: Titel-Änderung im Bearbeiten-Dialog wird nicht gespeichert
+- [x] Bug: Google Drive Ordner-Umbenennung bei Titel-Änderung sicherstellen

@@ -1299,6 +1299,73 @@ export default function ProjectDetail() {
         )}
       </Tabs>
 
+      {/* Projekt-Bearbeiten-Dialog */}
+      {showEditProject && (
+        <Dialog open={true} onOpenChange={o => { if (!o) setShowEditProject(false); }}>
+          <DialogContent className="max-w-md">
+            <DialogHeader><DialogTitle className="flex items-center gap-2"><Edit2 className="h-4 w-4 text-yellow-400" />Projekt bearbeiten</DialogTitle></DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <Label>Projekttitel *</Label>
+                <Input
+                  value={editProjectForm.title}
+                  onChange={e => setEditProjectForm(f => ({ ...f, title: e.target.value }))}
+                  placeholder="z.B. Gehäuse Müller GmbH"
+                  autoFocus
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Projektnummer</Label>
+                  <Input
+                    value={editProjectForm.projectNumber}
+                    onChange={e => setEditProjectForm(f => ({ ...f, projectNumber: e.target.value }))}
+                    placeholder="z.B. 2024-001"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Typ</Label>
+                  <Select value={editProjectForm.type} onValueChange={v => setEditProjectForm(f => ({ ...f, type: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="serial_part">Serienteil</SelectItem>
+                      <SelectItem value="spare_part">Ersatzteil</SelectItem>
+                      <SelectItem value="museum">Museum</SelectItem>
+                      <SelectItem value="consulting">Beratung</SelectItem>
+                      <SelectItem value="cad_work">CAD-Arbeit</SelectItem>
+                      <SelectItem value="other">Sonstiges</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Notizen</Label>
+                <Textarea
+                  value={editProjectForm.notes}
+                  onChange={e => setEditProjectForm(f => ({ ...f, notes: e.target.value }))}
+                  rows={3}
+                  placeholder="Interne Anmerkungen..."
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowEditProject(false)}>Abbrechen</Button>
+              <Button
+                onClick={() => updateProjectMut.mutate({
+                  id,
+                  title: editProjectForm.title,
+                  projectNumber: editProjectForm.projectNumber || undefined,
+                  type: editProjectForm.type as any,
+                  notes: editProjectForm.notes,
+                })}
+                disabled={!editProjectForm.title || updateProjectMut.isPending}
+              >
+                {updateProjectMut.isPending ? 'Speichert...' : 'Speichern'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
       {/* Dokument-Upload-Dialog */}
       {showDocUpload && (
         <ProjectDocUploadDialog
@@ -2762,73 +2829,6 @@ function CadTabContent({ projectId, cadFiles, onRefresh }: {
         <p className="text-center text-xs text-muted-foreground py-2">Noch keine CAD-Dateien hochgeladen</p>
       )}
 
-      {/* Projekt-Bearbeiten-Dialog */}
-      {showEditProject && (
-        <Dialog open={true} onOpenChange={o => { if (!o) setShowEditProject(false); }}>
-          <DialogContent className="max-w-md">
-            <DialogHeader><DialogTitle className="flex items-center gap-2"><Edit2 className="h-4 w-4 text-yellow-400" />Projekt bearbeiten</DialogTitle></DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-1.5">
-                <Label>Projekttitel *</Label>
-                <Input
-                  value={editProjectForm.title}
-                  onChange={e => setEditProjectForm(f => ({ ...f, title: e.target.value }))}
-                  placeholder="z.B. Gehäuse Müller GmbH"
-                  autoFocus
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label>Projektnummer</Label>
-                  <Input
-                    value={editProjectForm.projectNumber}
-                    onChange={e => setEditProjectForm(f => ({ ...f, projectNumber: e.target.value }))}
-                    placeholder="z.B. 2024-001"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Typ</Label>
-                  <Select value={editProjectForm.type} onValueChange={v => setEditProjectForm(f => ({ ...f, type: v }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="serial_part">Serienteil</SelectItem>
-                      <SelectItem value="spare_part">Ersatzteil</SelectItem>
-                      <SelectItem value="museum">Museum</SelectItem>
-                      <SelectItem value="consulting">Beratung</SelectItem>
-                      <SelectItem value="cad_work">CAD-Arbeit</SelectItem>
-                      <SelectItem value="other">Sonstiges</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Notizen</Label>
-                <Textarea
-                  value={editProjectForm.notes}
-                  onChange={e => setEditProjectForm(f => ({ ...f, notes: e.target.value }))}
-                  rows={3}
-                  placeholder="Interne Anmerkungen..."
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowEditProject(false)}>Abbrechen</Button>
-              <Button
-                onClick={() => updateProjectMut.mutate({
-                  id,
-                  title: editProjectForm.title || undefined,
-                  projectNumber: editProjectForm.projectNumber || undefined,
-                  type: editProjectForm.type as any,
-                  notes: editProjectForm.notes || undefined,
-                })}
-                disabled={!editProjectForm.title || updateProjectMut.isPending}
-              >
-                {updateProjectMut.isPending ? 'Speichert...' : 'Speichern'}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
       {/* 3D-Viewer Dialog */}
       {viewerFile && (
         <Dialog open={!!viewerFile} onOpenChange={() => setViewerFile(null)}>

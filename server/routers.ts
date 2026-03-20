@@ -258,7 +258,7 @@ export const appRouter = router({
     })).mutation(async ({ input }) => { await createProject(input as any); return { success: true }; }),
     update: protectedProcedure.input(z.object({
       id: z.number(),
-      title: z.string().optional(),
+      title: z.string().min(1).optional(),
       projectNumber: z.string().optional(),
       type: z.enum(["serial_part", "spare_part", "museum", "consulting", "cad_work", "other"]).optional(),
       status: z.enum(["inquiry", "calculation", "offer", "order", "production", "shipping", "completed", "cancelled"]).optional(),
@@ -266,7 +266,7 @@ export const appRouter = router({
       supplierId: z.number().nullable().optional(),
       leadSourceId: z.number().nullable().optional(),
       driveFolderUrl: z.string().optional(),
-      notes: z.string().optional(),
+      notes: z.string().nullable().optional(),
       internalNotes: z.string().optional(),
       deadline: z.date().nullable().optional(),
     })).mutation(async ({ input }) => {
@@ -296,6 +296,8 @@ export const appRouter = router({
             entityName = supplier ? (supplier.company || supplier.name) : null;
           }
 
+          console.log('[Drive] Projekt-Update: entityName=', entityName, 'customerId=', effectiveCustomerId, 'supplierId=', effectiveSupplierId);
+
           if (entityName) {
             // Alten und neuen Projektnamen berechnen
             const buildName = (num: string | null | undefined, title: string) =>
@@ -306,9 +308,16 @@ export const appRouter = router({
             const newNumber = input.projectNumber !== undefined ? input.projectNumber : oldProject.projectNumber;
             const newProjectName = buildName(newNumber, newTitle);
 
+            console.log('[Drive] Umbenennung:', oldProjectName, '->', newProjectName);
+
             if (oldProjectName !== newProjectName) {
-              await renameDriveProjectFolder(entityName, oldProjectName, newProjectName);
+              const renamed = await renameDriveProjectFolder(entityName, oldProjectName, newProjectName);
+              console.log('[Drive] Umbenennung Ergebnis:', renamed);
+            } else {
+              console.log('[Drive] Kein Unterschied im Namen, keine Umbenennung nötig');
             }
+          } else {
+            console.log('[Drive] Kein Kunde/Lieferant zugewiesen – keine Ordner-Umbenennung');
           }
         } catch (e) {
           // Drive-Umbenennung ist nicht-kritisch – Fehler still loggen
