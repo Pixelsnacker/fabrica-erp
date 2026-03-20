@@ -920,3 +920,6 @@
 - [x] Angebot/Bestellung/Lieferschein: Nummer beim Erstellen vergeben, aber Löschen immer erlaubt (keine GoBD-Pflicht)
 - [x] Entwurf ohne Nummer: Rechnungs-Entwürfe zeigen "ENTWURF" statt Nummer bis zur Finalisierung
 - [x] UI: Hinweis beim Löschen einer Rechnung im Entwurf-Status (Nummer wird nicht verbraucht)
+
+## Phase 43: PDF-Layout Abstand
+- [x] Abstand zwischen Rechnungsnummer und Positions-Tabelle vergrößern

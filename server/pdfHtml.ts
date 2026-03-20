@@ -108,7 +108,7 @@ export function buildInvoiceHtml(inv: any, cs: any): string {
   .sender-info { font-size: 10px; color: #444; line-height: 1.6; }
   .recipient-label { font-size: 9px; color: #888; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
   .recipient-block { margin-bottom: 20px; }
-  .divider { border: none; border-top: 1px solid #ddd; margin: 16px 0; }
+  .divider { border: none; border-top: 1px solid #ddd; margin: 16px 0 28px 0; }
   .items-table th {
     background: #f0f0f0;
     text-align: left;
