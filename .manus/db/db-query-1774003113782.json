@@ -1,0 +1,65 @@
+{
+  "query": "\nSELECT \n  p.id as projekt_id,\n  p.title as projekt_titel,\n  p.project_number,\n  c.company as kunde,\n  s.company as lieferant,\n  (SELECT COUNT(*) FROM cad_files cf WHERE cf.project_id = p.id) as cad_dateien,\n  (SELECT COUNT(*) FROM cad_files cf WHERE cf.project_id = p.id AND cf.drive_synced = 1) as cad_synced,\n  (SELECT COUNT(*) FROM project_documents pd WHERE pd.project_id = p.id) as dokumente,\n  (SELECT COUNT(*) FROM project_documents pd WHERE pd.project_id = p.id AND pd.drive_synced = 1) as docs_synced\nFROM projects p\nLEFT JOIN customers c ON p.customer_id = c.id\nLEFT JOIN suppliers s ON p.supplier_id = s.id\nORDER BY p.id;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 9NNjvn7NV7enobv.7ea640e70a8c --database YMZow7uQxpBVyBGbmbpvvd --execute \nSELECT \n  p.id as projekt_id,\n  p.title as projekt_titel,\n  p.project_number,\n  c.company as kunde,\n  s.company as lieferant,\n  (SELECT COUNT(*) FROM cad_files cf WHERE cf.project_id = p.id) as cad_dateien,\n  (SELECT COUNT(*) FROM cad_files cf WHERE cf.project_id = p.id AND cf.drive_synced = 1) as cad_synced,\n  (SELECT COUNT(*) FROM project_documents pd WHERE pd.project_id = p.id) as dokumente,\n  (SELECT COUNT(*) FROM project_documents pd WHERE pd.project_id = p.id AND pd.drive_synced = 1) as docs_synced\nFROM projects p\nLEFT JOIN customers c ON p.customer_id = c.id\nLEFT JOIN suppliers s ON p.supplier_id = s.id\nORDER BY p.id;\n",
+  "rows": [
+    {
+      "projekt_id": "1",
+      "projekt_titel": "KZ Testmodell Heilbronn",
+      "project_number": "2026-1",
+      "kunde": "NULL",
+      "lieferant": "NULL",
+      "cad_dateien": "0",
+      "cad_synced": "0",
+      "dokumente": "4",
+      "docs_synced": "0"
+    },
+    {
+      "projekt_id": "30001",
+      "projekt_titel": "Argos permanente Gehäuse um konstruieren",
+      "project_number": "NULL",
+      "kunde": "NULL",
+      "lieferant": "NULL",
+      "cad_dateien": "0",
+      "cad_synced": "0",
+      "dokumente": "0",
+      "docs_synced": "0"
+    },
+    {
+      "projekt_id": "60001",
+      "projekt_titel": " Halter für Kamera // Wasserablauf",
+      "project_number": "NULL",
+      "kunde": "NULL",
+      "lieferant": "NULL",
+      "cad_dateien": "2",
+      "cad_synced": "0",
+      "dokumente": "2",
+      "docs_synced": "0"
+    },
+    {
+      "projekt_id": "90001",
+      "projekt_titel": "3 Bronzeplatten 3D-Modelle/Zeitstrahl 24 Stück",
+      "project_number": "2026-13-03",
+      "kunde": "NULL",
+      "lieferant": "NULL",
+      "cad_dateien": "0",
+      "cad_synced": "0",
+      "dokumente": "4",
+      "docs_synced": "0"
+    },
+    {
+      "projekt_id": "150001",
+      "projekt_titel": "Überwurfmutter aus Edelstahl",
+      "project_number": "2026_03_18",
+      "kunde": "Smurfit Westrock Zülpich Paper GmbH",
+      "lieferant": "NULL",
+      "cad_dateien": "0",
+      "cad_synced": "0",
+      "dokumente": "6",
+      "docs_synced": "6"
+    }
+  ],
+  "messages": [],
+  "stdout": "projekt_id\tprojekt_titel\tproject_number\tkunde\tlieferant\tcad_dateien\tcad_synced\tdokumente\tdocs_synced\n1\tKZ Testmodell Heilbronn\t2026-1\tNULL\tNULL\t0\t0\t4\t0\n30001\tArgos permanente Gehäuse um konstruieren\tNULL\tNULL\tNULL\t0\t0\t0\t0\n60001\t Halter für Kamera // Wasserablauf\tNULL\tNULL\tNULL\t2\t0\t2\t0\n90001\t3 Bronzeplatten 3D-Modelle/Zeitstrahl 24 Stück\t2026-13-03\tNULL\tNULL\t0\t0\t4\t0\n150001\tÜberwurfmutter aus Edelstahl\t2026_03_18\tSmurfit Westrock Zülpich Paper GmbH\tNULL\t0\t0\t6\t6\n",
+  "stderr": "",
+  "execution_time_ms": 412
+}

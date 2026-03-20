@@ -2906,18 +2906,20 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
         return testDriveConnection();
       }),
 
-    // Migrations-Endpunkt: Durchsucht Google Drive direkt und verschiebt Dateien in Projektordner
-    // Strategie: DB-Dateinamen mit Drive-Dateien abgleichen (auch ohne gespeicherte driveFileId)
+    // Migrations-Endpunkt: Synchronisiert ALLE Dateien aus der DB auf Google Drive
+    // Strategie 1: Datei hat Drive-ID → in richtigen Projektordner verschieben
+    // Strategie 2: Datei hat KEINE Drive-ID → von S3 herunterladen und neu auf Drive hochladen
     migrateToProjectFolders: protectedProcedure
       .mutation(async () => {
         const db = await (await import('./db')).getDb();
         if (!db) throw new Error('DB nicht verfügbar');
         const { cadFiles: cadFilesTable, projectDocuments: pdTable } = await import('../drizzle/schema');
-        const { getOrCreateProjectFolder, listAllFilesInKundenFolder, moveFileToDriveFolder } = await import('./googleDrive');
+        const { getOrCreateProjectFolder, moveFileToDriveFolder, uploadFileToDrive } = await import('./googleDrive');
         const { getProjectById, getCustomerById, getSupplierById } = await import('./db');
+        const { storageGet } = await import('./storage');
         const { eq: eqOp } = await import('drizzle-orm');
 
-        let movedCount = 0;
+        let syncedCount = 0;
         let errorCount = 0;
         const errors: string[] = [];
         const movedFiles: string[] = [];
@@ -2940,50 +2942,49 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
             : project.title.substring(0, 100);
         }
 
-        // Schritt 1: Alle Dateien die aktuell im Kunden-Root-Ordner liegen von Drive laden
-        // (das sind die Dateien die noch nicht in Projektordnern sind)
-        let driveFilesInRoot: Array<{ id: string; name: string; mimeType: string; customerName: string }> = [];
-        try {
-          driveFilesInRoot = await listAllFilesInKundenFolder();
-        } catch (e: any) {
-          return { success: false, movedCount: 0, errorCount: 1, errors: [`Drive-Zugriff fehlgeschlagen: ${e.message}`], movedFiles: [] };
+        // Hilfsfunktion: Datei von S3 als Buffer herunterladen
+        async function fetchBufferFromS3(fileKey: string): Promise<Buffer> {
+          const { url } = await storageGet(fileKey);
+          const response = await fetch(url);
+          if (!response.ok) throw new Error(`S3-Download fehlgeschlagen (${response.status}): ${fileKey}`);
+          return Buffer.from(await response.arrayBuffer());
         }
 
-        // Schritt 2: Alle CAD-Dateien aus DB laden und mit Drive-Dateien abgleichen
+        // ── Schritt 1: CAD-Dateien synchronisieren ──────────────────────────────
         const allCadFiles = await db.select().from(cadFilesTable);
         for (const file of allCadFiles) {
           try {
             const project = await getProjectById(file.projectId);
             if (!project) continue;
             const entityName = await getEntityName(project);
-            if (!entityName) continue;
+            if (!entityName) continue; // Kein Kunde/Lieferant zugewiesen → überspringen
             const projectName = buildProjectName(project);
 
-            // Drive-Datei anhand des Dateinamens suchen (im Kunden-Root-Ordner)
-            const driveFile = driveFilesInRoot.find(df =>
-              df.name === file.filename && df.customerName === entityName
-            );
-
-            if (driveFile) {
-              // Datei in Projektordner verschieben
-              const targetFolderId = await getOrCreateProjectFolder(entityName, projectName);
-              await moveFileToDriveFolder(driveFile.id, targetFolderId);
-              // Drive-ID in DB speichern
-              await db.update(cadFilesTable)
-                .set({ driveFileId: driveFile.id, driveSynced: 1 })
-                .where(eqOp(cadFilesTable.id, file.id));
-              movedCount++;
-              movedFiles.push(`CAD: ${file.filename} → ${entityName}/${projectName}`);
-            } else if (file.driveFileId) {
-              // Hat schon eine Drive-ID – direkt per ID in Projektordner verschieben
+            if (file.driveFileId) {
+              // Strategie 1: Hat Drive-ID → in richtigen Projektordner verschieben
               const targetFolderId = await getOrCreateProjectFolder(entityName, projectName);
               const moved = await moveFileToDriveFolder(file.driveFileId, targetFolderId);
               if (moved) {
-                movedCount++;
+                syncedCount++;
                 movedFiles.push(`CAD: ${file.filename} → ${entityName}/${projectName}`);
               } else {
                 movedFiles.push(`CAD (bereits ok): ${file.filename}`);
               }
+            } else {
+              // Strategie 2: Keine Drive-ID → von S3 herunterladen und auf Drive hochladen
+              const buffer = await fetchBufferFromS3(file.fileKey);
+              const result = await uploadFileToDrive({
+                filename: file.filename,
+                mimeType: file.mimeType || 'application/octet-stream',
+                buffer,
+                customerName: entityName,
+                projectName,
+              });
+              await db.update(cadFilesTable)
+                .set({ driveFileId: result.fileId, driveSynced: 1 })
+                .where(eqOp(cadFilesTable.id, file.id));
+              syncedCount++;
+              movedFiles.push(`CAD (neu hochgeladen): ${file.filename} → ${entityName}/${projectName}`);
             }
           } catch (e: any) {
             errorCount++;
@@ -2991,40 +2992,41 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
           }
         }
 
-        // Schritt 3: Alle Projekt-Dokumente aus DB laden und mit Drive-Dateien abgleichen
+        // ── Schritt 2: Projekt-Dokumente synchronisieren ─────────────────────────
         const allDocs = await db.select().from(pdTable);
         for (const doc of allDocs) {
           try {
             const project = await getProjectById(doc.projectId);
             if (!project) continue;
             const entityName = await getEntityName(project);
-            if (!entityName) continue;
+            if (!entityName) continue; // Kein Kunde/Lieferant zugewiesen → überspringen
             const projectName = buildProjectName(project);
 
-            // Drive-Datei anhand des Dateinamens suchen
-            const driveFile = driveFilesInRoot.find(df =>
-              df.name === doc.filename && df.customerName === entityName
-            );
-
-            if (driveFile) {
-              const targetFolderId = await getOrCreateProjectFolder(entityName, projectName);
-              await moveFileToDriveFolder(driveFile.id, targetFolderId);
-              // Drive-ID in DB speichern
-              await db.update(pdTable)
-                .set({ driveFileId: driveFile.id, driveSynced: 1 })
-                .where(eqOp(pdTable.id, doc.id));
-              movedCount++;
-              movedFiles.push(`Dok: ${doc.filename} → ${entityName}/${projectName}`);
-            } else if (doc.driveFileId) {
-              // Hat schon eine Drive-ID – direkt per ID in Projektordner verschieben
+            if (doc.driveFileId) {
+              // Strategie 1: Hat Drive-ID → in richtigen Projektordner verschieben
               const targetFolderId = await getOrCreateProjectFolder(entityName, projectName);
               const moved = await moveFileToDriveFolder(doc.driveFileId, targetFolderId);
               if (moved) {
-                movedCount++;
+                syncedCount++;
                 movedFiles.push(`Dok: ${doc.filename} → ${entityName}/${projectName}`);
               } else {
                 movedFiles.push(`Dok (bereits ok): ${doc.filename}`);
               }
+            } else {
+              // Strategie 2: Keine Drive-ID → von S3 herunterladen und auf Drive hochladen
+              const buffer = await fetchBufferFromS3(doc.fileKey);
+              const result = await uploadFileToDrive({
+                filename: doc.filename,
+                mimeType: doc.mimeType || 'application/octet-stream',
+                buffer,
+                customerName: entityName,
+                projectName,
+              });
+              await db.update(pdTable)
+                .set({ driveFileId: result.fileId, driveSynced: 1 })
+                .where(eqOp(pdTable.id, doc.id));
+              syncedCount++;
+              movedFiles.push(`Dok (neu hochgeladen): ${doc.filename} → ${entityName}/${projectName}`);
             }
           } catch (e: any) {
             errorCount++;
@@ -3032,7 +3034,7 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
           }
         }
 
-        return { success: true, movedCount, errorCount, errors, movedFiles };
+        return { success: true, movedCount: syncedCount, errorCount, errors, movedFiles };
       }),
   }),
 });
