@@ -898,3 +898,9 @@
 - [x] Frontend: openNew() unterstützt supplierId prefill
 - [x] Frontend: openEdit() setzt recipientType korrekt beim Bearbeiten
 - [x] Frontend: Invoice-Liste zeigt [Lieferant]-Badge für alle Typen mit supplierId
+
+## Phase 39: Bearbeiten-Funktionen verbessern
+- [x] Projekt-Detail: Bearbeiten-Button im Header (Titel, Typ, Notizen, Projektnummer)
+- [x] Projekt-Detail: Projekt-Bearbeiten-Dialog mit allen Feldern
+- [x] Kunden: Bearbeiten-Button immer sichtbar (nicht nur beim Hover)
+- [x] Lieferanten: Bearbeiten-Button immer sichtbar (nicht nur beim Hover)

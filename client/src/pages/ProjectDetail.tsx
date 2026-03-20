@@ -406,6 +406,8 @@ export default function ProjectDetail() {
   const [showEditComplaint, setShowEditComplaint] = useState<number | null>(null);
   const [showOfferUpload, setShowOfferUpload] = useState<number | null>(null);
   const [showDocUpload, setShowDocUpload] = useState(false);
+  const [showEditProject, setShowEditProject] = useState(false);
+  const [editProjectForm, setEditProjectForm] = useState({ title: '', projectNumber: '', type: 'other', notes: '' });
   const [showOrderConfirmation, setShowOrderConfirmation] = useState(false);
   const [ocForm, setOcForm] = useState({ to: '', cc: '', subject: '', body: '' });
 
@@ -573,6 +575,10 @@ export default function ProjectDetail() {
     onSuccess: () => { utils.projects.list.invalidate(); toast.success("Projekt gelöscht"); setLocation("/projects"); },
     onError: () => toast.error("Fehler beim Löschen des Projekts"),
   });
+  const updateProjectMut = trpc.projects.update.useMutation({
+    onSuccess: () => { utils.projects.byId.invalidate({ id }); utils.projects.list.invalidate(); toast.success("Projekt gespeichert"); setShowEditProject(false); },
+    onError: () => toast.error("Fehler beim Speichern"),
+  });
 
   const totalNotesCount = projectNotes.length;
 
@@ -597,6 +603,23 @@ export default function ProjectDetail() {
             <h1 className="text-xl md:text-2xl font-bold truncate">{project.title}</h1>
             {project.projectNumber && <span className="text-muted-foreground text-sm">#{project.projectNumber}</span>}
             <Badge className={`status-${project.status}`}>{STATUS_LABELS[project.status]}</Badge>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0 text-yellow-400 hover:text-yellow-300"
+              title="Projekt bearbeiten (Titel, Nummer, Typ, Notizen)"
+              onClick={() => {
+                setEditProjectForm({
+                  title: project.title ?? '',
+                  projectNumber: project.projectNumber ?? '',
+                  type: project.type ?? 'other',
+                  notes: project.notes ?? '',
+                });
+                setShowEditProject(true);
+              }}
+            >
+              <Edit2 className="h-3.5 w-3.5" />
+            </Button>
           </div>
           {project.notes && <p className="text-sm text-muted-foreground mt-1">{project.notes}</p>}
           {/* Kunden-Badge / Zuweisungs-Button */}
@@ -2739,6 +2762,73 @@ function CadTabContent({ projectId, cadFiles, onRefresh }: {
         <p className="text-center text-xs text-muted-foreground py-2">Noch keine CAD-Dateien hochgeladen</p>
       )}
 
+      {/* Projekt-Bearbeiten-Dialog */}
+      {showEditProject && (
+        <Dialog open={true} onOpenChange={o => { if (!o) setShowEditProject(false); }}>
+          <DialogContent className="max-w-md">
+            <DialogHeader><DialogTitle className="flex items-center gap-2"><Edit2 className="h-4 w-4 text-yellow-400" />Projekt bearbeiten</DialogTitle></DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <Label>Projekttitel *</Label>
+                <Input
+                  value={editProjectForm.title}
+                  onChange={e => setEditProjectForm(f => ({ ...f, title: e.target.value }))}
+                  placeholder="z.B. Gehäuse Müller GmbH"
+                  autoFocus
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Projektnummer</Label>
+                  <Input
+                    value={editProjectForm.projectNumber}
+                    onChange={e => setEditProjectForm(f => ({ ...f, projectNumber: e.target.value }))}
+                    placeholder="z.B. 2024-001"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Typ</Label>
+                  <Select value={editProjectForm.type} onValueChange={v => setEditProjectForm(f => ({ ...f, type: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="serial_part">Serienteil</SelectItem>
+                      <SelectItem value="spare_part">Ersatzteil</SelectItem>
+                      <SelectItem value="museum">Museum</SelectItem>
+                      <SelectItem value="consulting">Beratung</SelectItem>
+                      <SelectItem value="cad_work">CAD-Arbeit</SelectItem>
+                      <SelectItem value="other">Sonstiges</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Notizen</Label>
+                <Textarea
+                  value={editProjectForm.notes}
+                  onChange={e => setEditProjectForm(f => ({ ...f, notes: e.target.value }))}
+                  rows={3}
+                  placeholder="Interne Anmerkungen..."
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowEditProject(false)}>Abbrechen</Button>
+              <Button
+                onClick={() => updateProjectMut.mutate({
+                  id,
+                  title: editProjectForm.title || undefined,
+                  projectNumber: editProjectForm.projectNumber || undefined,
+                  type: editProjectForm.type as any,
+                  notes: editProjectForm.notes || undefined,
+                })}
+                disabled={!editProjectForm.title || updateProjectMut.isPending}
+              >
+                {updateProjectMut.isPending ? 'Speichert...' : 'Speichern'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
       {/* 3D-Viewer Dialog */}
       {viewerFile && (
         <Dialog open={!!viewerFile} onOpenChange={() => setViewerFile(null)}>
