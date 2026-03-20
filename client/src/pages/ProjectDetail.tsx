@@ -350,6 +350,34 @@ function InlineSelect({ value, options, onSave }: {
   );
 }
 
+// ─── Drive-Ordner-Button ────────────────────────────────────────────────────
+function DriveFolderButton({ projectId }: { projectId: number }) {
+  const { data, isLoading } = trpc.projects.getDriveFolderUrl.useQuery(
+    { id: projectId },
+    { retry: false, staleTime: 5 * 60 * 1000 }
+  );
+
+  if (isLoading) {
+    return (
+      <Button variant="outline" size="sm" disabled className="gap-2 opacity-50">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        <span className="hidden sm:inline">Drive</span>
+      </Button>
+    );
+  }
+
+  if (!data?.url) return null;
+
+  return (
+    <Button variant="outline" size="sm" asChild className="gap-2 text-green-400 border-green-400/30 hover:bg-green-400/10 hover:text-green-300">
+      <a href={data.url} target="_blank" rel="noopener noreferrer">
+        <FolderOpen className="h-4 w-4" />
+        <span className="hidden sm:inline">In Drive öffnen</span>
+      </a>
+    </Button>
+  );
+}
+
 export default function ProjectDetail() {
   const params = useParams<{ id: string }>();
   const id = parseInt(params.id ?? "0");
@@ -604,13 +632,7 @@ export default function ProjectDetail() {
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {project.driveFolderUrl && (
-            <Button variant="outline" size="sm" asChild>
-              <a href={project.driveFolderUrl} target="_blank" rel="noopener noreferrer" className="gap-2">
-                <ExternalLink className="h-4 w-4" /> Drive
-              </a>
-            </Button>
-          )}
+          <DriveFolderButton projectId={id} />
           <Button
             variant="outline"
             size="sm"

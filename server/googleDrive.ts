@@ -79,9 +79,14 @@ export async function getOrCreateCustomerFolder(customerName: string): Promise<s
 }
 
 /**
- * Gibt die Folder-ID für ein Projekt unter einem Kunden zurück (erstellt Ordner wenn nötig)
- * Struktur: Fabrica ERP/Kunden/[Kundenname]/[Projektname]/
+ * Gibt die Web-URL des Projektordners auf Google Drive zurück.
+ * Erstellt den Ordner falls er noch nicht existiert.
  */
+export async function getProjectDriveFolderUrl(customerName: string, projectName: string): Promise<string> {
+  const folderId = await getOrCreateProjectFolder(customerName, projectName);
+  return `https://drive.google.com/drive/folders/${folderId}`;
+}
+
 export async function getOrCreateProjectFolder(customerName: string, projectName: string): Promise<string> {
   const drive = getDriveClient();
 

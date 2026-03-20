@@ -883,3 +883,7 @@
 - [x] Migrations-Endpunkt: Lieferanten-Projekte berücksichtigen (supplierId)
 - [x] customerFiles.upload: Fehler-Logging verbessern (Drive-Fehler sichtbar machen)
 - [x] Migrations-UI: Detailliertere Rückmeldung (welche Dateien wurden verschoben)
+
+## Phase 36: Drive-Button im Projekt-Header
+- [x] Backend: getProjectDriveFolderUrl Procedure
+- [x] Frontend: "In Drive öffnen"-Button im Projekt-Header

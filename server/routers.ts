@@ -275,6 +275,26 @@ export const appRouter = router({
       id: z.number(),
       status: z.enum(["inquiry", "calculation", "offer", "order", "production", "shipping", "completed", "cancelled"]),
     })).mutation(async ({ input }) => { await updateProject(input.id, { status: input.status }); return { success: true }; }),
+    getDriveFolderUrl: protectedProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
+      const { getProjectById, getCustomerById, getSupplierById } = await import('./db');
+      const { getProjectDriveFolderUrl } = await import('./googleDrive');
+      const project = await getProjectById(input.id);
+      if (!project) throw new Error('Projekt nicht gefunden');
+      let entityName: string | null = null;
+      if (project.customerId) {
+        const customer = await getCustomerById(project.customerId);
+        entityName = customer ? (customer.company || customer.name) : null;
+      } else if ((project as any).supplierId) {
+        const supplier = await getSupplierById((project as any).supplierId);
+        entityName = supplier ? (supplier.company || supplier.name) : null;
+      }
+      if (!entityName) return { url: null };
+      const projectName = project.projectNumber
+        ? `${project.projectNumber} ${project.title}`.substring(0, 100)
+        : project.title.substring(0, 100);
+      const url = await getProjectDriveFolderUrl(entityName, projectName);
+      return { url };
+    }),
     // Auftragsbestätigung per E-Mail senden
     sendOrderConfirmation: protectedProcedure
       .input(z.object({
