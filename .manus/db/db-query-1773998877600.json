@@ -1,0 +1,52 @@
+{
+  "query": "\nSELECT 'cad_files' as typ, id, filename, drive_file_id, drive_synced FROM cad_files WHERE project_id = 150001\nUNION ALL\nSELECT 'project_documents', id, filename, drive_file_id, drive_synced FROM project_documents WHERE project_id = 150001;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 9NNjvn7NV7enobv.7ea640e70a8c --database YMZow7uQxpBVyBGbmbpvvd --execute \nSELECT 'cad_files' as typ, id, filename, drive_file_id, drive_synced FROM cad_files WHERE project_id = 150001\nUNION ALL\nSELECT 'project_documents', id, filename, drive_file_id, drive_synced FROM project_documents WHERE project_id = 150001;\n",
+  "rows": [
+    {
+      "typ": "project_documents",
+      "id": "90001",
+      "filename": "doc06931620260318173154.pdf",
+      "drive_file_id": "1m7oH9558wD2ceFfWIlY3E2UF5tEOP8ow",
+      "drive_synced": "1"
+    },
+    {
+      "typ": "project_documents",
+      "id": "90002",
+      "filename": "Anfrage 3D Druck Überwurfmutter aus Edelstahl.pdf",
+      "drive_file_id": "1rpJ_soz0hjiajYC2qKYnEO82BAMzhq86",
+      "drive_synced": "1"
+    },
+    {
+      "typ": "project_documents",
+      "id": "90003",
+      "filename": "IMG_1724-5.jpeg",
+      "drive_file_id": "1Kb_xdoG42fvKA-IeTHwWIE_bWu2toPvn",
+      "drive_synced": "1"
+    },
+    {
+      "typ": "project_documents",
+      "id": "90004",
+      "filename": "IMG_1725.jpeg",
+      "drive_file_id": "1OpPgErJttXkZl23BmIJzW3dRA-wfq_Uk",
+      "drive_synced": "1"
+    },
+    {
+      "typ": "project_documents",
+      "id": "90005",
+      "filename": "IMG_1724-4.jpeg",
+      "drive_file_id": "1qcuyRuSe2VgZdnEbgJf_EM923-k5Lp8D",
+      "drive_synced": "1"
+    },
+    {
+      "typ": "project_documents",
+      "id": "90006",
+      "filename": "IMG_1728.jpeg",
+      "drive_file_id": "1gN2jG8WDj1Xh7oLEgBFrrHmbiEeehr2A",
+      "drive_synced": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "typ\tid\tfilename\tdrive_file_id\tdrive_synced\nproject_documents\t90001\tdoc06931620260318173154.pdf\t1m7oH9558wD2ceFfWIlY3E2UF5tEOP8ow\t1\nproject_documents\t90002\tAnfrage 3D Druck Überwurfmutter aus Edelstahl.pdf\t1rpJ_soz0hjiajYC2qKYnEO82BAMzhq86\t1\nproject_documents\t90003\tIMG_1724-5.jpeg\t1Kb_xdoG42fvKA-IeTHwWIE_bWu2toPvn\t1\nproject_documents\t90004\tIMG_1725.jpeg\t1OpPgErJttXkZl23BmIJzW3dRA-wfq_Uk\t1\nproject_documents\t90005\tIMG_1724-4.jpeg\t1qcuyRuSe2VgZdnEbgJf_EM923-k5Lp8D\t1\nproject_documents\t90006\tIMG_1728.jpeg\t1gN2jG8WDj1Xh7oLEgBFrrHmbiEeehr2A\t1\n",
+  "stderr": "",
+  "execution_time_ms": 383
+}

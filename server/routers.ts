@@ -2955,11 +2955,15 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
               movedCount++;
               movedFiles.push(`CAD: ${file.filename} → ${entityName}/${projectName}`);
             } else if (file.driveFileId) {
-              // Hat schon eine Drive-ID – trotzdem in Projektordner verschieben
+              // Hat schon eine Drive-ID – direkt per ID in Projektordner verschieben
               const targetFolderId = await getOrCreateProjectFolder(entityName, projectName);
-              await moveFileToDriveFolder(file.driveFileId, targetFolderId);
-              movedCount++;
-              movedFiles.push(`CAD (re-move): ${file.filename} → ${entityName}/${projectName}`);
+              const moved = await moveFileToDriveFolder(file.driveFileId, targetFolderId);
+              if (moved) {
+                movedCount++;
+                movedFiles.push(`CAD: ${file.filename} → ${entityName}/${projectName}`);
+              } else {
+                movedFiles.push(`CAD (bereits ok): ${file.filename}`);
+              }
             }
           } catch (e: any) {
             errorCount++;
@@ -2992,10 +2996,15 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
               movedCount++;
               movedFiles.push(`Dok: ${doc.filename} → ${entityName}/${projectName}`);
             } else if (doc.driveFileId) {
+              // Hat schon eine Drive-ID – direkt per ID in Projektordner verschieben
               const targetFolderId = await getOrCreateProjectFolder(entityName, projectName);
-              await moveFileToDriveFolder(doc.driveFileId, targetFolderId);
-              movedCount++;
-              movedFiles.push(`Dok (re-move): ${doc.filename} → ${entityName}/${projectName}`);
+              const moved = await moveFileToDriveFolder(doc.driveFileId, targetFolderId);
+              if (moved) {
+                movedCount++;
+                movedFiles.push(`Dok: ${doc.filename} → ${entityName}/${projectName}`);
+              } else {
+                movedFiles.push(`Dok (bereits ok): ${doc.filename}`);
+              }
             }
           } catch (e: any) {
             errorCount++;

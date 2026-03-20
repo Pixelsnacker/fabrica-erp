@@ -201,9 +201,10 @@ export async function listCustomerFolderFiles(customerName: string): Promise<Arr
 }
 
 /**
- * Verschiebt eine Datei in einen anderen Ordner in Google Drive
+ * Verschiebt eine Datei in einen anderen Ordner in Google Drive.
+ * Gibt true zurück wenn verschoben, false wenn bereits im Zielordner.
  */
-export async function moveFileToDriveFolder(fileId: string, newFolderId: string): Promise<void> {
+export async function moveFileToDriveFolder(fileId: string, newFolderId: string): Promise<boolean> {
   const drive = getDriveClient();
 
   // Aktuelle Parent-Ordner der Datei ermitteln
@@ -212,15 +213,24 @@ export async function moveFileToDriveFolder(fileId: string, newFolderId: string)
     fields: 'parents',
   });
 
-  const previousParents = (file.data.parents || []).join(',');
+  const currentParents = file.data.parents || [];
+
+  // Bereits im Zielordner? Dann nichts tun
+  if (currentParents.includes(newFolderId)) {
+    return false;
+  }
+
+  const previousParents = currentParents.join(',');
 
   // Datei in neuen Ordner verschieben
   await drive.files.update({
     fileId,
     addParents: newFolderId,
-    removeParents: previousParents,
+    removeParents: previousParents || undefined,
     fields: 'id, parents',
   });
+
+  return true;
 }
 
 /**
