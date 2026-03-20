@@ -163,6 +163,8 @@ export default function Invoices() {
   const [editId, setEditId] = useState<number | null>(null);
   const [showDetail, setShowDetail] = useState<number | null>(null);
   const [showAudit, setShowAudit] = useState<number | null>(null);
+  // Empfänger-Typ im Formular: 'customer' oder 'supplier'
+  const [recipientType, setRecipientType] = useState<'customer' | 'supplier'>('customer');
 
   // Undo-State für gelöschte Positionen
   const [deletedItem, setDeletedItem] = useState<{ item: InvoiceItem; idx: number } | null>(null);
@@ -442,11 +444,13 @@ export default function Invoices() {
     }
   }
 
-  function openNew(type: InvoiceType = 'offer', prefill?: { projectId?: number; customerId?: number; projectItems?: any[] }) {
+  function openNew(type: InvoiceType = 'offer', prefill?: { projectId?: number; customerId?: number; supplierId?: number; projectItems?: any[] }) {
     setEditId(null);
     const sender = buildSenderFromSettings();
     const footer = companySettings?.invoiceFooter ?? '';
-    setForm({ type, customerId: prefill?.customerId, supplierId: undefined, projectId: prefill?.projectId, ...sender, recipientName: '', recipientCompany: '', recipientStreet: '', recipientZip: '', recipientCity: '', recipientEmail: '', issueDate: new Date().toISOString().slice(0, 10), dueDate: '', deliveryDate: '', paymentTerms: 'Zahlbar innerhalb von 14 Tagen ohne Abzug.', taxMode: companySettings?.kleinunternehmer ? 'kleinunternehmer' : 'standard', introText: '', notes: '', footerText: footer });
+    const isSupplierType = type === 'purchase_order' || !!prefill?.supplierId;
+    setRecipientType(isSupplierType ? 'supplier' : 'customer');
+    setForm({ type, customerId: prefill?.customerId, supplierId: prefill?.supplierId, projectId: prefill?.projectId, ...sender, recipientName: '', recipientCompany: '', recipientStreet: '', recipientZip: '', recipientCity: '', recipientEmail: '', issueDate: new Date().toISOString().slice(0, 10), dueDate: '', deliveryDate: '', paymentTerms: 'Zahlbar innerhalb von 14 Tagen ohne Abzug.', taxMode: companySettings?.kleinunternehmer ? 'kleinunternehmer' : 'standard', introText: '', notes: '', footerText: footer });
     // Wenn Projekt-Positionen mitgegeben werden, vorausfüllen
     const taxMode = companySettings?.kleinunternehmer ? 'kleinunternehmer' : 'standard';
     if (prefill?.projectItems?.length) {
@@ -546,6 +550,7 @@ export default function Invoices() {
     if (pendingEditId !== null && editDetailData) {
       const inv = editDetailData as any;
       setEditId(inv.id);
+      setRecipientType(inv.supplierId ? 'supplier' : 'customer');
       setForm({
         type: inv.type, customerId: inv.customerId ?? undefined, supplierId: inv.supplierId ?? undefined, projectId: inv.projectId ?? undefined,
         senderName: inv.senderName ?? DEFAULT_SENDER.senderName,
@@ -873,7 +878,7 @@ export default function Invoices() {
                 </div>
               </div>
               <div className="mt-1 text-sm text-muted-foreground">
-                {inv.type === 'purchase_order' && inv.supplierId ? (
+                {inv.supplierId ? (
                   <span className="text-orange-400/80">[Lieferant] {[inv.recipientCompany, inv.recipientName].filter(Boolean).join(' — ')}</span>
                 ) : (
                   [inv.recipientCompany, inv.recipientName].filter(Boolean).join(' — ')
@@ -974,11 +979,15 @@ export default function Invoices() {
           </SheetHeader>
           <div className="flex-1 overflow-y-auto px-6 py-4">
             <div className="space-y-5">
-            {/* Typ + Kunde + Projekt */}
+            {/* Typ + Empfänger + Projekt */}
             <div className="grid grid-cols-1 md:grid-cols-[160px_1fr_1fr] gap-3">
               <div className="min-w-0">
                 <Label>Typ</Label>
-                <Select value={form.type} onValueChange={v => setForm(f => ({ ...f, type: v as InvoiceType }))}>
+                <Select value={form.type} onValueChange={v => {
+                  const newType = v as InvoiceType;
+                  if (newType === 'purchase_order') setRecipientType('supplier');
+                  setForm(f => ({ ...f, type: newType }));
+                }}>
                   <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="offer">Angebot</SelectItem>
@@ -990,9 +999,24 @@ export default function Invoices() {
                   </SelectContent>
                 </Select>
               </div>
-              {form.type === 'purchase_order' ? (
-                <div className="min-w-0">
-                  <Label>Lieferant</Label>
+              <div className="min-w-0">
+                <div className="flex items-center justify-between mb-1">
+                  <Label>{recipientType === 'supplier' ? 'Lieferant' : 'Kunde'}</Label>
+                  {form.type !== 'purchase_order' && (
+                    <button
+                      type="button"
+                      className="text-xs text-muted-foreground hover:text-primary underline leading-none"
+                      onClick={() => {
+                        const next = recipientType === 'customer' ? 'supplier' : 'customer';
+                        setRecipientType(next);
+                        setForm(f => ({ ...f, customerId: undefined, supplierId: undefined, recipientName: '', recipientCompany: '', recipientStreet: '', recipientZip: '', recipientCity: '', recipientEmail: '' }));
+                      }}
+                    >
+                      {recipientType === 'customer' ? '→ Lieferant wählen' : '→ Kunde wählen'}
+                    </button>
+                  )}
+                </div>
+                {recipientType === 'supplier' ? (
                   <EntitySearch
                     options={(suppliers as any[]).map((s: any) => ({ id: s.id, label: s.name, sublabel: s.email || undefined }))}
                     value={form.supplierId}
@@ -1000,10 +1024,7 @@ export default function Invoices() {
                     placeholder="Lieferant suchen..."
                     emptyLabel="Kein Lieferant"
                   />
-                </div>
-              ) : (
-                <div className="min-w-0">
-                  <Label>Kunde</Label>
+                ) : (
                   <EntitySearch
                     options={customers.map((c: any) => ({ id: c.id, label: c.company || c.name, sublabel: c.company ? c.name : undefined }))}
                     value={form.customerId}
@@ -1011,8 +1032,8 @@ export default function Invoices() {
                     placeholder="Kunde suchen..."
                     emptyLabel="Kein Kunde"
                   />
-                </div>
-              )}
+                )}
+              </div>
               <div className="min-w-0">
                 <Label>Projekt</Label>
                 <Select value={form.projectId ? String(form.projectId) : 'none'} onValueChange={v => setForm(f => ({ ...f, projectId: v !== 'none' ? parseInt(v) : undefined }))}>
@@ -1046,7 +1067,7 @@ export default function Invoices() {
 
               {/* Empfänger */}
               <div className="border border-border rounded-lg p-4 space-y-3">
-                <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">{form.type === 'purchase_order' ? 'Lieferant (Empfänger)' : 'Empfänger (Kunde)'}</h3>
+                <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">{recipientType === 'supplier' ? 'Lieferant (Empfänger)' : 'Empfänger (Kunde)'}</h3>
                 <div className="grid grid-cols-2 gap-3">
                   <div><Label>Firma</Label><Input value={form.recipientCompany} onChange={e => setForm(f => ({ ...f, recipientCompany: e.target.value }))} /></div>
                   <div><Label>Ansprechpartner</Label><Input value={form.recipientName} onChange={e => setForm(f => ({ ...f, recipientName: e.target.value }))} /></div>

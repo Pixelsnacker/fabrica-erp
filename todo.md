@@ -891,3 +891,10 @@
 ## Phase 37: Drive-Ordner bei Projekttitel-Umbenennung
 - [x] Google Drive: renameDriveFolder Funktion
 - [x] projects.update: Drive-Ordner umbenennen wenn Titel oder Projektnummer geändert
+
+## Phase 38: Angebote an Lieferanten
+- [x] Frontend: Umschalter '→ Lieferant wählen' / '→ Kunde wählen' im Angebots-Formular
+- [x] Frontend: recipientType State-Variable für alle Dokumenttypen
+- [x] Frontend: openNew() unterstützt supplierId prefill
+- [x] Frontend: openEdit() setzt recipientType korrekt beim Bearbeiten
+- [x] Frontend: Invoice-Liste zeigt [Lieferant]-Badge für alle Typen mit supplierId
