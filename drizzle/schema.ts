@@ -528,6 +528,9 @@ export const projectDocuments = mysqlTable("project_documents", {
     "contract",         // Vertrag
     "drawing",          // Zeichnung / Technische Unterlagen
     "cad_data",         // CAD Daten
+    "photo",            // Foto / Bild
+    "protocol",         // Protokoll
+    "rendering",        // 3D Rendering
     "other",            // Sonstiges
   ]).default("other").notNull(),
   filename: varchar("filename", { length: 512 }).notNull(),

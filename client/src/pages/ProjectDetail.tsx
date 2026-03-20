@@ -2003,6 +2003,7 @@ const DOC_CATEGORY_LABELS: Record<string, { label: string; color: string; icon: 
   cad_data:        { label: "CAD Daten",                  color: "text-emerald-400",       icon: "🖥️" },
   photo:           { label: "Foto / Bild",                color: "text-green-400",         icon: "📷" },
   protocol:        { label: "Protokoll",                  color: "text-indigo-400",        icon: "📋" },
+  rendering:       { label: "3D Rendering",               color: "text-violet-400",        icon: "🎨" },
   other:           { label: "Sonstiges",                  color: "text-muted-foreground",  icon: "📎" },
 };
 
