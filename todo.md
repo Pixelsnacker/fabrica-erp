@@ -887,3 +887,7 @@
 ## Phase 36: Drive-Button im Projekt-Header
 - [x] Backend: getProjectDriveFolderUrl Procedure
 - [x] Frontend: "In Drive öffnen"-Button im Projekt-Header
+
+## Phase 37: Drive-Ordner bei Projekttitel-Umbenennung
+- [x] Google Drive: renameDriveFolder Funktion
+- [x] projects.update: Drive-Ordner umbenennen wenn Titel oder Projektnummer geändert

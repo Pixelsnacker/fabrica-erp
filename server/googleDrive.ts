@@ -354,6 +354,51 @@ export async function listAllFilesInKundenFolder(): Promise<Array<{
 }
 
 /**
+ * Benennt einen Ordner in Google Drive um.
+ * Sucht den Projektordner anhand von Kundenname + altem Projektnamen und benennt ihn um.
+ * Gibt true zurück wenn umbenannt, false wenn Ordner nicht gefunden.
+ */
+export async function renameDriveProjectFolder(
+  customerName: string,
+  oldProjectName: string,
+  newProjectName: string
+): Promise<boolean> {
+  if (oldProjectName === newProjectName) return false;
+  const drive = getDriveClient();
+
+  // Kunden-Ordner finden (nicht erstellen – wenn er nicht existiert, gibt es nichts umzubenennen)
+  const rootId = await findOrCreateFolder(drive, ROOT_FOLDER_NAME);
+  const customersId = await findOrCreateFolder(drive, CUSTOMERS_FOLDER_NAME, rootId);
+  const safeCustomer = customerName.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  const customerRes = await drive.files.list({
+    q: `name='${safeCustomer}' and mimeType='application/vnd.google-apps.folder' and '${customersId}' in parents and trashed=false`,
+    fields: 'files(id)',
+    spaces: 'drive',
+  });
+  if (!customerRes.data.files || customerRes.data.files.length === 0) return false;
+  const customerFolderId = customerRes.data.files[0].id!;
+
+  // Projektordner mit altem Namen suchen
+  const safeOld = oldProjectName.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  const projectRes = await drive.files.list({
+    q: `name='${safeOld}' and mimeType='application/vnd.google-apps.folder' and '${customerFolderId}' in parents and trashed=false`,
+    fields: 'files(id)',
+    spaces: 'drive',
+  });
+  if (!projectRes.data.files || projectRes.data.files.length === 0) return false;
+  const projectFolderId = projectRes.data.files[0].id!;
+
+  // Ordner umbenennen
+  await drive.files.update({
+    fileId: projectFolderId,
+    requestBody: { name: newProjectName },
+    fields: 'id, name',
+  });
+
+  return true;
+}
+
+/**
  * Prüft ob die Google Drive Verbindung funktioniert
  */
 export async function testDriveConnection(): Promise<{ ok: boolean; connected?: boolean; email?: string; storageUsed?: string; error?: string }> {

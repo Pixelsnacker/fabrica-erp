@@ -269,7 +269,55 @@ export const appRouter = router({
       notes: z.string().optional(),
       internalNotes: z.string().optional(),
       deadline: z.date().nullable().optional(),
-    })).mutation(async ({ input }) => { const { id, ...data } = input; await updateProject(id, data as any); return { success: true }; }),
+    })).mutation(async ({ input }) => {
+      const { id, ...data } = input;
+
+      // Vor dem Update: alten Projektnamen und Kundennamen laden (für Drive-Umbenennung)
+      const oldProject = await getProjectById(id);
+
+      // Projekt in DB aktualisieren
+      await updateProject(id, data as any);
+
+      // Drive-Ordner umbenennen wenn Titel oder Projektnummer geändert wurde
+      if (oldProject && (input.title !== undefined || input.projectNumber !== undefined)) {
+        try {
+          const { getCustomerById, getSupplierById } = await import('./db');
+          const { renameDriveProjectFolder } = await import('./googleDrive');
+
+          // Entitätsname ermitteln (Kunde oder Lieferant)
+          let entityName: string | null = null;
+          const effectiveCustomerId = input.customerId !== undefined ? input.customerId : oldProject.customerId;
+          const effectiveSupplierId = (input.supplierId !== undefined ? input.supplierId : (oldProject as any).supplierId);
+          if (effectiveCustomerId) {
+            const customer = await getCustomerById(effectiveCustomerId);
+            entityName = customer ? (customer.company || customer.name) : null;
+          } else if (effectiveSupplierId) {
+            const supplier = await getSupplierById(effectiveSupplierId);
+            entityName = supplier ? (supplier.company || supplier.name) : null;
+          }
+
+          if (entityName) {
+            // Alten und neuen Projektnamen berechnen
+            const buildName = (num: string | null | undefined, title: string) =>
+              num ? `${num} ${title}`.substring(0, 100) : title.substring(0, 100);
+
+            const oldProjectName = buildName(oldProject.projectNumber, oldProject.title);
+            const newTitle = input.title !== undefined ? input.title : oldProject.title;
+            const newNumber = input.projectNumber !== undefined ? input.projectNumber : oldProject.projectNumber;
+            const newProjectName = buildName(newNumber, newTitle);
+
+            if (oldProjectName !== newProjectName) {
+              await renameDriveProjectFolder(entityName, oldProjectName, newProjectName);
+            }
+          }
+        } catch (e) {
+          // Drive-Umbenennung ist nicht-kritisch – Fehler still loggen
+          console.error('[Drive] Ordner-Umbenennung fehlgeschlagen:', e);
+        }
+      }
+
+      return { success: true };
+    }),
     delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => { await deleteProject(input.id); return { success: true }; }),
     changeStatus: protectedProcedure.input(z.object({
       id: z.number(),
