@@ -908,3 +908,8 @@
 ## Phase 40: Projekt-Umbenennung Bug-Fix
 - [x] Bug: Titel-Änderung im Bearbeiten-Dialog wird nicht gespeichert
 - [x] Bug: Google Drive Ordner-Umbenennung bei Titel-Änderung sicherstellen
+
+## Phase 41: PDF-Empfängeradresse Bug-Fix
+- [x] Bug: Bei Lieferanten-Auswahl wird name statt company als Firmenname gesetzt → Ansprechpartner erscheint als erste Zeile im PDF
+- [x] Fix: onSupplierSelect soll company als recipientCompany und name als recipientName setzen
+- [x] Fix: Lieferanten-Suche soll company-Name anzeigen wenn vorhanden

@@ -431,11 +431,13 @@ export default function Invoices() {
     const sid = parseInt(id);
     const s = suppliers.find((x: any) => x.id === sid);
     if (s) {
-      // Bei Bestellungen: recipientName leer lassen, damit im PDF nur der Firmenname erscheint
+      // company = Firmenname (erste Zeile im PDF), name = Ansprechpartner (zweite Zeile)
+      const supplierCompany = (s as any).company ?? '';
+      const supplierContact = (s as any).name ?? '';
       setForm(f => ({
         ...f, supplierId: sid,
-        recipientName: '',
-        recipientCompany: (s as any).name ?? '',
+        recipientCompany: supplierCompany || supplierContact, // Firma bevorzugen, sonst Ansprechpartner
+        recipientName: supplierCompany ? supplierContact : '', // Ansprechpartner nur wenn Firma vorhanden
         recipientStreet: (s as any).street ?? '',
         recipientZip: (s as any).zip ?? '',
         recipientCity: (s as any).city ?? '',
@@ -1018,7 +1020,7 @@ export default function Invoices() {
                 </div>
                 {recipientType === 'supplier' ? (
                   <EntitySearch
-                    options={(suppliers as any[]).map((s: any) => ({ id: s.id, label: s.name, sublabel: s.email || undefined }))}
+                    options={(suppliers as any[]).map((s: any) => ({ id: s.id, label: s.company || s.name, sublabel: s.company ? s.name : (s.email || undefined) }))}
                     value={form.supplierId}
                     onChange={v => v ? onSupplierSelect(String(v)) : setForm(f => ({ ...f, supplierId: undefined }))}
                     placeholder="Lieferant suchen..."
