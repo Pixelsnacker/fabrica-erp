@@ -1617,7 +1617,16 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
 
         // Filtern nach Jahr/Monat/Typ
         const filtered = allInvoices.filter((inv: any) => {
-          const d = new Date(inv.date);
+          // issueDate ist ein String wie "2026-03-20", createdAt ist ein Unix-Timestamp in ms
+          let d: Date;
+          if (inv.issueDate && typeof inv.issueDate === 'string' && inv.issueDate.length >= 4) {
+            d = new Date(inv.issueDate);
+          } else if (inv.createdAt) {
+            d = new Date(inv.createdAt);
+          } else {
+            return false;
+          }
+          if (isNaN(d.getTime())) return false;
           const invYear = d.getFullYear();
           const invMonth = d.getMonth() + 1; // 1-12
           if (invYear !== input.year) return false;
