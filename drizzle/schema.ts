@@ -64,6 +64,7 @@ export const customers = mysqlTable("customers", {
 	address: text(),
 	notes: text(),
 	sevdeskId: varchar("sevdesk_id", { length: 64 }),
+	flags: json("flags").$type<string[]>().default([]),
 	isActive: tinyint("is_active").default(1).notNull(),
 	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
 	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),

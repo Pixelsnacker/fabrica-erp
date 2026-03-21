@@ -934,3 +934,10 @@
 
 ## Phase 46: Bug Abschließen-Button (weiterhin)
 - [ ] Bug: Abschließen-Button dreht sich endlos auch nach AlertDialog-Fix
+
+## Phase 48: Kunden-Hinweise (Flags)
+- [x] DB: flags-Feld (JSON-Array) zur customers-Tabelle hinzufügen
+- [x] tRPC: customers.create + update mit flags-Feld
+- [x] Frontend: Kunden-Bearbeiten-Dialog: Hinweise als Tags eingeben (frei wählbar + Schnellauswahl)
+- [x] Frontend: Kunden-Karte: Hinweise als farbige Badges anzeigen
+- [x] Frontend: Angebots-/Rechnungsformular: Hinweise des gewählten Kunden als Warnung anzeigen

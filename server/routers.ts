@@ -115,6 +115,7 @@ export const appRouter = router({
       address: z.string().optional(),
       notes: z.string().optional(),
       sevdeskId: z.string().optional(),
+      flags: z.array(z.string()).optional(),
     })).mutation(async ({ input }) => { await createCustomer(input as any); return { success: true }; }),
     update: protectedProcedure.input(z.object({
       id: z.number(),
@@ -134,6 +135,7 @@ export const appRouter = router({
       address: z.string().optional(),
       notes: z.string().optional(),
       isActive: z.boolean().optional(),
+      flags: z.array(z.string()).optional(),
     })).mutation(async ({ input }) => { const { id, ...data } = input; await updateCustomer(id, data as any); return { success: true }; }),
      delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => { await deleteCustomer(input.id); return { success: true }; }),
 

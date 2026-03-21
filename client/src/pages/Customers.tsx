@@ -18,13 +18,179 @@ import {
   Plus, Search, Users, Mail, Phone, Building2, MapPin, Edit2, Trash2, User,
   Upload, FileSpreadsheet, CheckCircle2, AlertCircle, X, ChevronDown, ChevronUp,
   FolderOpen, Download, FileText, Image, File, Shield, ClipboardList, Package,
-  Loader2, ExternalLink, FolderSync, Wifi, WifiOff,
+  Loader2, ExternalLink, FolderSync, Wifi, WifiOff, Tag, AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
 
 const TYPE_LABELS: Record<string, string> = {
   b2b: "B2B", museum: "Museum", industry: "Industrie", private: "Privat", other: "Sonstige",
 };
+
+// Vordefinierte Flag-Vorschläge für schnelles Hinzufügen
+const FLAG_PRESETS = [
+  { label: "Vorkasse", color: "bg-red-500/20 text-red-400 border-red-500/30" },
+  { label: "Schlechter Zahler", color: "bg-orange-500/20 text-orange-400 border-orange-500/30" },
+  { label: "Stammkunde", color: "bg-green-500/20 text-green-400 border-green-500/30" },
+  { label: "Rechnungs-E-Mail abweichend", color: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30" },
+  { label: "Nur Barzahlung", color: "bg-red-500/20 text-red-400 border-red-500/30" },
+  { label: "Gesperrt", color: "bg-red-600/20 text-red-500 border-red-600/30" },
+];
+
+// Farbe für einen Flag-Text bestimmen (basierend auf Inhalt)
+export function getFlagColor(flag: string): string {
+  const lower = flag.toLowerCase();
+  if (lower.includes("vorkasse") || lower.includes("gesperrt") || lower.includes("barzahlung")) {
+    return "bg-red-500/20 text-red-400 border-red-500/30";
+  }
+  if (lower.includes("schlecht") || lower.includes("mahnung") || lower.includes("inkasso")) {
+    return "bg-orange-500/20 text-orange-400 border-orange-500/30";
+  }
+  if (lower.includes("stamm") || lower.includes("vip") || lower.includes("premium")) {
+    return "bg-green-500/20 text-green-400 border-green-500/30";
+  }
+  if (lower.includes("email") || lower.includes("e-mail") || lower.includes("abweichend")) {
+    return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30";
+  }
+  return "bg-blue-500/20 text-blue-400 border-blue-500/30";
+}
+
+// ─── Flag-Tag-Editor ──────────────────────────────────────────────────────────
+function FlagEditor({ flags, onChange }: { flags: string[]; onChange: (flags: string[]) => void }) {
+  const [input, setInput] = useState("");
+
+  const addFlag = (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed || flags.includes(trimmed)) return;
+    onChange([...flags, trimmed]);
+    setInput("");
+  };
+
+  const removeFlag = (flag: string) => {
+    onChange(flags.filter(f => f !== flag));
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      addFlag(input);
+    } else if (e.key === "Backspace" && !input && flags.length > 0) {
+      removeFlag(flags[flags.length - 1]);
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <Label className="flex items-center gap-1.5">
+        <AlertTriangle className="h-3.5 w-3.5 text-yellow-400" />
+        Hinweise / Flags
+      </Label>
+      <p className="text-xs text-muted-foreground">
+        Wichtige Hinweise zu diesem Kunden. Werden beim Erstellen von Dokumenten als Warnung angezeigt.
+      </p>
+
+      {/* Aktive Flags */}
+      {flags.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 p-2 rounded-md bg-muted/30 border border-border min-h-[36px]">
+          {flags.map(flag => (
+            <span
+              key={flag}
+              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${getFlagColor(flag)}`}
+            >
+              {flag}
+              <button
+                type="button"
+                onClick={() => removeFlag(flag)}
+                className="hover:opacity-70 transition-opacity ml-0.5"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Eingabefeld */}
+      <div className="flex gap-2">
+        <Input
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Hinweis eingeben + Enter"
+          className="text-sm"
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => addFlag(input)}
+          disabled={!input.trim()}
+          className="shrink-0"
+        >
+          <Plus className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+
+      {/* Vorschläge */}
+      <div className="flex flex-wrap gap-1.5">
+        <span className="text-xs text-muted-foreground self-center">Schnell hinzufügen:</span>
+        {FLAG_PRESETS.filter(p => !flags.includes(p.label)).map(preset => (
+          <button
+            key={preset.label}
+            type="button"
+            onClick={() => addFlag(preset.label)}
+            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border cursor-pointer hover:opacity-80 transition-opacity ${preset.color}`}
+          >
+            <Plus className="h-2.5 w-2.5" />
+            {preset.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Flag-Anzeige (nur lesen) ─────────────────────────────────────────────────
+export function CustomerFlags({ flags }: { flags: string[] | null | undefined }) {
+  if (!flags || flags.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-1">
+      {flags.map(flag => (
+        <span
+          key={flag}
+          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${getFlagColor(flag)}`}
+        >
+          <AlertTriangle className="h-2.5 w-2.5" />
+          {flag}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+// ─── Flag-Warn-Banner (für Dokument-Formular) ─────────────────────────────────
+export function CustomerFlagWarning({ flags, customerName }: { flags: string[] | null | undefined; customerName?: string }) {
+  if (!flags || flags.length === 0) return null;
+  return (
+    <div className="flex items-start gap-3 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+      <AlertTriangle className="h-4 w-4 text-yellow-400 shrink-0 mt-0.5" />
+      <div className="space-y-1">
+        <p className="text-sm font-medium text-yellow-400">
+          Hinweise zu {customerName ? `"${customerName}"` : "diesem Kunden"}
+        </p>
+        <div className="flex flex-wrap gap-1.5">
+          {flags.map(flag => (
+            <span
+              key={flag}
+              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${getFlagColor(flag)}`}
+            >
+              {flag}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 type CustomerForm = {
   name: string; company: string; type: string;
@@ -33,6 +199,7 @@ type CustomerForm = {
   contact2: string; contact3: string;
   street: string; zip: string; city: string; country: string;
   notes: string;
+  flags: string[];
 };
 
 const EMPTY_FORM: CustomerForm = {
@@ -42,65 +209,28 @@ const EMPTY_FORM: CustomerForm = {
   contact2: "", contact3: "",
   street: "", zip: "", city: "", country: "Deutschland",
   notes: "",
+  flags: [],
 };
 
 // ─── sevDesk CSV-Spalten → ERP-Felder Mapping ────────────────────────────────
-// Typische sevDesk-Exportspalten (case-insensitive matching)
 const SEVDESK_FIELD_MAP: Record<string, string> = {
-  // Name/Kontakt
-  "name": "name",
-  "vorname": "name",
-  "nachname": "name",
-  "ansprechpartner": "name",
-  "kontaktperson": "name",
-  "contact person": "name",
-  // Firma
-  "firma": "company",
-  "firmenname": "company",
-  "unternehmen": "company",
-  "company": "company",
-  "organisation": "company",
-  // E-Mail
-  "email": "email",
-  "e-mail": "email",
-  "e_mail": "email",
-  "emailadresse": "email",
-  "mail": "email",
-  // Telefon
-  "telefon": "phone",
-  "tel": "phone",
-  "phone": "phone",
-  "mobil": "phone",
-  "handynummer": "phone",
-  // Adresse
-  "straße": "street",
-  "strasse": "street",
-  "street": "street",
-  "adresse": "street",
-  "straße und hausnummer": "street",
-  // PLZ
-  "plz": "zip",
-  "postleitzahl": "zip",
-  "zip": "zip",
-  "postal code": "zip",
-  // Stadt
-  "ort": "city",
-  "stadt": "city",
-  "city": "city",
-  // Land
-  "land": "country",
-  "country": "country",
-  // Notizen
-  "notiz": "notes",
-  "notizen": "notes",
-  "notes": "notes",
-  "anmerkung": "notes",
-  "beschreibung": "notes",
-  // sevDesk-ID
-  "id": "sevdeskId",
-  "kundennummer": "sevdeskId",
-  "customer number": "sevdeskId",
-  "sevdesk id": "sevdeskId",
+  "name": "name", "vorname": "name", "nachname": "name",
+  "ansprechpartner": "name", "kontaktperson": "name", "contact person": "name",
+  "firma": "company", "firmenname": "company", "unternehmen": "company",
+  "company": "company", "organisation": "company",
+  "email": "email", "e-mail": "email", "e_mail": "email",
+  "emailadresse": "email", "mail": "email",
+  "telefon": "phone", "tel": "phone", "phone": "phone",
+  "mobil": "phone", "handynummer": "phone",
+  "straße": "street", "strasse": "street", "street": "street",
+  "adresse": "street", "straße und hausnummer": "street",
+  "plz": "zip", "postleitzahl": "zip", "zip": "zip", "postal code": "zip",
+  "ort": "city", "stadt": "city", "city": "city",
+  "land": "country", "country": "country",
+  "notiz": "notes", "notizen": "notes", "notes": "notes",
+  "anmerkung": "notes", "beschreibung": "notes",
+  "id": "sevdeskId", "kundennummer": "sevdeskId",
+  "customer number": "sevdeskId", "sevdesk id": "sevdeskId",
 };
 
 const ERP_FIELDS = [
@@ -117,16 +247,11 @@ const ERP_FIELDS = [
   { key: "_ignore", label: "— Ignorieren —" },
 ];
 
-// ─── CSV-Parser ───────────────────────────────────────────────────────────────
 function parseCsv(text: string): { headers: string[]; rows: string[][] } {
-  // Unterstützt Semikolon (sevDesk Standard) und Komma als Trennzeichen
   const lines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n").filter(l => l.trim());
   if (lines.length === 0) return { headers: [], rows: [] };
-
-  // Auto-detect Trennzeichen
   const firstLine = lines[0];
   const sep = firstLine.split(";").length > firstLine.split(",").length ? ";" : ",";
-
   const parseRow = (line: string): string[] => {
     const result: string[] = [];
     let cur = "";
@@ -137,22 +262,17 @@ function parseCsv(text: string): { headers: string[]; rows: string[][] } {
         if (inQuotes && line[i + 1] === '"') { cur += '"'; i++; }
         else inQuotes = !inQuotes;
       } else if (ch === sep && !inQuotes) {
-        result.push(cur.trim());
-        cur = "";
-      } else {
-        cur += ch;
-      }
+        result.push(cur.trim()); cur = "";
+      } else { cur += ch; }
     }
     result.push(cur.trim());
     return result;
   };
-
   const headers = parseRow(lines[0]);
   const rows = lines.slice(1).map(parseRow);
   return { headers, rows };
 }
 
-// Auto-Mapping: versucht sevDesk-Spalten automatisch zuzuordnen
 function autoMap(headers: string[]): Record<string, string> {
   const mapping: Record<string, string> = {};
   headers.forEach(h => {
@@ -189,10 +309,7 @@ function CsvImportDialog({ open, onClose }: { open: boolean; onClose: () => void
       const text = e.target?.result as string;
       const { headers: h, rows: r } = parseCsv(text);
       if (h.length === 0) { toast.error("CSV-Datei ist leer oder ungültig"); return; }
-      setHeaders(h);
-      setRows(r);
-      setMapping(autoMap(h));
-      setStep("mapping");
+      setHeaders(h); setRows(r); setMapping(autoMap(h)); setStep("mapping");
     };
     reader.readAsText(file, "UTF-8");
   }, []);
@@ -205,52 +322,31 @@ function CsvImportDialog({ open, onClose }: { open: boolean; onClose: () => void
   }, [handleFile]);
 
   const handleImport = () => {
-    // Zeilen in ERP-Objekte umwandeln
     const mapped = rows.map(row => {
       const obj: Record<string, string> = {};
       headers.forEach((h, i) => {
         const field = mapping[h];
         if (field && field !== "_ignore" && row[i]) {
-          // Bei mehreren Spalten auf dasselbe Feld: zusammenführen
-          if (field === "name" && obj.name) {
-            obj.name = obj.name + " " + row[i];
-          } else {
-            obj[field] = row[i];
-          }
+          if (field === "name" && obj.name) obj.name = obj.name + " " + row[i];
+          else obj[field] = row[i];
         }
       });
       return obj;
     }).filter(o => o.name || o.company);
-
-    if (mapped.length === 0) {
-      toast.error("Keine gültigen Zeilen gefunden. Bitte Spalten-Mapping prüfen.");
-      return;
-    }
-
+    if (mapped.length === 0) { toast.error("Keine gültigen Zeilen gefunden. Bitte Spalten-Mapping prüfen."); return; }
     importMut.mutate({
       rows: mapped.map(o => ({
         name: o.name || o.company || "",
-        company: o.company,
-        email: o.email,
-        phone: o.phone,
-        street: o.street,
-        zip: o.zip,
-        city: o.city,
-        country: o.country,
-        notes: o.notes,
-        sevdeskId: o.sevdeskId,
+        company: o.company, email: o.email, phone: o.phone,
+        street: o.street, zip: o.zip, city: o.city, country: o.country,
+        notes: o.notes, sevdeskId: o.sevdeskId,
       })),
       onDuplicate,
     });
   };
 
   const reset = () => {
-    setStep("upload");
-    setHeaders([]);
-    setRows([]);
-    setMapping({});
-    setResult(null);
-    setShowAllPreview(false);
+    setStep("upload"); setHeaders([]); setRows([]); setMapping({}); setResult(null); setShowAllPreview(false);
   };
 
   const previewRows = showAllPreview ? rows : rows.slice(0, 5);
@@ -265,7 +361,6 @@ function CsvImportDialog({ open, onClose }: { open: boolean; onClose: () => void
           </DialogTitle>
         </DialogHeader>
 
-        {/* ── Schritt 1: Upload ── */}
         {step === "upload" && (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
@@ -273,8 +368,7 @@ function CsvImportDialog({ open, onClose }: { open: boolean; onClose: () => void
             </p>
             <div
               className="border-2 border-dashed border-border rounded-lg p-10 text-center cursor-pointer hover:border-primary/50 transition-colors"
-              onDrop={handleDrop}
-              onDragOver={e => e.preventDefault()}
+              onDrop={handleDrop} onDragOver={e => e.preventDefault()}
               onClick={() => fileRef.current?.click()}
             >
               <Upload className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
@@ -282,117 +376,74 @@ function CsvImportDialog({ open, onClose }: { open: boolean; onClose: () => void
               <p className="text-sm text-muted-foreground mt-1">oder klicken zum Auswählen</p>
               <p className="text-xs text-muted-foreground mt-2">Unterstützt: sevDesk-Export (Semikolon- oder Komma-getrennt, UTF-8)</p>
             </div>
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".csv,text/csv"
-              className="hidden"
-              onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
-            />
+            <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden"
+              onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
           </div>
         )}
 
-        {/* ── Schritt 2: Mapping ── */}
         {step === "mapping" && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <p className="text-sm text-muted-foreground">
-                <strong>{rows.length} Zeilen</strong> erkannt. Prüfe das Spalten-Mapping und passe es bei Bedarf an.
+                <strong>{rows.length} Zeilen</strong> erkannt. Bitte Spalten zuordnen:
               </p>
-              <Button variant="ghost" size="sm" onClick={reset}>
-                <X className="h-4 w-4 mr-1" /> Neu laden
-              </Button>
-            </div>
-
-            {/* Spalten-Mapping */}
-            <div className="border border-border rounded-lg overflow-hidden">
-              <div className="bg-muted/30 px-3 py-2 text-xs font-medium text-muted-foreground grid grid-cols-2 gap-2">
-                <span>CSV-Spalte</span><span>ERP-Feld</span>
-              </div>
-              <div className="divide-y divide-border max-h-48 overflow-y-auto">
-                {headers.map(h => (
-                  <div key={h} className="px-3 py-2 grid grid-cols-2 gap-2 items-center">
-                    <span className="text-sm font-mono text-muted-foreground truncate" title={h}>{h}</span>
-                    <Select value={mapping[h] ?? "_ignore"} onValueChange={v => setMapping(m => ({ ...m, [h]: v }))}>
-                      <SelectTrigger className="h-7 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {ERP_FIELDS.map(f => (
-                          <SelectItem key={f.key} value={f.key}>{f.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                ))}
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-muted-foreground">Duplikate:</span>
+                <Select value={onDuplicate} onValueChange={v => setOnDuplicate(v as any)}>
+                  <SelectTrigger className="h-7 w-32 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="skip">Überspringen</SelectItem>
+                    <SelectItem value="update">Aktualisieren</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
-
-            {/* Vorschau */}
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {headers.map(h => (
+                <div key={h} className="flex items-center gap-3">
+                  <span className="text-sm w-40 truncate text-muted-foreground">{h}</span>
+                  <span className="text-muted-foreground">→</span>
+                  <Select value={mapping[h] ?? "_ignore"} onValueChange={v => setMapping(m => ({ ...m, [h]: v }))}>
+                    <SelectTrigger className="h-7 flex-1 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {ERP_FIELDS.map(f => <SelectItem key={f.key} value={f.key}>{f.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ))}
+            </div>
             <div>
-              <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">
-                Vorschau ({showAllPreview ? rows.length : Math.min(5, rows.length)} von {rows.length} Zeilen)
-              </p>
-              <div className="border border-border rounded-lg overflow-x-auto">
+              <p className="text-xs text-muted-foreground mb-2">Vorschau ({previewRows.length} von {rows.length}):</p>
+              <div className="overflow-x-auto rounded border border-border">
                 <table className="text-xs w-full">
-                  <thead className="bg-muted/30">
-                    <tr>
-                      {headers.map(h => (
-                        <th key={h} className="px-2 py-1.5 text-left font-medium text-muted-foreground whitespace-nowrap">
-                          {h}
-                          {mapping[h] && mapping[h] !== "_ignore" && (
-                            <span className="ml-1 text-primary">→ {ERP_FIELDS.find(f => f.key === mapping[h])?.label}</span>
-                          )}
-                        </th>
-                      ))}
+                  <thead>
+                    <tr className="bg-muted/50">
+                      {headers.map(h => <th key={h} className="px-2 py-1 text-left font-medium">{h}</th>)}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-border">
+                  <tbody>
                     {previewRows.map((row, i) => (
-                      <tr key={i} className="hover:bg-muted/20">
-                        {row.map((cell, j) => (
-                          <td key={j} className="px-2 py-1.5 max-w-[150px] truncate" title={cell}>{cell || "—"}</td>
-                        ))}
+                      <tr key={i} className="border-t border-border">
+                        {row.map((cell, j) => <td key={j} className="px-2 py-1 max-w-[120px] truncate">{cell}</td>)}
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
               {rows.length > 5 && (
-                <Button variant="ghost" size="sm" className="mt-1 text-xs" onClick={() => setShowAllPreview(v => !v)}>
-                  {showAllPreview ? <><ChevronUp className="h-3 w-3 mr-1" /> Weniger anzeigen</> : <><ChevronDown className="h-3 w-3 mr-1" /> Alle {rows.length} Zeilen anzeigen</>}
+                <Button variant="ghost" size="sm" className="mt-1 h-6 text-xs" onClick={() => setShowAllPreview(!showAllPreview)}>
+                  {showAllPreview ? "Weniger anzeigen" : `Alle ${rows.length} Zeilen anzeigen`}
                 </Button>
               )}
-            </div>
-
-            {/* Duplikat-Strategie */}
-            <div className="flex items-center gap-3 p-3 bg-muted/20 rounded-lg">
-              <div className="flex-1">
-                <p className="text-sm font-medium">Bei Duplikaten (gleiche E-Mail oder Name)</p>
-                <p className="text-xs text-muted-foreground">Was soll passieren wenn ein Kunde bereits existiert?</p>
-              </div>
-              <Select value={onDuplicate} onValueChange={v => setOnDuplicate(v as any)}>
-                <SelectTrigger className="w-40 h-8 text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="skip">Überspringen</SelectItem>
-                  <SelectItem value="update">Aktualisieren</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
           </div>
         )}
 
-        {/* ── Schritt 3: Ergebnis ── */}
         {step === "result" && result && (
-          <div className="space-y-4 py-4">
-            <div className="flex items-center gap-3">
-              <CheckCircle2 className="h-8 w-8 text-green-400 shrink-0" />
-              <div>
-                <p className="font-semibold text-lg">Import abgeschlossen</p>
-                <p className="text-sm text-muted-foreground">{result.total} Zeilen verarbeitet</p>
-              </div>
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 text-green-400">
+              <CheckCircle2 className="h-5 w-5" />
+              <span className="font-medium">Import abgeschlossen</span>
             </div>
             <div className="grid grid-cols-3 gap-3">
               <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3 text-center">
@@ -418,11 +469,7 @@ function CsvImportDialog({ open, onClose }: { open: boolean; onClose: () => void
           {step === "mapping" && (
             <>
               <Button variant="outline" onClick={reset}>Zurück</Button>
-              <Button
-                onClick={handleImport}
-                disabled={importMut.isPending}
-                className="gap-2"
-              >
+              <Button onClick={handleImport} disabled={importMut.isPending} className="gap-2">
                 {importMut.isPending ? "Importiere..." : <><Upload className="h-4 w-4" /> {rows.length} Kunden importieren</>}
               </Button>
             </>
@@ -529,7 +576,7 @@ function CustomerDialog({
           </div>
           <div className="space-y-2">
             <div className="space-y-1.5">
-              <Label>Straße & Hausnummer</Label>
+              <Label>Straße &amp; Hausnummer</Label>
               <Input value={form.street} onChange={e => set("street", e.target.value)} placeholder="Musterstraße 12" />
             </div>
             <div className="grid grid-cols-3 gap-3">
@@ -554,6 +601,14 @@ function CustomerDialog({
             <Label>Notizen</Label>
             <Textarea value={form.notes} onChange={e => set("notes", e.target.value)} rows={2} placeholder="Interne Anmerkungen..." />
           </div>
+
+          <Separator />
+
+          {/* Flags / Hinweise */}
+          <FlagEditor
+            flags={form.flags}
+            onChange={flags => setForm(f => ({ ...f, flags }))}
+          />
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Abbrechen</Button>
@@ -586,7 +641,6 @@ function formatFileSize(bytes?: number | null): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-// ─── Datei-Zeile ─────────────────────────────────────────────────────────────
 function AkteFileRow({ file }: { file: any }) {
   const cfg = FILE_CATEGORIES[file.category] ?? FILE_CATEGORIES.other;
   const Icon = cfg.icon;
@@ -595,7 +649,6 @@ function AkteFileRow({ file }: { file: any }) {
 
   return (
     <div className="flex items-start gap-3 p-3 rounded-lg bg-card border border-border hover:border-primary/30 transition-all group">
-      {/* Thumbnail für Fotos, Icon für alles andere */}
       {isPhoto && file.fileUrl ? (
         <div className="h-10 w-10 rounded overflow-hidden border border-border shrink-0 cursor-pointer"
           onClick={() => window.open(file.fileUrl, '_blank')}>
@@ -611,47 +664,28 @@ function AkteFileRow({ file }: { file: any }) {
         <div className="flex items-center gap-2 flex-wrap">
           <span className={`text-xs ${cfg.color}`}>{cfg.label}</span>
           {file.fileSize && (
-            <>
-              <span className="text-xs text-muted-foreground">·</span>
-              <span className="text-xs text-muted-foreground">{formatFileSize(file.fileSize)}</span>
-            </>
+            <><span className="text-xs text-muted-foreground">·</span>
+            <span className="text-xs text-muted-foreground">{formatFileSize(file.fileSize)}</span></>
           )}
           <span className="text-xs text-muted-foreground">·</span>
-          <span className="text-xs text-muted-foreground">
-            {new Date(file.createdAt).toLocaleDateString('de-DE')}
-          </span>
+          <span className="text-xs text-muted-foreground">{new Date(file.createdAt).toLocaleDateString('de-DE')}</span>
         </div>
-        {/* Protokoll-Inhalt als Vorschau */}
         {isProtocol && file.notes && (
           <p className="text-xs text-muted-foreground mt-1 italic line-clamp-2">{file.notes}</p>
         )}
-        {/* Notiz für andere Dateien */}
         {!isProtocol && file.notes && (
           <p className="text-xs text-muted-foreground mt-0.5 italic truncate">{file.notes}</p>
         )}
       </div>
       {!isProtocol && file.fileUrl && (
         <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-          <Button
-            variant="ghost" size="sm"
-            className="h-7 w-7 p-0 text-blue-400 hover:text-blue-300"
-            onClick={() => window.open(file.fileUrl, '_blank')}
-            title="Datei öffnen"
-          >
+          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-blue-400 hover:text-blue-300"
+            onClick={() => window.open(file.fileUrl, '_blank')} title="Datei öffnen">
             <ExternalLink className="h-3.5 w-3.5" />
           </Button>
-          <Button
-            variant="ghost" size="sm"
-            className="h-7 w-7 p-0 text-green-400 hover:text-green-300"
-            onClick={() => {
-              const a = document.createElement('a');
-              a.href = file.fileUrl;
-              a.download = file.filename;
-              a.target = '_blank';
-              a.click();
-            }}
-            title="Herunterladen"
-          >
+          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-green-400 hover:text-green-300"
+            onClick={() => { const a = document.createElement('a'); a.href = file.fileUrl; a.download = file.filename; a.target = '_blank'; a.click(); }}
+            title="Herunterladen">
             <Download className="h-3.5 w-3.5" />
           </Button>
         </div>
@@ -660,7 +694,6 @@ function AkteFileRow({ file }: { file: any }) {
   );
 }
 
-// ─── Kundenakte-Komponente ────────────────────────────────────────────────────
 function CustomerAkte({ customer }: { customer: { id: number; name: string; company?: string | null } }) {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [zipping, setZipping] = useState(false);
@@ -689,7 +722,6 @@ function CustomerAkte({ customer }: { customer: { id: number; name: string; comp
     return acc;
   }, {} as Record<string, number>);
 
-  // Dateien nach Projekt gruppieren
   const projectGroups = filteredFiles.reduce((acc: Record<string, { title: string; number: string | null; files: any[] }>, f: any) => {
     const key = f.projectId ? String(f.projectId) : 'no-project';
     if (!acc[key]) acc[key] = { title: f.projectTitle || 'Ohne Projekt', number: f.projectNumber, files: [] };
@@ -701,58 +733,41 @@ function CustomerAkte({ customer }: { customer: { id: number; name: string; comp
 
   return (
     <div className="space-y-4 p-1">
-      {/* Info-Banner */}
       <div className="flex items-center gap-2 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-xs text-blue-400">
         <FolderSync className="h-4 w-4 shrink-0" />
-        <span>Alle Dateien werden automatisch aus den Projekten dieses Kunden zusammengeführt. Uploads erfolgen direkt im jeweiligen Projekt (CAD-Daten, Dokumente).</span>
+        <span>Alle Dateien werden automatisch aus den Projekten dieses Kunden zusammengeführt. Uploads erfolgen direkt im jeweiligen Projekt.</span>
       </div>
 
-      {/* Kategorie-Filter + ZIP-Export */}
       <div className="flex items-center gap-2 flex-wrap">
-        <Button
-          variant={selectedCategory === 'all' ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => setSelectedCategory('all')}
-          className="h-7 text-xs"
-        >
+        <Button variant={selectedCategory === 'all' ? 'default' : 'outline'} size="sm"
+          onClick={() => setSelectedCategory('all')} className="h-7 text-xs">
           Alle ({(files as any[]).length})
         </Button>
         {Object.entries(categoryCounts).map(([cat, count]) => {
           const cfg = FILE_CATEGORIES[cat];
           if (!cfg) return null;
           return (
-            <Button
-              key={cat}
-              variant={selectedCategory === cat ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setSelectedCategory(cat)}
-              className="h-7 text-xs gap-1"
-            >
+            <Button key={cat} variant={selectedCategory === cat ? 'default' : 'outline'} size="sm"
+              onClick={() => setSelectedCategory(cat)} className="h-7 text-xs gap-1">
               <cfg.icon className={`h-3 w-3 ${cfg.color}`} />
               {cfg.label} ({count})
             </Button>
           );
         })}
         {(files as any[]).length > 0 && (
-          <Button
-            variant="outline"
-            size="sm"
+          <Button variant="outline" size="sm"
             onClick={() => { setZipping(true); zipMut.mutate({ customerId: customer.id }); }}
             disabled={zipping}
-            className="h-7 text-xs gap-1 ml-auto border-green-500/30 text-green-400 hover:bg-green-500/10"
-            title="Alle Dateien als ZIP herunterladen"
-          >
+            className="h-7 text-xs gap-1 ml-auto border-green-500/30 text-green-400 hover:bg-green-500/10">
             {zipping ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
             ZIP-Export
           </Button>
         )}
       </div>
 
-      {/* Dateiliste – nach Projekt gruppiert */}
       {isLoading ? (
         <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Lade Dateien...
+          <Loader2 className="h-4 w-4 animate-spin" />Lade Dateien...
         </div>
       ) : filteredFiles.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-10 gap-3">
@@ -762,7 +777,6 @@ function CustomerAkte({ customer }: { customer: { id: number; name: string; comp
               ? 'Noch keine Dateien in den Projekten dieses Kunden'
               : `Keine ${FILE_CATEGORIES[selectedCategory]?.label ?? 'Dateien'} vorhanden`}
           </p>
-          <p className="text-xs text-muted-foreground">Lade Dateien direkt im Projekt hoch (CAD-Daten, Dokumente)</p>
         </div>
       ) : (
         <Accordion
@@ -772,11 +786,8 @@ function CustomerAkte({ customer }: { customer: { id: number; name: string; comp
           className="space-y-2"
         >
           {projectGroupEntries.map(([projectKey, group]) => (
-            <AccordionItem
-              key={projectKey}
-              value={projectKey}
-              className="border border-border rounded-lg overflow-hidden"
-            >
+            <AccordionItem key={projectKey} value={projectKey}
+              className="border border-border rounded-lg overflow-hidden">
               <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/30 [&[data-state=open]]:bg-muted/20">
                 <div className="flex items-center gap-3 text-left">
                   <FolderOpen className="h-4 w-4 text-primary shrink-0" />
@@ -863,6 +874,7 @@ export default function Customers() {
     city: (editCustomer as any).city ?? "",
     country: (editCustomer as any).country ?? "Deutschland",
     notes: editCustomer.notes ?? "",
+    flags: (editCustomer as any).flags ?? [],
   } : EMPTY_FORM;
 
   const handleCreate = (f: CustomerForm) => {
@@ -881,6 +893,7 @@ export default function Customers() {
       city: f.city || undefined,
       country: f.country || undefined,
       notes: f.notes || undefined,
+      flags: f.flags.length > 0 ? f.flags : undefined,
     });
   };
 
@@ -902,6 +915,7 @@ export default function Customers() {
       city: f.city || undefined,
       country: f.country || undefined,
       notes: f.notes || undefined,
+      flags: f.flags,
     });
   };
 
@@ -948,6 +962,7 @@ export default function Customers() {
             const hasAddress = c.street || c.city || c.zip;
             const emails = [customer.email, c.email2, c.email3].filter(Boolean);
             const contacts = [customer.name, c.contact2, c.contact3].filter(Boolean);
+            const flags: string[] = c.flags ?? [];
             return (
               <div
                 key={customer.id}
@@ -999,6 +1014,21 @@ export default function Customers() {
                       {[c.street, [c.zip, c.city].filter(Boolean).join(" "), c.country !== "Deutschland" ? c.country : ""].filter(Boolean).join(", ")}
                     </div>
                   )}
+
+                  {/* Flags / Hinweise */}
+                  {flags.length > 0 && (
+                    <div className="flex flex-wrap gap-1 pt-0.5">
+                      {flags.map(flag => (
+                        <span
+                          key={flag}
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${getFlagColor(flag)}`}
+                        >
+                          <AlertTriangle className="h-2.5 w-2.5" />
+                          {flag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
@@ -1030,10 +1060,8 @@ export default function Customers() {
         </div>
       )}
 
-      {/* CSV-Import-Dialog */}
       <CsvImportDialog open={showImport} onClose={() => setShowImport(false)} />
 
-      {/* Create Dialog */}
       <CustomerDialog
         open={showCreate}
         onClose={() => setShowCreate(false)}
@@ -1043,7 +1071,6 @@ export default function Customers() {
         isPending={createMutation.isPending}
       />
 
-      {/* Edit Dialog */}
       {editId !== null && (
         <CustomerDialog
           open={true}
@@ -1055,7 +1082,6 @@ export default function Customers() {
         />
       )}
 
-      {/* Kundenakte Dialog */}
       {akteCustomer && (
         <Dialog open={true} onOpenChange={open => { if (!open) setAkteCustomer(null); }}>
           <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">

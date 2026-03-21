@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 
 // ─── PDF Download ───────────────────────────────────────────────────────────
+import { CustomerFlagWarning } from "@/pages/Customers";
 
 // ─── Typen ───────────────────────────────────────────────────────────────────
 type TaxMode = 'standard' | 'reduced' | 'mixed' | 'tax_free' | 'kleinunternehmer';
@@ -1054,8 +1055,19 @@ export default function Invoices() {
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-
+             </div>
+            {/* Kunden-Flags Warnung */}
+            {recipientType === 'customer' && form.customerId && (() => {
+              const c = customers.find((x: any) => x.id === form.customerId);
+              const flags = (c as any)?.flags;
+              if (!flags || flags.length === 0) return null;
+              return (
+                <CustomerFlagWarning
+                  flags={flags}
+                  customerName={c?.company || c?.name}
+                />
+              );
+            })()}
             {/* Absender + Empfänger nebeneinander */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Absender */}
