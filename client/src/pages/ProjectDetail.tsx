@@ -2838,18 +2838,17 @@ function CadTabContent({ projectId, cadFiles, onRefresh }: {
                   }
                 </Button>
               )}
-              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                {(getExt(f.filename) === "stl" || getExt(f.filename) === "obj") && (
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-7 w-7 text-primary"
-                    title="3D-Vorschau"
-                    onClick={() => setViewerFile({ url: f.fileUrl, filename: f.filename, fileSize: f.fileSize })}
-                  >
-                    <FileCode2 className="h-3.5 w-3.5" />
-                  </Button>
-                )}
+              <div className="flex items-center gap-1">
+                {/* Vorschau-Button: für STL/OBJ 3D-Viewer, für STP/STEP Info-Dialog – immer sichtbar */}
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-7 w-7 text-primary"
+                  title={getExt(f.filename) === "stl" || getExt(f.filename) === "obj" ? "3D-Vorschau" : "Datei-Info & Download"}
+                  onClick={() => setViewerFile({ url: f.fileUrl, filename: f.filename, fileSize: f.fileSize })}
+                >
+                  <FileCode2 className="h-3.5 w-3.5" />
+                </Button>
                 <Button size="icon" variant="ghost" className="h-7 w-7" title="Herunterladen" asChild>
                   <a href={f.fileUrl} download={f.filename} target="_blank" rel="noopener noreferrer">
                     <Download className="h-3.5 w-3.5" />
@@ -2858,21 +2857,13 @@ function CadTabContent({ projectId, cadFiles, onRefresh }: {
                 <Button
                   size="icon"
                   variant="ghost"
-                  className="h-7 w-7 text-destructive"
+                  className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
                   title="Löschen"
                   onClick={() => { if (confirm(`"${f.filename}" wirklich löschen?`)) deleteMut.mutate({ id: f.id }); }}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
               </div>
-              {/* STP/STEP Download-Button immer sichtbar */}
-              {(getExt(f.filename) === "stp" || getExt(f.filename) === "step") && (
-                <Button size="sm" variant="outline" className="gap-1.5 text-xs" asChild>
-                  <a href={f.fileUrl} download={f.filename} target="_blank" rel="noopener noreferrer">
-                    <Download className="h-3 w-3" />Download
-                  </a>
-                </Button>
-              )}
             </div>
           ))}
         </div>

@@ -941,3 +941,8 @@
 - [x] Frontend: Kunden-Bearbeiten-Dialog: Hinweise als Tags eingeben (frei wählbar + Schnellauswahl)
 - [x] Frontend: Kunden-Karte: Hinweise als farbige Badges anzeigen
 - [x] Frontend: Angebots-/Rechnungsformular: Hinweise des gewählten Kunden als Warnung anzeigen
+
+## Bug-Fix: CAD-Tab Vorschau-Buttons
+- [x] Vorschau-Button (FileCode2-Icon) für STL/OBJ dauerhaft sichtbar (war nur bei Hover sichtbar)
+- [x] Vorschau-Button auch für STP/STEP-Dateien hinzugefügt (öffnet Info-Dialog mit Download)
+- [x] Löschen-Button bleibt weiterhin nur bei Hover sichtbar (verhindert versehentliches Löschen)
