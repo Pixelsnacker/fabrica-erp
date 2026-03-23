@@ -176,6 +176,13 @@
       "when": 1774086632301,
       "tag": "0024_true_gauntlet",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "5",
+      "when": 1774286426754,
+      "tag": "0025_blushing_sentinels",
+      "breakpoints": true
     }
   ]
 }

@@ -946,3 +946,19 @@
 - [x] Vorschau-Button (FileCode2-Icon) für STL/OBJ dauerhaft sichtbar (war nur bei Hover sichtbar)
 - [x] Vorschau-Button auch für STP/STEP-Dateien hinzugefügt (öffnet Info-Dialog mit Download)
 - [x] Löschen-Button bleibt weiterhin nur bei Hover sichtbar (verhindert versehentliches Löschen)
+
+## Phase 49: Projekt-Archivierung & Statistik-Dashboard
+- [x] DB: projects-Tabelle um archived_at, rejection_reason, rejection_note erweitern
+- [x] DB: rejected-Status zum Projektstatus-Enum hinzufügen
+- [x] tRPC: projects.archive (Status auf rejected setzen, Felder befüllen)
+- [x] tRPC: projects.reactivate (Status zurücksetzen, Felder leeren)
+- [x] tRPC: projects.listArchived (alle rejected-Projekte mit Filtern)
+- [x] tRPC: statistics.projectStats (Hit Rate, Ablehnungsgründe, Monats-/Jahresverlauf)
+- [x] Frontend: "Nicht angenommen"-Button in Projektliste (Hover-Icon)
+- [x] Frontend: Archivierungs-Modal (Ablehnungsgrund-Dropdown + Freitextfeld)
+- [x] Frontend: Archiv-Tab in Projektliste mit Filter (Jahr, Grund)
+- [x] Frontend: Reaktivieren-Button im Archiv
+- [x] Frontend: Statistik-Seite /statistics mit Balken- und Tortendiagramm
+- [x] Frontend: KPI-Kacheln (Hit Rate, Gesamtangebote, Gesamtaufträge)
+- [x] Sidebar-Menüpunkt "Statistik" hinzugefügt
+- [x] Vitest-Tests: 226 Tests grün

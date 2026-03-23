@@ -1,0 +1,9 @@
+{
+  "query": "\nALTER TABLE projects \n  MODIFY COLUMN status ENUM('inquiry','calculation','offer','order','production','shipping','completed','cancelled','rejected') NOT NULL DEFAULT 'inquiry',\n  ADD COLUMN IF NOT EXISTS archived_at TIMESTAMP NULL,\n  ADD COLUMN IF NOT EXISTS rejection_reason ENUM('preis','timing','wettbewerber','kein_feedback','sonstiges') NULL,\n  ADD COLUMN IF NOT EXISTS rejection_note TEXT NULL,\n  ADD COLUMN IF NOT EXISTS reactivated_at TIMESTAMP NULL;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 9NNjvn7NV7enobv.7ea640e70a8c --database YMZow7uQxpBVyBGbmbpvvd --execute \nALTER TABLE projects \n  MODIFY COLUMN status ENUM('inquiry','calculation','offer','order','production','shipping','completed','cancelled','rejected') NOT NULL DEFAULT 'inquiry',\n  ADD COLUMN IF NOT EXISTS archived_at TIMESTAMP NULL,\n  ADD COLUMN IF NOT EXISTS rejection_reason ENUM('preis','timing','wettbewerber','kein_feedback','sonstiges') NULL,\n  ADD COLUMN IF NOT EXISTS rejection_note TEXT NULL,\n  ADD COLUMN IF NOT EXISTS reactivated_at TIMESTAMP NULL;\n",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1213
+}

@@ -24,6 +24,7 @@ import Invoices from "@/pages/Invoices";
 import Calendar from "@/pages/Calendar";
 import Articles from "@/pages/Articles";
 import Inquiries from "@/pages/Inquiries";
+import Statistics from "@/pages/Statistics";
 
 function Router() {
   return (
@@ -48,6 +49,7 @@ function Router() {
         <Route path="/invoices" component={Invoices} />
         <Route path="/invoices/new" component={Invoices} />
         <Route path="/inquiries" component={Inquiries} />
+        <Route path="/statistics" component={Statistics} />
         <Route path="/calendar" component={Calendar} />
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />

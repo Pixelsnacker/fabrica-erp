@@ -332,8 +332,76 @@ export const appRouter = router({
     delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => { await deleteProject(input.id); return { success: true }; }),
     changeStatus: protectedProcedure.input(z.object({
       id: z.number(),
-      status: z.enum(["inquiry", "calculation", "offer", "order", "production", "shipping", "completed", "cancelled"]),
+      status: z.enum(["inquiry", "calculation", "offer", "order", "production", "shipping", "completed", "cancelled", "rejected"]),
     })).mutation(async ({ input }) => { await updateProject(input.id, { status: input.status }); return { success: true }; }),
+    archive: protectedProcedure.input(z.object({
+      id: z.number(),
+      rejectionReason: z.enum(['preis','timing','wettbewerber','kein_feedback','sonstiges']),
+      rejectionNote: z.string().optional(),
+    })).mutation(async ({ input }) => {
+      const db = await (await import('./db')).getDb();
+      if (!db) throw new Error('DB nicht verfügbar');
+      const { projects: projectsTable } = await import('../drizzle/schema');
+      const { eq } = await import('drizzle-orm');
+      const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
+      await db.update(projectsTable).set({
+        status: 'rejected',
+        archivedAt: now,
+        rejectionReason: input.rejectionReason,
+        rejectionNote: input.rejectionNote ?? null,
+        reactivatedAt: null,
+      }).where(eq(projectsTable.id, input.id));
+      return { success: true };
+    }),
+    reactivate: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
+      const db = await (await import('./db')).getDb();
+      if (!db) throw new Error('DB nicht verfügbar');
+      const { projects: projectsTable } = await import('../drizzle/schema');
+      const { eq } = await import('drizzle-orm');
+      const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
+      await db.update(projectsTable).set({
+        status: 'inquiry',
+        archivedAt: null,
+        rejectionReason: null,
+        rejectionNote: null,
+        reactivatedAt: now,
+      }).where(eq(projectsTable.id, input.id));
+      return { success: true };
+    }),
+    listArchived: protectedProcedure.input(z.object({
+      year: z.number().optional(),
+      rejectionReason: z.string().optional(),
+      customerId: z.number().optional(),
+    }).optional()).query(async ({ input }) => {
+      const db = await (await import('./db')).getDb();
+      if (!db) return [];
+      const { projects: projectsTable, customers: customersTable } = await import('../drizzle/schema');
+      const { eq, desc } = await import('drizzle-orm');
+      const rows = await db.select({
+        id: projectsTable.id,
+        projectNumber: projectsTable.projectNumber,
+        title: projectsTable.title,
+        type: projectsTable.type,
+        status: projectsTable.status,
+        customerId: projectsTable.customerId,
+        archivedAt: projectsTable.archivedAt,
+        rejectionReason: projectsTable.rejectionReason,
+        rejectionNote: projectsTable.rejectionNote,
+        reactivatedAt: projectsTable.reactivatedAt,
+        totalVk: projectsTable.totalVk,
+        createdAt: projectsTable.createdAt,
+        customerName: customersTable.name,
+        customerCompany: customersTable.company,
+      }).from(projectsTable)
+        .leftJoin(customersTable, eq(projectsTable.customerId, customersTable.id))
+        .where(eq(projectsTable.status, 'rejected'))
+        .orderBy(desc(projectsTable.archivedAt));
+      let filtered = rows as any[];
+      if (input?.year) filtered = filtered.filter((r: any) => r.archivedAt && new Date(r.archivedAt).getFullYear() === input.year);
+      if (input?.rejectionReason) filtered = filtered.filter((r: any) => r.rejectionReason === input.rejectionReason);
+      if (input?.customerId) filtered = filtered.filter((r: any) => r.customerId === input.customerId);
+      return filtered;
+    }),
     getDriveFolderUrl: protectedProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
       const { getProjectById, getCustomerById, getSupplierById } = await import('./db');
       const { getProjectDriveFolderUrl } = await import('./googleDrive');
@@ -3111,6 +3179,53 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
 
         return { success: true, movedCount: syncedCount, errorCount, errors, movedFiles };
       }),
+  }),
+
+  // ─── Statistics ─────────────────────────────────────────────────────────────
+  statistics: router({
+    projectStats: protectedProcedure.input(z.object({
+      year: z.number().optional(),
+    }).optional()).query(async ({ input }) => {
+      const db = await (await import('./db')).getDb();
+      if (!db) return { byMonth: [], rejectionReasons: [], kpis: { hitRate: 0, totalOffers: 0, totalOrders: 0 } };
+      const { projects: projectsTable } = await import('../drizzle/schema');
+      const year = input?.year ?? new Date().getFullYear();
+      // Alle Projekte des Jahres laden (nach createdAt)
+      const allProjects = await db.select({
+        id: projectsTable.id,
+        status: projectsTable.status,
+        rejectionReason: projectsTable.rejectionReason,
+        createdAt: projectsTable.createdAt,
+        archivedAt: projectsTable.archivedAt,
+      }).from(projectsTable);
+      // Projekte des gewählten Jahres (nach createdAt)
+      const yearProjects = allProjects.filter((p: any) => p.createdAt && new Date(p.createdAt).getFullYear() === year);
+      // Aufträge = order, production, shipping, completed
+      const orderStatuses = ['order','production','shipping','completed'];
+      const offerStatuses = ['offer','calculation','inquiry','order','production','shipping','completed','cancelled','rejected'];
+      // Monatsverlauf
+      const byMonth = Array.from({ length: 12 }, (_, i) => {
+        const month = i + 1;
+        const monthProjects = yearProjects.filter((p: any) => p.createdAt && new Date(p.createdAt).getMonth() + 1 === month);
+        const orders = monthProjects.filter((p: any) => orderStatuses.includes(p.status)).length;
+        const rejected = monthProjects.filter((p: any) => p.status === 'rejected').length;
+        const offers = monthProjects.length;
+        return { month, offers, orders, rejected };
+      });
+      // Ablehnungsgründe des Jahres
+      const rejectedYear = yearProjects.filter((p: any) => p.status === 'rejected');
+      const reasonMap: Record<string, number> = {};
+      for (const p of rejectedYear) {
+        const r = (p.rejectionReason as string) ?? 'sonstiges';
+        reasonMap[r] = (reasonMap[r] ?? 0) + 1;
+      }
+      const rejectionReasons = Object.entries(reasonMap).map(([reason, count]) => ({ reason, count }));
+      // KPIs
+      const totalOffers = yearProjects.length;
+      const totalOrders = yearProjects.filter((p: any) => orderStatuses.includes(p.status)).length;
+      const hitRate = totalOffers > 0 ? Math.round((totalOrders / totalOffers) * 100) : 0;
+      return { byMonth, rejectionReasons, kpis: { hitRate, totalOffers, totalOrders } };
+    }),
   }),
 });
 export type AppRouter = typeof appRouter;
