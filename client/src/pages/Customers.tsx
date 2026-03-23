@@ -18,7 +18,7 @@ import {
   Plus, Search, Users, Mail, Phone, Building2, MapPin, Edit2, Trash2, User,
   Upload, FileSpreadsheet, CheckCircle2, AlertCircle, X, ChevronDown, ChevronUp,
   FolderOpen, Download, FileText, Image, File, Shield, ClipboardList, Package,
-  Loader2, ExternalLink, FolderSync, Wifi, WifiOff, Tag, AlertTriangle,
+  Loader2, ExternalLink, FolderSync, Wifi, WifiOff, Tag, AlertTriangle, Globe,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -199,6 +199,7 @@ type CustomerForm = {
   contact2: string; contact3: string;
   street: string; zip: string; city: string; country: string;
   notes: string;
+  website: string;
   flags: string[];
 };
 
@@ -209,6 +210,7 @@ const EMPTY_FORM: CustomerForm = {
   contact2: "", contact3: "",
   street: "", zip: "", city: "", country: "Deutschland",
   notes: "",
+  website: "",
   flags: [],
 };
 
@@ -598,6 +600,14 @@ function CustomerDialog({
           <Separator />
 
           <div className="space-y-1.5">
+            <Label>Webseite</Label>
+            <div className="relative">
+              <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input value={form.website} onChange={e => set("website", e.target.value)} placeholder="https://www.beispiel.de" className="pl-9" />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
             <Label>Notizen</Label>
             <Textarea value={form.notes} onChange={e => set("notes", e.target.value)} rows={2} placeholder="Interne Anmerkungen..." />
           </div>
@@ -874,6 +884,7 @@ export default function Customers() {
     city: (editCustomer as any).city ?? "",
     country: (editCustomer as any).country ?? "Deutschland",
     notes: editCustomer.notes ?? "",
+    website: (editCustomer as any).website ?? "",
     flags: (editCustomer as any).flags ?? [],
   } : EMPTY_FORM;
 
@@ -893,6 +904,7 @@ export default function Customers() {
       city: f.city || undefined,
       country: f.country || undefined,
       notes: f.notes || undefined,
+      website: f.website || undefined,
       flags: f.flags.length > 0 ? f.flags : undefined,
     });
   };
@@ -915,6 +927,7 @@ export default function Customers() {
       city: f.city || undefined,
       country: f.country || undefined,
       notes: f.notes || undefined,
+      website: f.website || undefined,
       flags: f.flags,
     });
   };
@@ -1013,6 +1026,17 @@ export default function Customers() {
                       <MapPin className="h-3 w-3 shrink-0" />
                       {[c.street, [c.zip, c.city].filter(Boolean).join(" "), c.country !== "Deutschland" ? c.country : ""].filter(Boolean).join(", ")}
                     </div>
+                  )}
+
+                  {(c as any).website && (
+                    <a
+                      href={(c as any).website.startsWith('http') ? (c as any).website : `https://${(c as any).website}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-muted-foreground hover:text-blue-400 flex items-center gap-1 w-fit transition-colors"
+                    >
+                      <Globe className="h-3 w-3" />{(c as any).website.replace(/^https?:\/\//, '')}
+                    </a>
                   )}
 
                   {/* Flags / Hinweise */}

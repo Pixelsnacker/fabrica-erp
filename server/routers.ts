@@ -115,6 +115,7 @@ export const appRouter = router({
       address: z.string().optional(),
       notes: z.string().optional(),
       sevdeskId: z.string().optional(),
+      website: z.string().optional(),
       flags: z.array(z.string()).optional(),
     })).mutation(async ({ input }) => { await createCustomer(input as any); return { success: true }; }),
     update: protectedProcedure.input(z.object({
@@ -135,6 +136,7 @@ export const appRouter = router({
       address: z.string().optional(),
       notes: z.string().optional(),
       isActive: z.boolean().optional(),
+      website: z.string().optional(),
       flags: z.array(z.string()).optional(),
     })).mutation(async ({ input }) => { const { id, ...data } = input; await updateCustomer(id, data as any); return { success: true }; }),
      delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => { await deleteCustomer(input.id); return { success: true }; }),
@@ -631,6 +633,7 @@ export const appRouter = router({
       address: z.string().optional(),
       capabilities: z.array(z.string()).optional(),
       rating: z.number().min(1).max(5).default(3),
+      website: z.string().optional(),
       notes: z.string().optional(),
     })).mutation(async ({ input }) => { await createSupplier(input as any); return { success: true }; }),
     update: protectedProcedure.input(z.object({
@@ -651,6 +654,7 @@ export const appRouter = router({
       capabilities: z.array(z.string()).optional(),
       rating: z.number().min(1).max(5).optional(),
       isActive: z.boolean().optional(),
+      website: z.string().optional(),
       notes: z.string().optional(),
     })).mutation(async ({ input }) => { const { id, ...data } = input; await updateSupplier(id, data as any); return { success: true }; }),
     delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => { await deleteSupplier(input.id); return { success: true }; }),

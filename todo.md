@@ -962,3 +962,9 @@
 - [x] Frontend: KPI-Kacheln (Hit Rate, Gesamtangebote, Gesamtaufträge)
 - [x] Sidebar-Menüpunkt "Statistik" hinzugefügt
 - [x] Vitest-Tests: 226 Tests grün
+
+## Phase 50: Webseiten-Feld für Kunden und Lieferanten
+- [x] DB: website-Spalte zu customers und suppliers hinzufügen
+- [x] tRPC: website-Feld in create/update für customers und suppliers
+- [x] Frontend: Webseiten-Feld im Bearbeiten-Dialog (Kunden + Lieferanten)
+- [x] Frontend: Webseiten-Link als klickbarer Link in der Karten-Ansicht

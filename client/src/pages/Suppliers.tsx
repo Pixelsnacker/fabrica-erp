@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import {
-  Plus, Search, Truck, Star, Mail, Phone, MapPin, Edit2, Trash2, User,
+  Plus, Search, Truck, Star, Mail, Phone, MapPin, Edit2, Trash2, User, Globe,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -24,6 +24,7 @@ type SupplierForm = {
   capabilities: string;
   rating: number;
   notes: string;
+  website: string;
 };
 
 const EMPTY_FORM: SupplierForm = {
@@ -35,6 +36,7 @@ const EMPTY_FORM: SupplierForm = {
   capabilities: "",
   rating: 3,
   notes: "",
+  website: "",
 };
 
 function SupplierDialog({
@@ -163,6 +165,14 @@ function SupplierDialog({
           </div>
 
           <div className="space-y-1.5">
+            <Label>Webseite</Label>
+            <div className="relative">
+              <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input value={form.website} onChange={e => set("website", e.target.value)} placeholder="https://www.beispiel.de" className="pl-9" />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
             <Label>Notizen</Label>
             <Textarea value={form.notes} onChange={e => set("notes", e.target.value)} rows={2} placeholder="Interne Anmerkungen..." />
           </div>
@@ -239,6 +249,7 @@ export default function Suppliers() {
       : String(editSupplier.capabilities ?? ""),
     rating: editSupplier.rating ?? 3,
     notes: editSupplier.notes ?? "",
+    website: (editSupplier as any).website ?? "",
   } : EMPTY_FORM;
 
   const toMutationInput = (f: SupplierForm) => ({
@@ -257,6 +268,7 @@ export default function Suppliers() {
     capabilities: f.capabilities ? f.capabilities.split(",").map(c => c.trim()).filter(Boolean) : undefined,
     rating: f.rating,
     notes: f.notes || undefined,
+    website: f.website || undefined,
   });
 
   return (
@@ -364,6 +376,17 @@ export default function Suppliers() {
                       <MapPin className="h-3 w-3 shrink-0" />
                       {[s.street, [s.zip, s.city].filter(Boolean).join(" "), s.country !== "Deutschland" ? s.country : ""].filter(Boolean).join(", ")}
                     </div>
+                  )}
+
+                  {(s as any).website && (
+                    <a
+                      href={(s as any).website.startsWith('http') ? (s as any).website : `https://${(s as any).website}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-muted-foreground hover:text-blue-400 flex items-center gap-1 w-fit transition-colors"
+                    >
+                      <Globe className="h-3 w-3" />{(s as any).website.replace(/^https?:\/\//, '')}
+                    </a>
                   )}
 
                   {/* Fähigkeiten */}
