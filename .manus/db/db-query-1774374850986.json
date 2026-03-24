@@ -1,0 +1,20 @@
+{
+  "query": "SELECT i.id, i.invoice_number, i.project_id, p.title as project_title, p.project_number, p.customer_id, c.name as customer_name, c.company as customer_company FROM invoices i LEFT JOIN projects p ON p.id = i.project_id LEFT JOIN customers c ON c.id = p.customer_id WHERE i.invoice_number = 'AN-2026-1862' LIMIT 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 9NNjvn7NV7enobv.7ea640e70a8c --database YMZow7uQxpBVyBGbmbpvvd --execute SELECT i.id, i.invoice_number, i.project_id, p.title as project_title, p.project_number, p.customer_id, c.name as customer_name, c.company as customer_company FROM invoices i LEFT JOIN projects p ON p.id = i.project_id LEFT JOIN customers c ON c.id = p.customer_id WHERE i.invoice_number = 'AN-2026-1862' LIMIT 1;",
+  "rows": [
+    {
+      "id": "360001",
+      "invoice_number": "AN-2026-1862",
+      "project_id": "270001",
+      "project_title": "3D Scan vor Ort Nörvenich 3 Bronzeplatten",
+      "project_number": "2026-24-03",
+      "customer_id": "270001",
+      "customer_name": "Andreas Eck",
+      "customer_company": "Andreas Eck"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tinvoice_number\tproject_id\tproject_title\tproject_number\tcustomer_id\tcustomer_name\tcustomer_company\n360001\tAN-2026-1862\t270001\t3D Scan vor Ort Nörvenich 3 Bronzeplatten\t2026-24-03\t270001\tAndreas Eck\tAndreas Eck\n",
+  "stderr": "",
+  "execution_time_ms": 360
+}

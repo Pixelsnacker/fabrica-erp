@@ -1,0 +1,37 @@
+{
+  "query": "SELECT id, invoice_number, type, subtotal_net, tax_amount, total_gross, project_id FROM invoices WHERE subtotal_net = '0.00' OR subtotal_net = '0' OR subtotal_net IS NULL ORDER BY created_at DESC LIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 9NNjvn7NV7enobv.7ea640e70a8c --database YMZow7uQxpBVyBGbmbpvvd --execute SELECT id, invoice_number, type, subtotal_net, tax_amount, total_gross, project_id FROM invoices WHERE subtotal_net = '0.00' OR subtotal_net = '0' OR subtotal_net IS NULL ORDER BY created_at DESC LIMIT 20;",
+  "rows": [
+    {
+      "id": "330006",
+      "invoice_number": "AN-2026-1861",
+      "type": "offer",
+      "subtotal_net": "0.00",
+      "tax_amount": "0.00",
+      "total_gross": "0.00",
+      "project_id": "240001"
+    },
+    {
+      "id": "330003",
+      "invoice_number": "AN-2026-1858",
+      "type": "offer",
+      "subtotal_net": "0.00",
+      "tax_amount": "0.00",
+      "total_gross": "0.00",
+      "project_id": "240001"
+    },
+    {
+      "id": "330001",
+      "invoice_number": "AN-2026-1857",
+      "type": "offer",
+      "subtotal_net": "0.00",
+      "tax_amount": "0.00",
+      "total_gross": "0.00",
+      "project_id": "240001"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tinvoice_number\ttype\tsubtotal_net\ttax_amount\ttotal_gross\tproject_id\n330006\tAN-2026-1861\toffer\t0.00\t0.00\t0.00\t240001\n330003\tAN-2026-1858\toffer\t0.00\t0.00\t0.00\t240001\n330001\tAN-2026-1857\toffer\t0.00\t0.00\t0.00\t240001\n",
+  "stderr": "",
+  "execution_time_ms": 349
+}

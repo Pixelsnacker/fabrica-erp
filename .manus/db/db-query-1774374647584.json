@@ -1,0 +1,50 @@
+{
+  "query": "SELECT i.invoice_number, ii.position, ii.description, ii.is_optional, ii.line_total_net FROM invoices i JOIN invoice_items ii ON ii.invoice_id = i.id WHERE i.id IN (330006, 330003, 330001) ORDER BY i.id, ii.position;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 9NNjvn7NV7enobv.7ea640e70a8c --database YMZow7uQxpBVyBGbmbpvvd --execute SELECT i.invoice_number, ii.position, ii.description, ii.is_optional, ii.line_total_net FROM invoices i JOIN invoice_items ii ON ii.invoice_id = i.id WHERE i.id IN (330006, 330003, 330001) ORDER BY i.id, ii.position;",
+  "rows": [
+    {
+      "invoice_number": "AN-2026-1857",
+      "position": "1",
+      "description": "CAD Daten Erstellung Verpackung 125 ml inkl Volumen-Tests",
+      "is_optional": "1",
+      "line_total_net": "550.00"
+    },
+    {
+      "invoice_number": "AN-2026-1858",
+      "position": "1",
+      "description": "CAD Daten Anpassung Verpackung 200 ml inkl Volumen-Tests Logo Platzierung",
+      "is_optional": "1",
+      "line_total_net": "250.00"
+    },
+    {
+      "invoice_number": "AN-2026-1861",
+      "position": "1",
+      "description": "CAD Daten Erstellung Verpackung 80 ml inkl. Volumen-Tests",
+      "is_optional": "1",
+      "line_total_net": "550.00"
+    }
+  ],
+  "messages": [
+    "AN-2026-1857\t2\t3D-Druck Service ab Druckauftrag \"SIG 125ml\" Konfektioniert. Größe: \t",
+    "86 mm Farbe: Schwarz Material: TPU Druckqualität: Hoch/Fein (0,2-0,4mm) Lieferzeit: ca. 21 Tage ab Bestellung\t1\t6450.00",
+    "AN-2026-1857\t3\t3D-Druck Service ab Druckauftrag \"SIG 125ml\" Konfektioniert nach Gewichtsangabe. Größe: \t",
+    "86 mm Farbe: Schwarz Material: TPU Druckqualität: Hoch/Fein (0,2-0,4mm) Lieferzeit: ca. 30 Tage ab Bestellung\t1\t18900.00",
+    "AN-2026-1857\t4\t3D-Druck Service ab Druckauftrag \"SIG  125ml\" Konfektioniert nach Gewichtsangabe. Größe: \t",
+    "86 mm Farbe: Schwarz Material: TPU Druckqualität: Hoch/Fein (0,2-0,4mm) Lieferzeit: ca. 50 Tage ab Bestellung\t1\t34200.00",
+    "AN-2026-1858\t2\t3D-Druck Service ab Druckauftrag \"SIG Tetrapack 200 ml\" Konfektioniert. Größe: \t",
+    "86 mm Farbe: Schwarz Material: TPU Druckqualität: Hoch/Fein (0,2-0,4mm) Lieferzeit: ca. 21 Tage ab Bestellung\t1\t7250.00",
+    "AN-2026-1858\t3\t3D-Druck Service ab Druckauftrag \"SIG 200 ml\" Konfektioniert nach Gewichtsangabe. Größe: \t",
+    "86 mm Farbe: Schwarz Material: TPU Druckqualität: Hoch/Fein (0,2-0,4mm) Lieferzeit: ca. 30 Tage ab Bestellung\t1\t18900.00",
+    "AN-2026-1858\t4\t3D-Druck Service ab Druckauftrag \"SIG 200 ml\" Konfektioniert nach Gewichtsangabe. Größe: \t",
+    "86 mm Farbe: Schwarz Material: TPU Druckqualität: Hoch/Fein (0,2-0,4mm) Lieferzeit: ca. 50 Tage ab Bestellung\t1\t34200.00",
+    "AN-2026-1861\t2\t3D-Druck Service ab Druckauftrag \"SIG 80 ml\" Konfektioniert. Größe: \t",
+    "56,5 mm Farbe: Schwarz Material: TPU Druckqualität: Hoch/Fein (0,2-0,4mm) Lieferzeit: ca. 16 Tage ab Bestellung\t1\t4450.00",
+    "AN-2026-1861\t3\t3D-Druck Service ab Druckauftrag \"SIG 125ml\" Konfektioniert nach Gewichtsangabe. Größe: \t",
+    "56,5 mm Farbe: Schwarz Material: TPU Druckqualität: Hoch/Fein (0,2-0,4mm) Lieferzeit: ca. 25 Tage ab Bestellung\t1\t13500.00",
+    "AN-2026-1861\t4\t3D-Druck Service ab Druckauftrag \"SIG  125ml\" Konfektioniert nach Gewichtsangabe. Größe: \t",
+    "56,5 mm Farbe: Schwarz Material: TPU Druckqualität: Hoch/Fein (0,2-0,4mm) Lieferzeit: ca. 40 Tage ab Bestellung\t1\t24480.00"
+  ],
+  "stdout": "invoice_number\tposition\tdescription\tis_optional\tline_total_net\nAN-2026-1857\t1\tCAD Daten Erstellung Verpackung 125 ml inkl Volumen-Tests\t1\t550.00\nAN-2026-1857\t2\t3D-Druck Service ab Druckauftrag \"SIG 125ml\" Konfektioniert. Größe: \t\n86 mm Farbe: Schwarz Material: TPU Druckqualität: Hoch/Fein (0,2-0,4mm) Lieferzeit: ca. 21 Tage ab Bestellung\t1\t6450.00\nAN-2026-1857\t3\t3D-Druck Service ab Druckauftrag \"SIG 125ml\" Konfektioniert nach Gewichtsangabe. Größe: \t\n86 mm Farbe: Schwarz Material: TPU Druckqualität: Hoch/Fein (0,2-0,4mm) Lieferzeit: ca. 30 Tage ab Bestellung\t1\t18900.00\nAN-2026-1857\t4\t3D-Druck Service ab Druckauftrag \"SIG  125ml\" Konfektioniert nach Gewichtsangabe. Größe: \t\n86 mm Farbe: Schwarz Material: TPU Druckqualität: Hoch/Fein (0,2-0,4mm) Lieferzeit: ca. 50 Tage ab Bestellung\t1\t34200.00\nAN-2026-1858\t1\tCAD Daten Anpassung Verpackung 200 ml inkl Volumen-Tests Logo Platzierung\t1\t250.00\nAN-2026-1858\t2\t3D-Druck Service ab Druckauftrag \"SIG Tetrapack 200 ml\" Konfektioniert. Größe: \t\n86 mm Farbe: Schwarz Material: TPU Druckqualität: Hoch/Fein (0,2-0,4mm) Lieferzeit: ca. 21 Tage ab Bestellung\t1\t7250.00\nAN-2026-1858\t3\t3D-Druck Service ab Druckauftrag \"SIG 200 ml\" Konfektioniert nach Gewichtsangabe. Größe: \t\n86 mm Farbe: Schwarz Material: TPU Druckqualität: Hoch/Fein (0,2-0,4mm) Lieferzeit: ca. 30 Tage ab Bestellung\t1\t18900.00\nAN-2026-1858\t4\t3D-Druck Service ab Druckauftrag \"SIG 200 ml\" Konfektioniert nach Gewichtsangabe. Größe: \t\n86 mm Farbe: Schwarz Material: TPU Druckqualität: Hoch/Fein (0,2-0,4mm) Lieferzeit: ca. 50 Tage ab Bestellung\t1\t34200.00\nAN-2026-1861\t1\tCAD Daten Erstellung Verpackung 80 ml inkl. Volumen-Tests\t1\t550.00\nAN-2026-1861\t2\t3D-Druck Service ab Druckauftrag \"SIG 80 ml\" Konfektioniert. Größe: \t\n56,5 mm Farbe: Schwarz Material: TPU Druckqualität: Hoch/Fein (0,2-0,4mm) Lieferzeit: ca. 16 Tage ab Bestellung\t1\t4450.00\nAN-2026-1861\t3\t3D-Druck Service ab Druckauftrag \"SIG 125ml\" Konfektioniert nach Gewichtsangabe. Größe: \t\n56,5 mm Farbe: Schwarz Material: TPU Druckqualität: Hoch/Fein (0,2-0,4mm) Lieferzeit: ca. 25 Tage ab Bestellung\t1\t13500.00\nAN-2026-1861\t4\t3D-Druck Service ab Druckauftrag \"SIG  125ml\" Konfektioniert nach Gewichtsangabe. Größe: \t\n56,5 mm Farbe: Schwarz Material: TPU Druckqualität: Hoch/Fein (0,2-0,4mm) Lieferzeit: ca. 40 Tage ab Bestellung\t1\t24480.00\n",
+  "stderr": "",
+  "execution_time_ms": 362
+}

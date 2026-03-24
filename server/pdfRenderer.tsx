@@ -89,11 +89,11 @@ const S = StyleSheet.create({
   // Summen
   summaryBlock: { marginTop: 10, alignItems: 'flex-end' },
   summaryRow: { flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 2 },
-  summaryLabel: { fontSize: 9, color: '#555', width: 100, textAlign: 'right', marginRight: 8 },
-  summaryValue: { fontSize: 9, width: 70, textAlign: 'right' },
+  summaryLabel: { fontSize: 9, color: '#555', width: 160, textAlign: 'right', marginRight: 8 },
+  summaryValue: { fontSize: 9, width: 80, textAlign: 'right' },
   summaryTotalRow: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 4, borderTopWidth: 0.5, borderTopColor: '#333', paddingTop: 4 },
-  summaryTotalLabel: { fontSize: 11, fontFamily: 'Helvetica-Bold', width: 100, textAlign: 'right', marginRight: 8 },
-  summaryTotalValue: { fontSize: 11, fontFamily: 'Helvetica-Bold', width: 70, textAlign: 'right' },
+  summaryTotalLabel: { fontSize: 11, fontFamily: 'Helvetica-Bold', width: 160, textAlign: 'right', marginRight: 8 },
+  summaryTotalValue: { fontSize: 11, fontFamily: 'Helvetica-Bold', width: 80, textAlign: 'right' },
 
   // Notizen / Zahlungsbedingungen
   notesText: { fontSize: 8, color: '#555', marginTop: 12, lineHeight: 1.5 },

@@ -1,0 +1,12 @@
+{
+  "query": "\nSELECT id, invoice_number, type, subtotal_net, tax_amount, total_gross, project_id,\n  (SELECT COUNT(*) FROM invoice_items ii WHERE ii.invoice_id = invoices.id AND ii.is_optional = 0) as required_count,\n  (SELECT COUNT(*) FROM invoice_items ii WHERE ii.invoice_id = invoices.id AND ii.is_optional = 1) as optional_count\nFROM invoices\nWHERE subtotal_net = '0.00' OR subtotal_net = '0' OR subtotal_net IS NULL\nORDER BY created_at DESC LIMIT 20;\n\nSELECT sender_name, sender_company FROM company_settings LIMIT 1;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 9NNjvn7NV7enobv.7ea640e70a8c --database YMZow7uQxpBVyBGbmbpvvd --execute \nSELECT id, invoice_number, type, subtotal_net, tax_amount, total_gross, project_id,\n  (SELECT COUNT(*) FROM invoice_items ii WHERE ii.invoice_id = invoices.id AND ii.is_optional = 0) as required_count,\n  (SELECT COUNT(*) FROM invoice_items ii WHERE ii.invoice_id = invoices.id AND ii.is_optional = 1) as optional_count\nFROM invoices\nWHERE subtotal_net = '0.00' OR subtotal_net = '0' OR subtotal_net IS NULL\nORDER BY created_at DESC LIMIT 20;\n\nSELECT sender_name, sender_company FROM company_settings LIMIT 1;\n",
+  "returncode": 1,
+  "logs": [
+    "id\tinvoice_number\ttype\tsubtotal_net\ttax_amount\ttotal_gross\tproject_id\trequired_count\toptional_count",
+    "330006\tAN-2026-1861\toffer\t0.00\t0.00\t0.00\t240001\t0\t4",
+    "330003\tAN-2026-1858\toffer\t0.00\t0.00\t0.00\t240001\t0\t4",
+    "330001\tAN-2026-1857\toffer\t0.00\t0.00\t0.00\t240001\t0\t4",
+    "ERROR 1054 (42S22) at line 9: Unknown column 'sender_name' in 'field list'"
+  ]
+}
