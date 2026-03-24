@@ -19,7 +19,7 @@ import {
   Plus, FileText, Receipt, Search, Download, Lock, XCircle,
   ChevronDown, ChevronUp, Trash2, Eye, History, AlertTriangle,
   CheckCircle, Clock, Send, Euro, Loader2, Printer, BookOpen, ArrowRight,
-  PackageSearch, FolderOpen, Package, Copy, Sparkles, Check, X, Truck
+  PackageSearch, FolderOpen, Package, Copy, Sparkles, Check, X, Truck, Mail
 } from "lucide-react";
 
 // ─── PDF Download ───────────────────────────────────────────────────────────
@@ -346,6 +346,17 @@ export default function Invoices() {
   // E-Mail-Versand
   const [showEmailDialog, setShowEmailDialog] = useState<number | null>(null);
   const [emailForm, setEmailForm] = useState({ to: '', cc: '', subject: '', body: '' });
+  // Gmail-Entwurf
+  const [showGmailDialog, setShowGmailDialog] = useState<number | null>(null);
+  const [gmailDraftData, setGmailDraftData] = useState<{ to: string; subject: string; body: string; pdfUrl: string; pdfFilename: string; invoiceNumber: string } | null>(null);
+  const [gmailDraftSent, setGmailDraftSent] = useState(false);
+  const prepareGmailDraft = trpc.companySettings.prepareGmailDraft.useMutation({
+    onSuccess: (data) => {
+      setGmailDraftData(data);
+      setGmailDraftSent(false);
+    },
+    onError: (e) => toast.error('Fehler: ' + e.message),
+  });
   const sendOfferEmail = trpc.companySettings.sendOfferEmail.useMutation({
     onSuccess: () => { toast.success('E-Mail erfolgreich versendet!'); setShowEmailDialog(null); },
     onError: (e) => toast.error('Fehler: ' + e.message),
@@ -912,6 +923,7 @@ export default function Invoices() {
                 </Button>
 
                 {['offer','order_confirmation','purchase_order'].includes(inv.type) && (
+                  <>
                   <Button size="sm" variant="outline" className="text-blue-400 border-blue-400/30" onClick={() => {
                     const typeLabel = TYPE_LABELS[inv.type as InvoiceType] ?? inv.type;
                     setEmailForm({
@@ -924,6 +936,15 @@ export default function Invoices() {
                   }}>
                     <Send className="w-3 h-3 mr-1" /> E-Mail
                   </Button>
+                  <Button size="sm" variant="outline" className="text-green-400 border-green-400/30" onClick={() => {
+                    setShowGmailDialog(inv.id);
+                    setGmailDraftData(null);
+                    prepareGmailDraft.mutate({ invoiceId: inv.id });
+                  }} disabled={prepareGmailDraft.isPending && showGmailDialog === inv.id}>
+                    {prepareGmailDraft.isPending && showGmailDialog === inv.id ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Mail className="w-3 h-3 mr-1" />}
+                    Gmail
+                  </Button>
+                  </>
                 )}
                 {!inv.isLocked && inv.type === 'invoice' && inv.status !== 'cancelled' && (
                   <Button size="sm" variant="outline" className="text-yellow-400 border-yellow-400/30" onClick={() => { if (confirm('Rechnung finalisieren (GoBD-gesperrt)?')) lockMut.mutate({ id: inv.id }); }}>
@@ -1624,6 +1645,7 @@ export default function Invoices() {
                     </Button>
                   )}
                   {['offer','order_confirmation','purchase_order'].includes(detailData.type) && (
+                    <>
                     <Button size="sm" variant="outline" className="text-blue-400 border-blue-400/30" onClick={() => {
                       const typeLabel = TYPE_LABELS[detailData.type as InvoiceType] ?? detailData.type;
                       setEmailForm({
@@ -1636,6 +1658,15 @@ export default function Invoices() {
                     }}>
                       <Send className="w-3 h-3 mr-1" /> Per E-Mail senden
                     </Button>
+                    <Button size="sm" variant="outline" className="text-green-400 border-green-400/30" onClick={() => {
+                      setShowGmailDialog(detailData.id);
+                      setGmailDraftData(null);
+                      prepareGmailDraft.mutate({ invoiceId: detailData.id });
+                    }} disabled={prepareGmailDraft.isPending && showGmailDialog === detailData.id}>
+                      {prepareGmailDraft.isPending && showGmailDialog === detailData.id ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Mail className="w-3 h-3 mr-1" />}
+                      Gmail-Entwurf
+                    </Button>
+                    </>
                   )}
               </div>
             </div>
@@ -1924,7 +1955,105 @@ export default function Invoices() {
         </DialogContent>
       </Dialog>
 
-      {/* ─── Konvertierungs-Dialog ──────────────────────────────────────────────── */}
+      {/* ─── Gmail-Entwurf-Dialog ─────────────────────────────────────────────────────────────────────────────────────────── */}
+      <Dialog open={showGmailDialog !== null} onOpenChange={(open) => { if (!open) { setShowGmailDialog(null); setGmailDraftData(null); } }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="w-5 h-5 text-green-400" />
+              Gmail-Entwurf erstellen
+            </DialogTitle>
+          </DialogHeader>
+          {prepareGmailDraft.isPending && (
+            <div className="flex items-center justify-center py-8 gap-3 text-muted-foreground">
+              <Loader2 className="w-5 h-5 animate-spin" />
+              <span>PDF wird generiert...</span>
+            </div>
+          )}
+          {gmailDraftData && !gmailDraftSent && (
+            <div className="space-y-4 py-2">
+              <div className="rounded-md bg-green-500/10 border border-green-500/20 p-3">
+                <p className="text-sm font-medium text-green-400 mb-1">PDF bereit</p>
+                <p className="text-xs text-muted-foreground">Das PDF wurde generiert. Bitte prüfen Sie die E-Mail-Daten und klicken Sie auf "Entwurf erstellen".</p>
+                <a href={gmailDraftData.pdfUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 underline mt-1 inline-block">
+                  PDF ansehen ({gmailDraftData.pdfFilename})
+                </a>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Empfänger (An)</label>
+                <input
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={gmailDraftData.to}
+                  onChange={e => setGmailDraftData(d => d ? { ...d, to: e.target.value } : d)}
+                  placeholder="kunde@beispiel.de"
+                  type="email"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Betreff</label>
+                <input
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={gmailDraftData.subject}
+                  onChange={e => setGmailDraftData(d => d ? { ...d, subject: e.target.value } : d)}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Nachricht</label>
+                <textarea
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono"
+                  rows={12}
+                  value={gmailDraftData.body}
+                  onChange={e => setGmailDraftData(d => d ? { ...d, body: e.target.value } : d)}
+                />
+              </div>
+            </div>
+          )}
+          {gmailDraftSent && (
+            <div className="flex flex-col items-center justify-center py-8 gap-3">
+              <CheckCircle className="w-12 h-12 text-green-400" />
+              <p className="text-lg font-medium">Entwurf erstellt!</p>
+              <p className="text-sm text-muted-foreground">Der Gmail-Entwurf wurde in Ihrem Postfach gespeichert.</p>
+              <Button variant="outline" onClick={() => { setShowGmailDialog(null); setGmailDraftData(null); setGmailDraftSent(false); }}>
+                Schließen
+              </Button>
+            </div>
+          )}
+          {!prepareGmailDraft.isPending && !gmailDraftSent && gmailDraftData && (
+            <DialogFooter>
+              <Button variant="outline" onClick={() => { setShowGmailDialog(null); setGmailDraftData(null); }}>Abbrechen</Button>
+              <Button
+                className="gap-2 bg-green-600 hover:bg-green-700 text-white"
+                onClick={async () => {
+                  if (!gmailDraftData) return;
+                  try {
+                    // PDF als Blob herunterladen für den Anhang
+                    const pdfResp = await fetch(gmailDraftData.pdfUrl);
+                    const pdfBlob = await pdfResp.blob();
+                    const pdfFile = new File([pdfBlob], gmailDraftData.pdfFilename, { type: 'application/pdf' });
+                    // Gmail-Compose-URL öffnen (mailto-Fallback)
+                    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(gmailDraftData.to)}&su=${encodeURIComponent(gmailDraftData.subject)}&body=${encodeURIComponent(gmailDraftData.body)}`;
+                    window.open(gmailUrl, '_blank');
+                    // PDF automatisch herunterladen
+                    const dlLink = document.createElement('a');
+                    dlLink.href = gmailDraftData.pdfUrl;
+                    dlLink.download = gmailDraftData.pdfFilename;
+                    dlLink.click();
+                    setGmailDraftSent(true);
+                    toast.success('Gmail geöffnet! PDF wurde heruntergeladen – bitte manuell anhängen.');
+                  } catch (err) {
+                    toast.error('Fehler beim Öffnen von Gmail.');
+                  }
+                }}
+              >
+                <Mail className="w-4 h-4" />
+                In Gmail öffnen + PDF herunterladen
+              </Button>
+            </DialogFooter>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Konvertierungs-Dialog ───────────────────────────────────────────────────────────────────────────────────── */}
       <Dialog open={showConvertDialog !== null} onOpenChange={() => setShowConvertDialog(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>

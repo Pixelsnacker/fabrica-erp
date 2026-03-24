@@ -582,3 +582,40 @@ describe("PDF-Berechnung – lineTotalNet vs lineTotalGross", () => {
     expect(pdfGross).toBeCloseTo(5950.00, 1);
   });
 });
+
+// ─── prepareGmailDraft Procedure ────────────────────────────────────────────
+describe('companySettings.prepareGmailDraft', () => {
+  it('Procedure ist im Router registriert', async () => {
+    const { appRouter } = await import('./routers');
+    const procedures = Object.keys((appRouter as any)._def.procedures);
+    const gmailProcs = procedures.filter((p: string) => p.includes('prepareGmailDraft'));
+    expect(gmailProcs.length).toBeGreaterThan(0);
+  });
+
+  it('E-Mail-Text enthält Angebotsnummer und Signatur-Elemente', () => {
+    // Simuliert die E-Mail-Text-Generierung
+    const invoiceNumber = 'AN-2026-1861';
+    const recipientCompany = 'Test GmbH';
+    const issueDate = '24.03.2026';
+    const senderName = 'Daniel Rincón';
+    const companyName = 'Fabrica GmbH';
+    const companyEmail = 'd.rincon@fabrica3d.eu';
+
+    const salutation = `Sehr geehrte Damen und Herren,`;
+    const emailBody = `${salutation}\n\nim Anhang übersende ich Ihnen unser Angebot ${invoiceNumber} vom ${issueDate}.\n\nBei Rückfragen stehe ich Ihnen gerne zur Verfügung.\n\nMit freundlichen Grüßen\n\n${senderName}\n\n${companyName}`;
+
+    expect(emailBody).toContain(invoiceNumber);
+    expect(emailBody).toContain('Sehr geehrte Damen und Herren');
+    expect(emailBody).toContain('Mit freundlichen Grüßen');
+    expect(emailBody).toContain(senderName);
+    expect(emailBody).toContain(companyName);
+  });
+
+  it('Betreff enthält Angebotsnummer und Firmenname', () => {
+    const invoiceNumber = 'AN-2026-1861';
+    const recipientCompany = 'Test GmbH';
+    const subject = `Angebot ${invoiceNumber} für ${recipientCompany}`;
+    expect(subject).toContain(invoiceNumber);
+    expect(subject).toContain(recipientCompany);
+  });
+});

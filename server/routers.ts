@@ -1896,6 +1896,80 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
         // sentAsEmail-Flag setzen (sofern vorhanden)
         return { success: true, messageId: result.messageId };
       }),
+
+    // ─── Gmail-Entwurf vorbereiten: PDF generieren + S3 hochladen + Entwurfsdaten zurückgeben ───
+    prepareGmailDraft: protectedProcedure
+      .input(z.object({ invoiceId: z.number() }))
+      .mutation(async ({ input }) => {
+        const inv = await getInvoiceById(input.invoiceId);
+        if (!inv) throw new Error('Angebot nicht gefunden');
+        const cs = await getCompanySettings();
+
+        // PDF generieren und auf S3 hochladen
+        const pdfBuffer = await renderInvoicePdf(inv, cs);
+        const fileKey = `gmail-drafts/${inv.invoiceNumber}-${Date.now()}.pdf`;
+        const { url: pdfUrl } = await storagePut(fileKey, pdfBuffer, 'application/pdf');
+
+        // E-Mail-Metadaten vorbereiten
+        const invoiceNumber = inv.invoiceNumber ?? '';
+        const recipientCompany = inv.recipientCompany ?? '';
+        const recipientName = inv.recipientName ?? '';
+        const issueDate = inv.issueDate ?? new Date().toLocaleDateString('de-DE');
+        const senderName = cs?.ownerName ?? 'Daniel Rincón';
+        const companyName = cs?.name ?? 'Fabrica GmbH';
+        const companyPhone = cs?.phone ?? '+49(0)2273-9529429';
+        const companyMobile = cs?.mobile ?? '+49(0)170/8342238';
+        const companyEmail = cs?.email ?? 'd.rincon@fabrica3d.eu';
+        const companyWebsite = cs?.website ?? 'www.fabrica3d.de';
+        const companyStreet = cs?.street ?? 'Hüttenstraße 205';
+        const companyCity = [cs?.zip, cs?.city].filter(Boolean).join(' ') || '50170 Kerpen-Sindorf';
+
+        const salutation = recipientName
+          ? `Sehr geehrte${recipientName.toLowerCase().includes('herr') ? 'r' : ''} ${recipientName},`
+          : recipientCompany
+          ? `Sehr geehrte Damen und Herren,`
+          : `Sehr geehrte Damen und Herren,`;
+
+        const emailBody = `${salutation}
+
+im Anhang übersende ich Ihnen unser Angebot ${invoiceNumber} vom ${issueDate}.
+
+Bei Rückfragen stehe ich Ihnen gerne zur Verfügung.
+
+Mit freundlichen Grüßen
+
+${senderName}
+
+${companyName}
+${companyStreet}
+${companyCity}
+
+Tel.: ${companyPhone}
+Mobil: ${companyMobile}
+${companyEmail}
+${companyWebsite}
+
+---
+Diese Nachricht ist ausschließlich für den oben bezeichneten Adressaten bestimmt und enthält möglicherweise vertrauliche Informationen. Sollten Sie nicht der oben bezeichnete Adressat sein oder diese Nachricht irrtümlich erhalten haben, ersuchen wir Sie diese Nachricht nicht weiterzugeben, zu kopieren oder im Vertrauen darauf zu handeln, sondern uns unter ${companyEmail} zu verständigen und diese Nachricht sofort zu löschen.`;
+
+        const subject = recipientCompany
+          ? `Angebot ${invoiceNumber} für ${recipientCompany}`
+          : `Angebot ${invoiceNumber}`;
+
+        return {
+          success: true,
+          pdfUrl,
+          pdfFilename: `${invoiceNumber}.pdf`,
+          pdfBase64: pdfBuffer.toString('base64'),
+          to: inv.recipientEmail ?? '',
+          subject,
+          body: emailBody,
+          invoiceNumber,
+          recipientCompany,
+          recipientName,
+        };
+      }),
+
     numberPreview: protectedProcedure
       .input(z.object({
         type: z.enum(['offer', 'invoice', 'credit_note']),

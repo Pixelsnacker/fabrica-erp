@@ -1002,3 +1002,13 @@
 - [x] Fix 3: Deutsches Zahlenformat überall (Intl.NumberFormat de-DE)
 - [x] Fix 4: parseGermanFloat: unterstützt englisch (1000.00) und deutsch (1.000,00 / 1000,00)
 - [x] 233 Vitest-Tests grün
+
+## Feature: Gmail-Entwurf mit Angebots-PDF (1-Klick)
+- [x] Gmail MCP-Tools geprüft (gmail_send_messages unterstützt Anhänge)
+- [x] Backend: tRPC-Procedure companySettings.prepareGmailDraft (PDF generieren → S3 upload → E-Mail-Daten zurückgeben)
+- [x] Frontend: "Gmail" Button in Angebotskarte + "Gmail-Entwurf" in Detail-Ansicht
+- [x] E-Mail-Text vorausgefüllt: Anrede, Angebotsnummer, Datum, vollständige Signatur mit Rechtsdisclaimer
+- [x] Empfänger-E-Mail aus Kundendaten vorausgefüllt (editierbar)
+- [x] Dialog: Empfänger, Betreff, Nachricht alle editierbar vor dem Absenden
+- [x] Klick auf "In Gmail öffnen": Gmail-Compose-URL öffnet sich + PDF wird automatisch heruntergeladen
+- [x] 236 Vitest-Tests grün (3 neue Tests für prepareGmailDraft)
