@@ -1,0 +1,20 @@
+{
+  "query": "\nSELECT i.id, i.invoice_number, i.subtotal_net, i.tax_amount, i.total_gross,\n  (SELECT SUM(line_total_net) FROM invoice_items WHERE invoice_id = i.id) as items_net,\n  (SELECT SUM(line_tax) FROM invoice_items WHERE invoice_id = i.id) as items_tax,\n  (SELECT COUNT(*) FROM invoice_items WHERE invoice_id = i.id) as item_count\nFROM invoices i\nWHERE i.invoice_number = 'AN-2026-1861';\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 9NNjvn7NV7enobv.7ea640e70a8c --database YMZow7uQxpBVyBGbmbpvvd --execute \nSELECT i.id, i.invoice_number, i.subtotal_net, i.tax_amount, i.total_gross,\n  (SELECT SUM(line_total_net) FROM invoice_items WHERE invoice_id = i.id) as items_net,\n  (SELECT SUM(line_tax) FROM invoice_items WHERE invoice_id = i.id) as items_tax,\n  (SELECT COUNT(*) FROM invoice_items WHERE invoice_id = i.id) as item_count\nFROM invoices i\nWHERE i.invoice_number = 'AN-2026-1861';\n",
+  "rows": [
+    {
+      "id": "330006",
+      "invoice_number": "AN-2026-1861",
+      "subtotal_net": "42980.00",
+      "tax_amount": "8166.20",
+      "total_gross": "51146.20",
+      "items_net": "42980.00",
+      "items_tax": "8166.20",
+      "item_count": "4"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tinvoice_number\tsubtotal_net\ttax_amount\ttotal_gross\titems_net\titems_tax\titem_count\n330006\tAN-2026-1861\t42980.00\t8166.20\t51146.20\t42980.00\t8166.20\t4\n",
+  "stderr": "",
+  "execution_time_ms": 361
+}

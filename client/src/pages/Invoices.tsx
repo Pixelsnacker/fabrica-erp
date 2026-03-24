@@ -100,11 +100,10 @@ function calcItem(item: InvoiceItem, taxMode: TaxMode): InvoiceItem {
 }
 
 function calcTotals(items: InvoiceItem[]) {
-  // Optionale Positionen werden NICHT in die Gesamtsumme aufgenommen
-  const required = items.filter(i => !i.isOptional);
+  // Alle Positionen (auch optionale) in die Gesamtsumme einrechnen
   const optional = items.filter(i => i.isOptional);
-  const net = required.reduce((s, i) => s + parseFloat(i.lineTotalNet || '0'), 0);
-  const tax = required.reduce((s, i) => s + parseFloat(i.lineTax || '0'), 0);
+  const net = items.reduce((s, i) => s + parseFloat(i.lineTotalNet || '0'), 0);
+  const tax = items.reduce((s, i) => s + parseFloat(i.lineTax || '0'), 0);
   const optionalNet = optional.reduce((s, i) => s + parseFloat(i.lineTotalNet || '0'), 0);
   const totalDiscount = items.reduce((s, i) => s + parseFloat(i.discountedNet || '0'), 0);
   return {

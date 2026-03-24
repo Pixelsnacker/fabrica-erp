@@ -526,6 +526,7 @@ export const projectDocuments = mysqlTable("project_documents", {
   id: int("id").primaryKey().autoincrement(),
   projectId: int("project_id").notNull(),
   supplierId: int("supplier_id"),
+  customerId: int("customer_id"),
   category: mysqlEnum("category", [
     "supplier_offer",   // Lieferantenangebot
     "nda",              // Geheimhaltungserklärung

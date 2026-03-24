@@ -2154,6 +2154,7 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
       .input(z.object({
         projectId: z.number(),
         supplierId: z.number().nullable().optional(),
+        customerId: z.number().nullable().optional(),
         category: z.enum(['supplier_offer','nda','order','delivery_note','invoice','contract','drawing','cad_data','photo','protocol','rendering','other']).default('other'),
         filename: z.string(),
         fileBase64: z.string(),
@@ -2170,6 +2171,7 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
         await db.insert(projectDocuments).values({
           projectId: input.projectId,
           supplierId: input.supplierId ?? null,
+          customerId: input.customerId ?? null,
           category: input.category,
           filename: input.filename,
           fileKey,

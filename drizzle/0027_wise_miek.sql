@@ -1,0 +1,1 @@
+ALTER TABLE `project_documents` ADD `customer_id` int;

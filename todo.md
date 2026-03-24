@@ -981,3 +981,17 @@
 - [x] PDF-Generator: alle Positionen (auch optionale) in Netto/MwSt/Gesamt einrechnen
 - [x] PDF: Spalte "Gesamt brutto" auf "Gesamt netto" korrigiert
 - [x] PDF: Positions-Summe von lineTotalGross auf lineTotalNet korrigiert
+
+## Phase 51: Kunden-Zuordnung bei Projekt-Dokumenten
+- [x] Dokument-Upload-Dialog: Kunden als Zuordnungsoption (neben Lieferanten, gegenseitig exklusiv)
+- [x] Dokument-Filter: Kunden und Lieferanten getrennt filterbar (c:id / s:id Prefix)
+- [x] DB: customer_id Feld in project_documents vorhanden
+- [x] Dokument-Karte: Kunden grün (👤), Lieferanten blau (🏗️)
+
+## Bug-Fix: PDF Netto/Brutto (echter Root Cause, 24.03.2026)
+- [x] Root Cause 1: pdfRenderer.tsx Zeile 169 zeigte lineTotalGross statt lineTotalNet
+- [x] Root Cause 2: calcTotals() in Invoices.tsx schloss optionale Positionen aus → subtotalNet/taxAmount/totalGross = 0
+- [x] Fix: pdfRenderer.tsx auf lineTotalNet umgestellt
+- [x] Fix: calcTotals() rechnet jetzt alle Positionen (auch optionale) ein
+- [x] DB-Fix: Bestehende Angebote mit 0-Summen per SQL aktualisiert (AN-2026-1861: 42.980 € Netto)
+- [x] 233 Vitest-Tests grün (7 neue Tests für calcTotals + PDF-Berechnung)

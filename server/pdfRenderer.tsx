@@ -166,7 +166,7 @@ function TableRow({ item, idx, isDeliveryNote }: { item: InvoiceItem; idx: numbe
       <Text style={S.colUnit}>{item.unit ?? 'Stk.'}</Text>
       <Text style={S.colPrice}>{fmt(item.unitPriceNet)} €</Text>
       <Text style={S.colTax}>{fmt(item.taxRate)} %</Text>
-      <Text style={S.colTotal}>{fmt(item.lineTotalGross)} €</Text>
+      <Text style={S.colTotal}>{fmt(item.lineTotalNet)} €</Text>
     </View>
   );
 }

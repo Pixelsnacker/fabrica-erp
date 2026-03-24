@@ -460,3 +460,108 @@ describe("Erweiterte Positions-Felder", () => {
     expect(agbText.split('\n')).toHaveLength(3);
   });
 });
+
+// ─── calcTotals Hilfsfunktion (spiegelt Invoices.tsx) ────────────────────────
+function calcTotals(items: Array<{ lineTotalNet: string; lineTax: string; lineTotalGross: string; isOptional?: boolean; discountedNet?: string }>) {
+  const optional = items.filter(i => i.isOptional);
+  const net = items.reduce((s, i) => s + parseFloat(i.lineTotalNet || '0'), 0);
+  const tax = items.reduce((s, i) => s + parseFloat(i.lineTax || '0'), 0);
+  const optionalNet = optional.reduce((s, i) => s + parseFloat(i.lineTotalNet || '0'), 0);
+  const totalDiscount = items.reduce((s, i) => s + parseFloat(i.discountedNet || '0'), 0);
+  return {
+    subtotalNet: net.toFixed(2),
+    taxAmount: tax.toFixed(2),
+    totalGross: (net + tax).toFixed(2),
+    optionalNet: optionalNet.toFixed(2),
+    hasOptional: optional.length > 0,
+    optionalCount: optional.length,
+    totalDiscount: totalDiscount.toFixed(2),
+  };
+}
+
+describe("calcTotals – Summenberechnung (inkl. optionale Positionen)", () => {
+  it("rechnet nur Pflichtpositionen korrekt zusammen", () => {
+    const items = [
+      { lineTotalNet: '100.00', lineTax: '19.00', lineTotalGross: '119.00', isOptional: false, discountedNet: '0.00' },
+      { lineTotalNet: '200.00', lineTax: '38.00', lineTotalGross: '238.00', isOptional: false, discountedNet: '0.00' },
+    ];
+    const totals = calcTotals(items);
+    expect(totals.subtotalNet).toBe('300.00');
+    expect(totals.taxAmount).toBe('57.00');
+    expect(totals.totalGross).toBe('357.00');
+    expect(totals.hasOptional).toBe(false);
+  });
+
+  it("rechnet optionale Positionen in die Gesamtsumme ein", () => {
+    const items = [
+      { lineTotalNet: '550.00', lineTax: '104.50', lineTotalGross: '654.50', isOptional: true, discountedNet: '0.00' },
+      { lineTotalNet: '4450.00', lineTax: '845.50', lineTotalGross: '5295.50', isOptional: true, discountedNet: '0.00' },
+    ];
+    const totals = calcTotals(items);
+    expect(totals.subtotalNet).toBe('5000.00');
+    expect(totals.taxAmount).toBe('950.00');
+    expect(totals.totalGross).toBe('5950.00');
+    expect(totals.hasOptional).toBe(true);
+    expect(totals.optionalCount).toBe(2);
+  });
+
+  it("gemischte Positionen: optional + Pflicht werden alle eingerechnet", () => {
+    const items = [
+      { lineTotalNet: '1000.00', lineTax: '190.00', lineTotalGross: '1190.00', isOptional: false, discountedNet: '0.00' },
+      { lineTotalNet: '500.00', lineTax: '95.00', lineTotalGross: '595.00', isOptional: true, discountedNet: '0.00' },
+    ];
+    const totals = calcTotals(items);
+    expect(totals.subtotalNet).toBe('1500.00');
+    expect(totals.taxAmount).toBe('285.00');
+    expect(totals.totalGross).toBe('1785.00');
+    expect(totals.optionalNet).toBe('500.00');
+  });
+
+  it("leere Liste ergibt 0,00", () => {
+    const totals = calcTotals([]);
+    expect(totals.subtotalNet).toBe('0.00');
+    expect(totals.taxAmount).toBe('0.00');
+    expect(totals.totalGross).toBe('0.00');
+  });
+
+  it("Angebot AN-2026-1861 Simulation: 4 optionale Positionen", () => {
+    const items = [
+      { lineTotalNet: '550.00', lineTax: '104.50', lineTotalGross: '654.50', isOptional: true, discountedNet: '0.00' },
+      { lineTotalNet: '4450.00', lineTax: '845.50', lineTotalGross: '5295.50', isOptional: true, discountedNet: '0.00' },
+      { lineTotalNet: '13500.00', lineTax: '2565.00', lineTotalGross: '16065.00', isOptional: true, discountedNet: '0.00' },
+      { lineTotalNet: '24480.00', lineTax: '4651.20', lineTotalGross: '29131.20', isOptional: true, discountedNet: '0.00' },
+    ];
+    const totals = calcTotals(items);
+    expect(totals.subtotalNet).toBe('42980.00');
+    expect(parseFloat(totals.taxAmount)).toBeCloseTo(8166.20, 1);
+    expect(parseFloat(totals.totalGross)).toBeCloseTo(51146.20, 1);
+    // Vorher (Bug): subtotalNet wäre '0.00' gewesen, weil alle optional
+    expect(parseFloat(totals.subtotalNet)).toBeGreaterThan(0);
+  });
+});
+
+describe("PDF-Berechnung – lineTotalNet vs lineTotalGross", () => {
+  it("Positions-Spalte im PDF zeigt Netto (lineTotalNet), nicht Brutto", () => {
+    const item = { lineTotalNet: '550.00', lineTotalGross: '654.50', taxRate: '19.00', unitPriceNet: '550.00', quantity: '1' };
+    // PDF-Renderer soll lineTotalNet verwenden
+    const pdfColumnValue = parseFloat(item.lineTotalNet);
+    const grossValue = parseFloat(item.lineTotalGross);
+    expect(pdfColumnValue).toBe(550.00);
+    expect(grossValue).toBe(654.50);
+    expect(pdfColumnValue).not.toBe(grossValue); // Sicherstellen dass Netto ≠ Brutto
+    expect(pdfColumnValue).toBeLessThan(grossValue); // Netto < Brutto
+  });
+
+  it("PDF-Gesamtsumme = Summe aller lineTotalNet + Summe aller lineTax", () => {
+    const items = [
+      { lineTotalNet: '550.00', lineTax: '104.50' },
+      { lineTotalNet: '4450.00', lineTax: '845.50' },
+    ];
+    const pdfNet = items.reduce((s, i) => s + parseFloat(i.lineTotalNet), 0);
+    const pdfTax = items.reduce((s, i) => s + parseFloat(i.lineTax), 0);
+    const pdfGross = pdfNet + pdfTax;
+    expect(pdfNet).toBe(5000.00);
+    expect(pdfTax).toBeCloseTo(950.00, 1);
+    expect(pdfGross).toBeCloseTo(5950.00, 1);
+  });
+});

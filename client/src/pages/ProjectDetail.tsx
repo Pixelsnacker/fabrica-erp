@@ -391,6 +391,7 @@ export default function ProjectDetail() {
   const { data: cadFiles = [] } = trpc.cadFiles.byProject.useQuery({ projectId: id });
   const { data: projectDocs = [] } = trpc.projectDocs.list.useQuery({ projectId: id });
   const { data: allSuppliers = [] } = trpc.suppliers.list.useQuery();
+  const { data: allCustomers = [] } = trpc.customers.list.useQuery();
   const [docSupplierFilter, setDocSupplierFilter] = useState<string>("all");
   const { data: consultations = [] } = trpc.consultation.list.useQuery({ projectId: id });
   const { data: projectNotes = [] } = trpc.notes.list.useQuery({ projectId: id });
@@ -1267,21 +1268,34 @@ export default function ProjectDetail() {
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <p className="text-sm text-muted-foreground hidden sm:block">Projektdokumente</p>
-              {(allSuppliers as any[]).length > 0 && (
-                <Select value={docSupplierFilter} onValueChange={setDocSupplierFilter}>
-                  <SelectTrigger className="h-8 text-xs w-auto min-w-[160px]">
-                    <SelectValue placeholder="Alle Lieferanten" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Alle Lieferanten</SelectItem>
-                    {(allSuppliers as any[]).map((s: any) => (
-                      <SelectItem key={s.id} value={String(s.id)}>
-                        {s.company || s.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
+              <Select value={docSupplierFilter} onValueChange={setDocSupplierFilter}>
+                <SelectTrigger className="h-8 text-xs w-auto min-w-[160px]">
+                  <SelectValue placeholder="Alle" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Alle</SelectItem>
+                  {(allCustomers as any[]).length > 0 && (
+                    <>
+                      <div className="px-2 py-1 text-xs text-muted-foreground font-semibold">Kunden</div>
+                      {(allCustomers as any[]).map((c: any) => (
+                        <SelectItem key={`c:${c.id}`} value={`c:${c.id}`}>
+                          {c.company || c.name}
+                        </SelectItem>
+                      ))}
+                    </>
+                  )}
+                  {(allSuppliers as any[]).length > 0 && (
+                    <>
+                      <div className="px-2 py-1 text-xs text-muted-foreground font-semibold">Lieferanten</div>
+                      {(allSuppliers as any[]).map((s: any) => (
+                        <SelectItem key={`s:${s.id}`} value={`s:${s.id}`}>
+                          {s.company || s.name}
+                        </SelectItem>
+                      ))}
+                    </>
+                  )}
+                </SelectContent>
+              </Select>
             </div>
             <Button size="sm" onClick={() => setShowDocUpload(true)} className="gap-2">
               <Upload className="h-4 w-4" />Dokument hochladen
@@ -1298,14 +1312,21 @@ export default function ProjectDetail() {
           ) : (
             <div className="space-y-2">
               {(projectDocs as any[])
-                .filter((doc: any) => docSupplierFilter === "all" || String(doc.supplierId) === docSupplierFilter)
+                .filter((doc: any) => {
+                  if (docSupplierFilter === "all") return true;
+                  if (docSupplierFilter.startsWith('c:')) return String(doc.customerId) === docSupplierFilter.slice(2);
+                  if (docSupplierFilter.startsWith('s:')) return String(doc.supplierId) === docSupplierFilter.slice(2);
+                  return String(doc.supplierId) === docSupplierFilter;
+                })
                 .map((doc: any) => {
                   const sup = (allSuppliers as any[]).find((s: any) => s.id === doc.supplierId);
+                  const cust = (allCustomers as any[]).find((c: any) => c.id === doc.customerId);
+                  const entityName = cust ? (cust.company || cust.name) : sup ? (sup.company || sup.name) : undefined;
                   return (
                     <ProjectDocCard
                       key={doc.id}
                       doc={doc}
-                      supplierName={sup ? (sup.company || sup.name) : undefined}
+                      supplierName={entityName}
                       onNoteUpdated={() => utils.projectDocs.list.invalidate({ projectId: id })}
                       onDelete={() => { if (confirm(`Dokument "${doc.filename}" wirklich löschen?`)) deleteDocMut.mutate({ id: doc.id }); }}
                     />
@@ -2274,7 +2295,10 @@ function ProjectDocCard({ doc, onDelete, supplierName, onNoteUpdated }: {
         </div>
         {supplierName && (
           <div className="flex items-center gap-1 mt-0.5">
-            <span className="text-xs text-blue-400 font-medium">🏭 {supplierName}</span>
+            {doc.customerId
+              ? <span className="text-xs text-green-400 font-medium">👤 {supplierName}</span>
+              : <span className="text-xs text-blue-400 font-medium">🏗️ {supplierName}</span>
+            }
           </div>
         )}
 
@@ -2485,8 +2509,10 @@ function ProjectDocUploadDialog({
   const [notes, setNotes] = useState("");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [supplierId, setSupplierId] = useState<string>("none");
+  const [customerId, setCustomerId] = useState<string>("none");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { data: supplierList = [] } = trpc.suppliers.list.useQuery();
+  const { data: customerList = [] } = trpc.customers.list.useQuery();
 
   const upload = trpc.projectDocs.upload.useMutation({ onError: (e) => toast.error("Upload fehlgeschlagen: " + e.message) });
 
@@ -2507,6 +2533,7 @@ function ProjectDocUploadDialog({
           await upload.mutateAsync({
             projectId,
             supplierId: supplierId && supplierId !== "none" ? parseInt(supplierId) : null,
+            customerId: customerId && customerId !== "none" ? parseInt(customerId) : null,
             category: category as any,
             filename: file.name,
             fileBase64: base64,
@@ -2619,20 +2646,36 @@ function ProjectDocUploadDialog({
             </div>
           )}
 
-          {/* Lieferant */}
-          <div className="space-y-1.5">
-            <Label>Lieferant {category === 'supplier_offer' ? '*' : '(optional)'}</Label>
-            <EntitySearch
-              options={(supplierList as any[]).map((s: any) => ({
-                id: s.id,
-                label: s.company || s.name,
-                sublabel: s.company ? s.name : (s.email || undefined)
-              }))}
-              value={supplierId && supplierId !== 'none' ? parseInt(supplierId) : undefined}
-              onChange={v => setSupplierId(v ? String(v) : 'none')}
-              placeholder="Lieferant suchen..."
-              emptyLabel="Kein Lieferant"
-            />
+          {/* Zuordnung: Kunde oder Lieferant */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Kunde (optional)</Label>
+              <EntitySearch
+                options={(customerList as any[]).map((c: any) => ({
+                  id: c.id,
+                  label: c.company || c.name,
+                  sublabel: c.company ? c.name : (c.email || undefined)
+                }))}
+                value={customerId && customerId !== 'none' ? parseInt(customerId) : undefined}
+                onChange={v => { setCustomerId(v ? String(v) : 'none'); if (v) setSupplierId('none'); }}
+                placeholder="Kunde suchen..."
+                emptyLabel="Kein Kunde"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Lieferant {category === 'supplier_offer' ? '*' : '(optional)'}</Label>
+              <EntitySearch
+                options={(supplierList as any[]).map((s: any) => ({
+                  id: s.id,
+                  label: s.company || s.name,
+                  sublabel: s.company ? s.name : (s.email || undefined)
+                }))}
+                value={supplierId && supplierId !== 'none' ? parseInt(supplierId) : undefined}
+                onChange={v => { setSupplierId(v ? String(v) : 'none'); if (v) setCustomerId('none'); }}
+                placeholder="Lieferant suchen..."
+                emptyLabel="Kein Lieferant"
+              />
+            </div>
           </div>
 
           {/* Notizen */}
