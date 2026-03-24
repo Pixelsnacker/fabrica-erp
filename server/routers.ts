@@ -1675,7 +1675,35 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
         if (!inv) throw new Error('Dokument nicht gefunden');
         const cs = await getCompanySettings();
         const pdfBuffer = await renderInvoicePdf(inv, cs);
-        return { pdf: pdfBuffer.toString('base64'), filename: inv.invoiceNumber + '.pdf' };
+        const filename = inv.invoiceNumber + '.pdf';
+
+        // Automatisch in Google Drive hochladen wenn Angebot einem Projekt zugeordnet ist
+        let driveFileId: string | null = null;
+        if ((inv as any).projectId) {
+          try {
+            const project = await getProjectById((inv as any).projectId);
+            if (project) {
+              const customer = (project as any).customerId ? await getCustomerById((project as any).customerId) : null;
+              const { uploadFileToDrive } = await import('./googleDrive');
+              const projectName = (project as any).projectNumber
+                ? `${(project as any).projectNumber} ${project.title}`.substring(0, 100)
+                : project.title.substring(0, 100);
+              const driveResult = await uploadFileToDrive({
+                filename,
+                mimeType: 'application/pdf',
+                buffer: pdfBuffer,
+                customerName: customer ? ((customer as any).company || (customer as any).name) : 'Unbekannt',
+                projectName,
+              });
+              driveFileId = driveResult.fileId;
+            }
+          } catch (e) {
+            // Drive-Upload-Fehler blockieren den PDF-Download nicht
+            console.error('[generatePdf] Drive-Upload fehlgeschlagen:', e);
+          }
+        }
+
+        return { pdf: pdfBuffer.toString('base64'), filename, driveFileId };
       }),
 
     exportZip: protectedProcedure
