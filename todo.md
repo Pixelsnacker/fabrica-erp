@@ -976,3 +976,8 @@
 
 ## Bug-Fix: Positions-Summe Netto/Brutto
 - [x] Positions-Summe zeigte Brutto statt Netto → korrigiert auf lineTotalNet
+
+## KRITISCHER BUG: PDF Gesamt-Summe 0,00 EUR
+- [x] PDF-Generator: alle Positionen (auch optionale) in Netto/MwSt/Gesamt einrechnen
+- [x] PDF: Spalte "Gesamt brutto" auf "Gesamt netto" korrigiert
+- [x] PDF: Positions-Summe von lineTotalGross auf lineTotalNet korrigiert

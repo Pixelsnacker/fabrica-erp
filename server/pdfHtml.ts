@@ -35,12 +35,11 @@ export function buildInvoiceHtml(inv: any, cs: any): string {
     : '';
 
   const items: any[] = inv.items ?? [];
-  const reqItems = items.filter((i: any) => !i.isOptional);
   const optItems = items.filter((i: any) => i.isOptional);
-  const pdfNet = reqItems.reduce((s: number, i: any) => s + parseFloat(i.lineTotalNet ?? 0), 0);
-  const pdfTax = reqItems.reduce((s: number, i: any) => s + parseFloat(i.lineTax ?? 0), 0);
+  // Alle Positionen in die Gesamtsumme einrechnen (auch optionale)
+  const pdfNet = items.reduce((s: number, i: any) => s + parseFloat(i.lineTotalNet ?? 0), 0);
+  const pdfTax = items.reduce((s: number, i: any) => s + parseFloat(i.lineTax ?? 0), 0);
   const pdfGross = pdfNet + pdfTax;
-  const pdfOptGross = optItems.reduce((s: number, i: any) => s + parseFloat(i.lineTotalGross ?? 0), 0);
   const pdfDiscount = items.reduce((s: number, i: any) => s + parseFloat(i.discountedNet ?? 0), 0);
   const fmt = (n: number) => n.toLocaleString('de-DE', { minimumFractionDigits: 2 }) + '\u00a0€';
 
@@ -61,7 +60,7 @@ export function buildInvoiceHtml(inv: any, cs: any): string {
       <td style="padding:5px 6px;border-bottom:1px solid #e8e8e8;vertical-align:top;white-space:nowrap;">${escHtml(it.unit ?? 'Stk.')}</td>
       <td style="padding:5px 6px;border-bottom:1px solid #e8e8e8;text-align:right;vertical-align:top;white-space:nowrap;">${parseFloat(it.unitPriceNet ?? 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}\u00a0€</td>
       <td style="padding:5px 6px;border-bottom:1px solid #e8e8e8;text-align:right;vertical-align:top;white-space:nowrap;">${it.taxRate ?? 19}\u00a0%</td>
-      <td style="padding:5px 6px;border-bottom:1px solid #e8e8e8;text-align:right;vertical-align:top;white-space:nowrap;font-weight:600;">${parseFloat(it.lineTotalGross ?? 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}\u00a0€</td>
+      <td style="padding:5px 6px;border-bottom:1px solid #e8e8e8;text-align:right;vertical-align:top;white-space:nowrap;font-weight:600;">${parseFloat(it.lineTotalNet ?? 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}\u00a0€</td>
     </tr>`;
   }).join('');
 
@@ -195,7 +194,7 @@ ${inv.introText ? `<p style="margin-bottom:16px;font-size:11px;">${escHtml(inv.i
     <th style="width:7%;">Einheit</th>
     <th style="text-align:right;width:11%;">EP netto</th>
     <th style="text-align:right;width:8%;">MwSt</th>
-    <th style="text-align:right;width:12%;">Gesamt brutto</th>
+    <th style="text-align:right;width:12%;">Gesamt netto</th>
   </tr></thead>
   <tbody>${itemRows}</tbody>
 </table>
@@ -207,7 +206,7 @@ ${inv.introText ? `<p style="margin-bottom:16px;font-size:11px;">${escHtml(inv.i
     <tr><td style="color:#555;">Nettobetrag:</td><td style="text-align:right">${fmt(pdfNet)}</td></tr>
     <tr><td style="color:#555;">MwSt:</td><td style="text-align:right">${fmt(pdfTax)}</td></tr>
     <tr class="total-row"><td>Gesamtbetrag:</td><td style="text-align:right">${fmt(pdfGross)}</td></tr>
-    ${optItems.length > 0 ? `<tr><td colspan="2" style="font-size:9px;color:#888;padding-top:6px;border-top:1px dashed #ccc;">zzgl. optionale Pos. (${optItems.length}): ${fmt(pdfOptGross)}</td></tr>` : ''}
+
   </table>
 </div>
 
