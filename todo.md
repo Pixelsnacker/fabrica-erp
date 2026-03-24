@@ -968,3 +968,8 @@
 - [x] tRPC: website-Feld in create/update für customers und suppliers
 - [x] Frontend: Webseiten-Feld im Bearbeiten-Dialog (Kunden + Lieferanten)
 - [x] Frontend: Webseiten-Link als klickbarer Link in der Karten-Ansicht
+
+## KRITISCHER BUG: invoice_items INSERT-Fehler bei mehr als 2-3 Positionen
+- [x] Ursache analysiert: DB-Verbindung (ECONNRESET/ETIMEDOUT) bricht bei sequenziellen INSERTs ab
+- [x] Fix: withRetry-Wrapper + Batch-INSERT (alle Items auf einmal statt einzeln in Schleife)
+- [ ] Testen mit 5+ Positionen (bitte von Dani testen)

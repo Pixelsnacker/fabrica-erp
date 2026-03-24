@@ -28,9 +28,19 @@ import {
 } from "../drizzle/schema";
 
 let _db: ReturnType<typeof drizzle> | null = null;
+let _lastConnectAttempt = 0;
+
+export function resetDb() {
+  _db = null;
+}
 
 export async function getDb() {
-  if (!_db && process.env.DATABASE_URL) {
+  if (!process.env.DATABASE_URL) return null;
+  if (!_db) {
+    const now = Date.now();
+    // Nicht öfter als alle 500ms neu verbinden
+    if (now - _lastConnectAttempt < 500) return null;
+    _lastConnectAttempt = now;
     try {
       _db = drizzle(process.env.DATABASE_URL);
     } catch (error) {
@@ -39,6 +49,23 @@ export async function getDb() {
     }
   }
   return _db;
+}
+
+// Wrapper: führt eine DB-Operation aus, bei ECONNRESET/ETIMEDOUT einmal neu verbinden und wiederholen
+async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (err: any) {
+    const code = err?.cause?.code ?? err?.code ?? '';
+    if (code === 'ECONNRESET' || code === 'ETIMEDOUT' || code === 'ECONNREFUSED') {
+      console.warn('[Database] Connection lost, reconnecting...', code);
+      resetDb();
+      // Kurz warten und neu verbinden
+      await new Promise(r => setTimeout(r, 200));
+      return await fn();
+    }
+    throw err;
+  }
 }
 
 // ─── Users ────────────────────────────────────────────────────────────────────
@@ -969,6 +996,7 @@ export async function getInvoiceById(id: number) {
 }
 
 export async function createInvoice(data: InsertInvoice, items: InsertInvoiceItem[], changedBy: string) {
+  return withRetry(async () => {
   const db = await getDb();
   if (!db) return;
   const now = Date.now();
@@ -976,9 +1004,9 @@ export async function createInvoice(data: InsertInvoice, items: InsertInvoiceIte
   const created = await db.select().from(invoices).where(eq(invoices.invoiceNumber, data.invoiceNumber!));
   const invoiceId = created[0]?.id;
   if (!invoiceId) return;
-  // Items einfügen
-  for (const item of items) {
-    await db.insert(invoiceItems).values({ ...item, invoiceId });
+  // Items einfügen - alle auf einmal statt einzeln (verhindert Connection-Drops)
+  if (items.length > 0) {
+    await db.insert(invoiceItems).values(items.map(item => ({ ...item, invoiceId })));
   }
   // Audit-Log
   await db.insert(invoiceAuditLog).values({
@@ -989,9 +1017,11 @@ export async function createInvoice(data: InsertInvoice, items: InsertInvoiceIte
     snapshotJson: JSON.stringify({ ...data, items }),
   });
   return invoiceId;
+  }); // end withRetry
 }
 
 export async function updateInvoice(id: number, data: Partial<InsertInvoice>, items: InsertInvoiceItem[] | null, changedBy: string) {
+  return withRetry(async () => {
   const db = await getDb();
   if (!db) return;
   // Gesperrte Rechnungen nicht änderbar
@@ -1001,8 +1031,9 @@ export async function updateInvoice(id: number, data: Partial<InsertInvoice>, it
   await db.update(invoices).set({ ...data, updatedAt: now }).where(eq(invoices.id, id));
   if (items !== null) {
     await db.delete(invoiceItems).where(eq(invoiceItems.invoiceId, id));
-    for (const item of items) {
-      await db.insert(invoiceItems).values({ ...item, invoiceId: id });
+    // Alle Items auf einmal einfügen (verhindert Connection-Drops bei vielen Positionen)
+    if (items.length > 0) {
+      await db.insert(invoiceItems).values(items.map(item => ({ ...item, invoiceId: id })));
     }
   }
   await db.insert(invoiceAuditLog).values({
@@ -1012,6 +1043,7 @@ export async function updateInvoice(id: number, data: Partial<InsertInvoice>, it
     changedAt: now,
     snapshotJson: JSON.stringify({ ...data, items }),
   });
+  }); // end withRetry
 }
 
 export async function changeInvoiceStatus(id: number, newStatus: string, changedBy: string) {
