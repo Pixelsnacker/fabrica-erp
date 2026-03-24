@@ -1,0 +1,34 @@
+{
+  "query": "SHOW CREATE TABLE invoice_items;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 9NNjvn7NV7enobv.7ea640e70a8c --database YMZow7uQxpBVyBGbmbpvvd --execute SHOW CREATE TABLE invoice_items;",
+  "rows": [
+    {
+      "Table": "invoice_items",
+      "Create Table": "CREATE TABLE `invoice_items` ("
+    }
+  ],
+  "messages": [
+    "  `id` int NOT NULL AUTO_INCREMENT,",
+    "  `invoice_id` int NOT NULL,",
+    "  `position` int NOT NULL DEFAULT '1',",
+    "  `description` text COLLATE utf8mb4_unicode_ci NOT NULL,",
+    "  `quantity` decimal(10,3) DEFAULT '1.000',",
+    "  `unit` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT 'Stk.',",
+    "  `unit_price_net` decimal(12,2) NOT NULL DEFAULT '0.00',",
+    "  `tax_rate` decimal(5,2) DEFAULT '19.00',",
+    "  `line_total_net` decimal(12,2) DEFAULT '0.00',",
+    "  `line_tax` decimal(12,2) DEFAULT '0.00',",
+    "  `line_total_gross` decimal(12,2) DEFAULT '0.00',",
+    "  `long_description` text COLLATE utf8mb4_unicode_ci DEFAULT NULL,",
+    "  `is_optional` tinyint NOT NULL DEFAULT '0',",
+    "  `discount` decimal(5,2) NOT NULL DEFAULT '0.00',",
+    "  `discounted_net` decimal(12,2) NOT NULL DEFAULT '0.00',",
+    "  PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */,",
+    "  KEY `fk_1` (`invoice_id`),",
+    "  CONSTRAINT `fk_1` FOREIGN KEY (`invoice_id`) REFERENCES `invoices` (`id`) ON DELETE CASCADE",
+    ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci AUTO_INCREMENT=390001"
+  ],
+  "stdout": "Table\tCreate Table\ninvoice_items\tCREATE TABLE `invoice_items` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `invoice_id` int NOT NULL,\n  `position` int NOT NULL DEFAULT '1',\n  `description` text COLLATE utf8mb4_unicode_ci NOT NULL,\n  `quantity` decimal(10,3) DEFAULT '1.000',\n  `unit` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT 'Stk.',\n  `unit_price_net` decimal(12,2) NOT NULL DEFAULT '0.00',\n  `tax_rate` decimal(5,2) DEFAULT '19.00',\n  `line_total_net` decimal(12,2) DEFAULT '0.00',\n  `line_tax` decimal(12,2) DEFAULT '0.00',\n  `line_total_gross` decimal(12,2) DEFAULT '0.00',\n  `long_description` text COLLATE utf8mb4_unicode_ci DEFAULT NULL,\n  `is_optional` tinyint NOT NULL DEFAULT '0',\n  `discount` decimal(5,2) NOT NULL DEFAULT '0.00',\n  `discounted_net` decimal(12,2) NOT NULL DEFAULT '0.00',\n  PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */,\n  KEY `fk_1` (`invoice_id`),\n  CONSTRAINT `fk_1` FOREIGN KEY (`invoice_id`) REFERENCES `invoices` (`id`) ON DELETE CASCADE\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci AUTO_INCREMENT=390001\n",
+  "stderr": "",
+  "execution_time_ms": 372
+}

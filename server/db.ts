@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { eq, desc, and, like, sql, gte, lte } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
+import mysql from "mysql2/promise";
 import {
   InsertUser, users,
   customers, InsertCustomer,
@@ -28,24 +29,32 @@ import {
 } from "../drizzle/schema";
 
 let _db: ReturnType<typeof drizzle> | null = null;
-let _lastConnectAttempt = 0;
+let _pool: mysql.Pool | null = null;
 
 export function resetDb() {
   _db = null;
+  _pool = null;
 }
 
 export async function getDb() {
   if (!process.env.DATABASE_URL) return null;
-  if (!_db) {
-    const now = Date.now();
-    // Nicht öfter als alle 500ms neu verbinden
-    if (now - _lastConnectAttempt < 500) return null;
-    _lastConnectAttempt = now;
+  if (!_db || !_pool) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      // Connection Pool statt einzelner Verbindung - verhindert ECONNRESET/ETIMEDOUT
+      _pool = mysql.createPool({
+        uri: process.env.DATABASE_URL,
+        connectionLimit: 10,
+        waitForConnections: true,
+        queueLimit: 0,
+        enableKeepAlive: true,
+        keepAliveInitialDelay: 10000,
+        connectTimeout: 10000,
+      });
+      _db = drizzle(_pool);
     } catch (error) {
-      console.warn("[Database] Failed to connect:", error);
+      console.warn("[Database] Failed to create pool:", error);
       _db = null;
+      _pool = null;
     }
   }
   return _db;

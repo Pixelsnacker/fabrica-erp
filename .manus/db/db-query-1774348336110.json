@@ -1,0 +1,58 @@
+{
+  "query": "SELECT i.invoice_number, i.type, COUNT(ii.id) as item_count, i.created_at FROM invoices i LEFT JOIN invoice_items ii ON ii.invoice_id = i.id GROUP BY i.id ORDER BY i.created_at DESC LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 9NNjvn7NV7enobv.7ea640e70a8c --database YMZow7uQxpBVyBGbmbpvvd --execute SELECT i.invoice_number, i.type, COUNT(ii.id) as item_count, i.created_at FROM invoices i LEFT JOIN invoice_items ii ON ii.invoice_id = i.id GROUP BY i.id ORDER BY i.created_at DESC LIMIT 10;",
+  "rows": [
+    {
+      "invoice_number": "AN-2026-1857",
+      "type": "offer",
+      "item_count": "3",
+      "created_at": "1774346529978"
+    },
+    {
+      "invoice_number": "AN-2026-1856",
+      "type": "offer",
+      "item_count": "2",
+      "created_at": "1774275412332"
+    },
+    {
+      "invoice_number": "RE-2026-2140",
+      "type": "invoice",
+      "item_count": "2",
+      "created_at": "1774026750820"
+    },
+    {
+      "invoice_number": "AN-2026-1855",
+      "type": "offer",
+      "item_count": "2",
+      "created_at": "1774014865952"
+    },
+    {
+      "invoice_number": "AN-2026-1854",
+      "type": "offer",
+      "item_count": "4",
+      "created_at": "1773871798252"
+    },
+    {
+      "invoice_number": "AN-2026-1853",
+      "type": "offer",
+      "item_count": "2",
+      "created_at": "1773748136953"
+    },
+    {
+      "invoice_number": "BE-2026-0002",
+      "type": "purchase_order",
+      "item_count": "1",
+      "created_at": "1773615530691"
+    },
+    {
+      "invoice_number": "AN-2026-0008",
+      "type": "offer",
+      "item_count": "2",
+      "created_at": "1773411797563"
+    }
+  ],
+  "messages": [],
+  "stdout": "invoice_number\ttype\titem_count\tcreated_at\nAN-2026-1857\toffer\t3\t1774346529978\nAN-2026-1856\toffer\t2\t1774275412332\nRE-2026-2140\tinvoice\t2\t1774026750820\nAN-2026-1855\toffer\t2\t1774014865952\nAN-2026-1854\toffer\t4\t1773871798252\nAN-2026-1853\toffer\t2\t1773748136953\nBE-2026-0002\tpurchase_order\t1\t1773615530691\nAN-2026-0008\toffer\t2\t1773411797563\n",
+  "stderr": "",
+  "execution_time_ms": 398
+}
