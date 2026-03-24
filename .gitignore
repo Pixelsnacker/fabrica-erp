@@ -109,3 +109,6 @@ temp/
 # Webdev artifacts (checkpoint zips, migrations, etc.)
 .webdev/
 .puppeteer-cache/
+
+# Drizzle alte Snapshots (nur neuesten behalten)
+drizzle/meta/0[0-9][0-9][0-9]_snapshot.json
