@@ -1004,19 +1004,48 @@ export async function getInvoiceById(id: number) {
   return { ...rows[0], items, auditLog };
 }
 
+async function insertInvoiceItemsRaw(pool: mysql.Pool, invoiceId: number, items: InsertInvoiceItem[]) {
+  if (items.length === 0) return;
+  // Direktes SQL ohne id-Feld (Drizzle übergibt id als DEFAULT was TiDB ablehnt)
+  const placeholders = items.map(() =>
+    '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  ).join(', ');
+  const values: any[] = [];
+  for (const item of items) {
+    values.push(
+      invoiceId,
+      item.position ?? 1,
+      item.description,
+      item.quantity ?? '1.000',
+      item.unit ?? 'Stk.',
+      item.unitPriceNet ?? '0.00',
+      item.taxRate ?? '19.00',
+      item.lineTotalNet ?? '0.00',
+      item.lineTax ?? '0.00',
+      item.lineTotalGross ?? '0.00',
+      item.longDescription ?? null,
+      item.isOptional ?? 0,
+      item.discount ?? '0.00',
+      item.discountedNet ?? '0.00',
+    );
+  }
+  await pool.execute(
+    `INSERT INTO invoice_items (invoice_id, position, description, quantity, unit, unit_price_net, tax_rate, line_total_net, line_tax, line_total_gross, long_description, is_optional, discount, discounted_net) VALUES ${placeholders}`,
+    values
+  );
+}
+
 export async function createInvoice(data: InsertInvoice, items: InsertInvoiceItem[], changedBy: string) {
   return withRetry(async () => {
   const db = await getDb();
-  if (!db) return;
+  if (!db || !_pool) return;
   const now = Date.now();
   await db.insert(invoices).values({ ...data, createdAt: now, updatedAt: now });
   const created = await db.select().from(invoices).where(eq(invoices.invoiceNumber, data.invoiceNumber!));
   const invoiceId = created[0]?.id;
   if (!invoiceId) return;
-  // Items einfügen - alle auf einmal statt einzeln (verhindert Connection-Drops)
-  if (items.length > 0) {
-    await db.insert(invoiceItems).values(items.map(item => ({ ...item, invoiceId })));
-  }
+  // Direktes SQL INSERT (Drizzle übergibt id=DEFAULT was TiDB ablehnt)
+  await insertInvoiceItemsRaw(_pool, invoiceId, items);
   // Audit-Log
   await db.insert(invoiceAuditLog).values({
     invoiceId,
@@ -1040,9 +1069,9 @@ export async function updateInvoice(id: number, data: Partial<InsertInvoice>, it
   await db.update(invoices).set({ ...data, updatedAt: now }).where(eq(invoices.id, id));
   if (items !== null) {
     await db.delete(invoiceItems).where(eq(invoiceItems.invoiceId, id));
-    // Alle Items auf einmal einfügen (verhindert Connection-Drops bei vielen Positionen)
-    if (items.length > 0) {
-      await db.insert(invoiceItems).values(items.map(item => ({ ...item, invoiceId: id })));
+    // Direktes SQL INSERT (Drizzle übergibt id=DEFAULT was TiDB ablehnt)
+    if (items.length > 0 && _pool) {
+      await insertInvoiceItemsRaw(_pool, id, items);
     }
   }
   await db.insert(invoiceAuditLog).values({
