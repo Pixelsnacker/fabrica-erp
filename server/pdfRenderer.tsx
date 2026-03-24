@@ -154,19 +154,21 @@ function TableRow({ item, idx, isDeliveryNote }: { item: InvoiceItem; idx: numbe
       </View>
     );
   }
+  const totalDisplay = item.isOptional
+    ? `(${fmt(item.lineTotalNet)} EUR)`
+    : `${fmt(item.lineTotalNet)} €`;
   return (
     <View style={rowStyle} wrap={false}>
-      <Text style={S.colPos}>{item.position}</Text>
+      <Text style={S.colPos}>{item.isOptional ? 'Opt.' : item.position}</Text>
       <View style={S.colDesc}>
         <Text style={{ fontSize: 8 }}>{item.description}</Text>
         {item.longDescription ? <Text style={S.longDesc}>{item.longDescription}</Text> : null}
-        {item.isOptional ? <Text style={S.optionalBadge}>(optional)</Text> : null}
       </View>
       <Text style={S.colQty}>{fmtQty(item.quantity)}</Text>
       <Text style={S.colUnit}>{item.unit ?? 'Stk.'}</Text>
-      <Text style={S.colPrice}>{fmt(item.unitPriceNet)} €</Text>
+      <Text style={S.colPrice}>{fmt(item.unitPriceNet)} EUR</Text>
       <Text style={S.colTax}>{fmt(item.taxRate)} %</Text>
-      <Text style={S.colTotal}>{fmt(item.lineTotalNet)} €</Text>
+      <Text style={S.colTotal}>{totalDisplay}</Text>
     </View>
   );
 }
@@ -269,22 +271,34 @@ export function InvoicePDF({ inv, cs }: { inv: InvoiceWithItems; cs: CompanySett
         ))}
 
         {/* Summen — bei Lieferschein ausblenden */}
-        {inv.type !== 'delivery_note' ? (
-          <View style={S.summaryBlock}>
-            <View style={S.summaryRow}>
-              <Text style={S.summaryLabel}>Netto:</Text>
-              <Text style={S.summaryValue}>{fmt(inv.subtotalNet)} €</Text>
+        {inv.type !== 'delivery_note' ? (() => {
+          // Optionale Positionen separat berechnen (nicht in Gesamtsumme)
+          const optItems = inv.items.filter(i => i.isOptional);
+          const optNet = optItems.reduce((s, i) => s + (parseFloat(String(i.lineTotalNet ?? 0)) || 0), 0);
+          const hasOptional = optItems.length > 0;
+          return (
+            <View style={S.summaryBlock}>
+              <View style={S.summaryRow}>
+                <Text style={S.summaryLabel}>Gesamtbetrag netto</Text>
+                <Text style={S.summaryValue}>{fmt(inv.subtotalNet)} EUR</Text>
+              </View>
+              <View style={S.summaryRow}>
+                <Text style={S.summaryLabel}>MwSt. {fmt(inv.taxAmount === '0.00' || inv.taxAmount === '0' ? 0 : 19)} %</Text>
+                <Text style={S.summaryValue}>{fmt(inv.taxAmount)} EUR</Text>
+              </View>
+              <View style={S.summaryTotalRow}>
+                <Text style={S.summaryTotalLabel}>Gesamtbetrag brutto</Text>
+                <Text style={S.summaryTotalValue}>{fmt(inv.totalGross)} EUR</Text>
+              </View>
+              {hasOptional ? (
+                <View style={S.summaryRow}>
+                  <Text style={S.summaryLabel}>Summe optionaler Positionen netto</Text>
+                  <Text style={S.summaryValue}>{fmt(String(optNet))} EUR</Text>
+                </View>
+              ) : null}
             </View>
-            <View style={S.summaryRow}>
-              <Text style={S.summaryLabel}>MwSt:</Text>
-              <Text style={S.summaryValue}>{fmt(inv.taxAmount)} €</Text>
-            </View>
-            <View style={S.summaryTotalRow}>
-              <Text style={S.summaryTotalLabel}>Gesamt (brutto):</Text>
-              <Text style={S.summaryTotalValue}>{fmt(inv.totalGross)} €</Text>
-            </View>
-          </View>
-        ) : null}
+          );
+        })() : null}
 
         {/* Notizen */}
         {inv.notes ? <Text style={S.notesText}>{inv.notes}</Text> : null}

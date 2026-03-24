@@ -77,14 +77,25 @@ const TAX_MODE_LABELS: Record<TaxMode, string> = {
 };
 
 // ─── Hilfsfunktionen ─────────────────────────────────────────────────────────
+// Zahlenformat parsen: unterstützt sowohl englisch (1000.00) als auch deutsch (1.000,00 oder 1000,00)
+function parseGermanFloat(str: string | number | null | undefined): number {
+  if (str == null) return 0;
+  const s = String(str).trim();
+  // Wenn Komma vorhanden: Komma ist Dezimaltrennzeichen, Punkte sind Tausendertrennzeichen
+  if (s.includes(',')) {
+    return parseFloat(s.replace(/\./g, '').replace(',', '.')) || 0;
+  }
+  // Kein Komma: Punkt ist Dezimaltrennzeichen (englisches Format wie '1000.00')
+  return parseFloat(s) || 0;
+}
 function calcItem(item: InvoiceItem, taxMode: TaxMode): InvoiceItem {
-  const qty = parseFloat(item.quantity) || 0;
-  const price = parseFloat(item.unitPriceNet) || 0;
+  const qty = parseGermanFloat(item.quantity) || 0;
+  const price = parseGermanFloat(item.unitPriceNet) || 0;
   const rate = taxMode === 'kleinunternehmer' || taxMode === 'tax_free' ? 0
     : taxMode === 'standard' ? 19
     : taxMode === 'reduced' ? 7
-    : parseFloat(item.taxRate) || 19;
-  const discountPct = parseFloat(item.discount || '0') || 0;
+    : parseGermanFloat(item.taxRate) || 19;
+  const discountPct = parseGermanFloat(item.discount || '0') || 0;
   const baseNet = qty * price;
   const discountAmount = baseNet * discountPct / 100;
   const net = baseNet - discountAmount;
@@ -100,12 +111,13 @@ function calcItem(item: InvoiceItem, taxMode: TaxMode): InvoiceItem {
 }
 
 function calcTotals(items: InvoiceItem[]) {
-  // Alle Positionen (auch optionale) in die Gesamtsumme einrechnen
+  // Optionale Positionen NICHT in Gesamtsumme – nur als Zusatzzeile ausweisen
+  const required = items.filter(i => !i.isOptional);
   const optional = items.filter(i => i.isOptional);
-  const net = items.reduce((s, i) => s + parseFloat(i.lineTotalNet || '0'), 0);
-  const tax = items.reduce((s, i) => s + parseFloat(i.lineTax || '0'), 0);
-  const optionalNet = optional.reduce((s, i) => s + parseFloat(i.lineTotalNet || '0'), 0);
-  const totalDiscount = items.reduce((s, i) => s + parseFloat(i.discountedNet || '0'), 0);
+  const net = required.reduce((s, i) => s + parseGermanFloat(i.lineTotalNet), 0);
+  const tax = required.reduce((s, i) => s + parseGermanFloat(i.lineTax), 0);
+  const optionalNet = optional.reduce((s, i) => s + parseGermanFloat(i.lineTotalNet), 0);
+  const totalDiscount = items.reduce((s, i) => s + parseGermanFloat(i.discountedNet), 0);
   return {
     subtotalNet: net.toFixed(2),
     taxAmount: tax.toFixed(2),

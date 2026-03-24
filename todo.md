@@ -995,3 +995,10 @@
 - [x] Fix: calcTotals() rechnet jetzt alle Positionen (auch optionale) ein
 - [x] DB-Fix: Bestehende Angebote mit 0-Summen per SQL aktualisiert (AN-2026-1861: 42.980 € Netto)
 - [x] 233 Vitest-Tests grün (7 neue Tests für calcTotals + PDF-Berechnung)
+
+## Bug-Fix: PDF Summenblock + Zahlenformat (24.03.2026, alle 4 Punkte)
+- [x] Fix 1: calcTotals() rükgängig – optionale Positionen NICHT in Gesamtsumme einrechnen
+- [x] Fix 2: PDF pdfRenderer.tsx – Summe optionaler Positionen als eigene Zeile (Gesamtbetrag netto 0,00 wenn nur optional)
+- [x] Fix 3: Deutsches Zahlenformat überall (Intl.NumberFormat de-DE)
+- [x] Fix 4: parseGermanFloat: unterstützt englisch (1000.00) und deutsch (1.000,00 / 1000,00)
+- [x] 233 Vitest-Tests grün

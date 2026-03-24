@@ -1,0 +1,9 @@
+{
+  "query": "\nUPDATE invoices i\nSET \n  subtotal_net = (SELECT COALESCE(SUM(line_total_net), 0) FROM invoice_items WHERE invoice_id = i.id AND is_optional = 0),\n  tax_amount = (SELECT COALESCE(SUM(line_tax), 0) FROM invoice_items WHERE invoice_id = i.id AND is_optional = 0),\n  total_gross = (SELECT COALESCE(SUM(line_total_net) + SUM(line_tax), 0) FROM invoice_items WHERE invoice_id = i.id AND is_optional = 0),\n  updated_at = UNIX_TIMESTAMP() * 1000\nWHERE (SELECT COUNT(*) FROM invoice_items WHERE invoice_id = i.id AND is_optional = 1) > 0;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 9NNjvn7NV7enobv.7ea640e70a8c --database YMZow7uQxpBVyBGbmbpvvd --execute \nUPDATE invoices i\nSET \n  subtotal_net = (SELECT COALESCE(SUM(line_total_net), 0) FROM invoice_items WHERE invoice_id = i.id AND is_optional = 0),\n  tax_amount = (SELECT COALESCE(SUM(line_tax), 0) FROM invoice_items WHERE invoice_id = i.id AND is_optional = 0),\n  total_gross = (SELECT COALESCE(SUM(line_total_net) + SUM(line_tax), 0) FROM invoice_items WHERE invoice_id = i.id AND is_optional = 0),\n  updated_at = UNIX_TIMESTAMP() * 1000\nWHERE (SELECT COUNT(*) FROM invoice_items WHERE invoice_id = i.id AND is_optional = 1) > 0;\n",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 392
+}
