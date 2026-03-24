@@ -1383,9 +1383,9 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
       })).default([]),
     })).mutation(async ({ input, ctx }) => {
       const { items, ...invoiceData } = input;
-      // Rechnungen, Gutschriften und Auftragsbestätigungen bekommen die Nummer erst beim Senden (nicht beim Erstellen als Entwurf)
-      // Angebote, Bestellungen und Lieferscheine bekommen die Nummer sofort
-      const needsNumberOnSend = ['invoice', 'credit_note', 'order_confirmation'].includes(input.type);
+      // Angebote, Rechnungen, Gutschriften und AB bekommen die Nummer erst beim Senden
+      // Bestellungen und Lieferscheine bekommen die Nummer sofort (interne Dokumente)
+      const needsNumberOnSend = ['invoice', 'credit_note', 'order_confirmation', 'offer'].includes(input.type);
       const invoiceNumber = needsNumberOnSend ? 'ENTWURF' : await getNextInvoiceNumber(input.type);
       const mappedItems = items.map(it => ({
         ...it,
