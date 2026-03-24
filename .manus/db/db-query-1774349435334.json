@@ -1,0 +1,50 @@
+{
+  "query": "SELECT i.invoice_number, i.type, COUNT(ii.id) as item_count FROM invoices i LEFT JOIN invoice_items ii ON ii.invoice_id = i.id GROUP BY i.id ORDER BY i.created_at DESC LIMIT 15;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 9NNjvn7NV7enobv.7ea640e70a8c --database YMZow7uQxpBVyBGbmbpvvd --execute SELECT i.invoice_number, i.type, COUNT(ii.id) as item_count FROM invoices i LEFT JOIN invoice_items ii ON ii.invoice_id = i.id GROUP BY i.id ORDER BY i.created_at DESC LIMIT 15;",
+  "rows": [
+    {
+      "invoice_number": "AN-2026-1857",
+      "type": "offer",
+      "item_count": "0"
+    },
+    {
+      "invoice_number": "AN-2026-1856",
+      "type": "offer",
+      "item_count": "2"
+    },
+    {
+      "invoice_number": "RE-2026-2140",
+      "type": "invoice",
+      "item_count": "2"
+    },
+    {
+      "invoice_number": "AN-2026-1855",
+      "type": "offer",
+      "item_count": "2"
+    },
+    {
+      "invoice_number": "AN-2026-1854",
+      "type": "offer",
+      "item_count": "4"
+    },
+    {
+      "invoice_number": "AN-2026-1853",
+      "type": "offer",
+      "item_count": "2"
+    },
+    {
+      "invoice_number": "BE-2026-0002",
+      "type": "purchase_order",
+      "item_count": "1"
+    },
+    {
+      "invoice_number": "AN-2026-0008",
+      "type": "offer",
+      "item_count": "2"
+    }
+  ],
+  "messages": [],
+  "stdout": "invoice_number\ttype\titem_count\nAN-2026-1857\toffer\t0\nAN-2026-1856\toffer\t2\nRE-2026-2140\tinvoice\t2\nAN-2026-1855\toffer\t2\nAN-2026-1854\toffer\t4\nAN-2026-1853\toffer\t2\nBE-2026-0002\tpurchase_order\t1\nAN-2026-0008\toffer\t2\n",
+  "stderr": "",
+  "execution_time_ms": 405
+}

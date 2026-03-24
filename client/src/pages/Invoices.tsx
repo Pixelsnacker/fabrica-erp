@@ -1200,8 +1200,8 @@ export default function Invoices() {
                           <span className="text-xs text-muted-foreground">%</span>
                         </div>
                       )}
-                      <span className="font-semibold text-green-400 text-sm w-24 text-right shrink-0">
-                        {parseFloat(it.lineTotalGross).toLocaleString('de-DE', { minimumFractionDigits: 2 })} €
+                      <span className="font-semibold text-green-400 text-sm w-24 text-right shrink-0" title="Netto-Summe dieser Position">
+                        {parseFloat(it.lineTotalNet).toLocaleString('de-DE', { minimumFractionDigits: 2 })} €
                       </span>
                       <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-muted-foreground hover:text-primary shrink-0" title="Position kopieren" onClick={() => copyItem(idx)}><Copy className="w-3 h-3" /></Button>
                       {confirmDeleteIdx === idx ? (

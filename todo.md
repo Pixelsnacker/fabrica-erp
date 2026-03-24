@@ -973,3 +973,6 @@
 - [x] Ursache analysiert: DB-Verbindung (ECONNRESET/ETIMEDOUT) bricht bei sequenziellen INSERTs ab
 - [x] Fix: withRetry-Wrapper + Batch-INSERT (alle Items auf einmal statt einzeln in Schleife)
 - [ ] Testen mit 5+ Positionen (bitte von Dani testen)
+
+## Bug-Fix: Positions-Summe Netto/Brutto
+- [x] Positions-Summe zeigte Brutto statt Netto → korrigiert auf lineTotalNet
