@@ -11,6 +11,7 @@ const REFRESH_TOKEN = process.env.GOOGLE_DRIVE_REFRESH_TOKEN!;
 
 const ROOT_FOLDER_NAME = 'Fabrica ERP';
 const CUSTOMERS_FOLDER_NAME = 'Kunden';
+const SUPPLIERS_FOLDER_NAME = 'Lieferanten';
 
 function getAuthClient() {
   const auth = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET);
@@ -76,6 +77,25 @@ export async function getOrCreateCustomerFolder(customerName: string): Promise<s
   const customerFolderId = await findOrCreateFolder(drive, customerName, customersId);
 
   return customerFolderId;
+}
+
+/**
+ * Gibt die Folder-ID für einen Lieferanten zurück (erstellt Ordner wenn nötig)
+ * Struktur: Fabrica ERP/Lieferanten/[Lieferantenname]/
+ */
+export async function getOrCreateSupplierFolder(supplierName: string): Promise<string> {
+  const drive = getDriveClient();
+
+  // Root-Ordner: "Fabrica ERP"
+  const rootId = await findOrCreateFolder(drive, ROOT_FOLDER_NAME);
+
+  // Lieferanten-Ordner: "Fabrica ERP/Lieferanten"
+  const suppliersId = await findOrCreateFolder(drive, SUPPLIERS_FOLDER_NAME, rootId);
+
+  // Lieferanten-spezifischer Ordner: "Fabrica ERP/Lieferanten/[Name]"
+  const supplierFolderId = await findOrCreateFolder(drive, supplierName, suppliersId);
+
+  return supplierFolderId;
 }
 
 /**

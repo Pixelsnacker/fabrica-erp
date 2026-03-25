@@ -3380,6 +3380,7 @@ Diese Nachricht ist ausschließlich für den oben bezeichneten Adressaten bestim
         const db = await (await import('./db')).getDb();
         if (!db) throw new Error('DB nicht verfügbar');
         const { supplierDocuments } = await import('../drizzle/schema');
+        const { eq, desc } = await import('drizzle-orm');
         const buffer = Buffer.from(input.fileBase64, 'base64');
         const fileKey = `supplier-docs/${input.supplierId}/${input.category}/${Date.now()}-${input.filename}`;
         const { url } = await storagePut(fileKey, buffer, input.mimeType);
@@ -3395,6 +3396,39 @@ Diese Nachricht ist ausschließlich für den oben bezeichneten Adressaten bestim
           uploadedBy: ctx.user.name ?? 'Unknown',
           createdAt: Date.now(),
         });
+        // Auto-Sync nach Google Drive (im Hintergrund, blockiert nicht den Upload)
+        try {
+          const { getSupplierById } = await import('./db');
+          const supplier = await getSupplierById(input.supplierId);
+          if (supplier) {
+            const supplierName = (supplier as any).company || supplier.name;
+            const { uploadFileToDrive, getOrCreateSupplierFolder } = await import('./googleDrive');
+            const folderId = await getOrCreateSupplierFolder(supplierName);
+            const driveResult = await uploadFileToDrive({
+              filename: input.filename,
+              mimeType: input.mimeType,
+              buffer,
+              customerName: supplierName, // wird intern als Ordnername genutzt
+              folderId,
+            });
+            // Drive-Status in DB speichern
+            const db2 = await (await import('./db')).getDb();
+            if (db2) {
+              const [lastDoc] = await db2.select({ id: supplierDocuments.id })
+                .from(supplierDocuments)
+                .where(eq(supplierDocuments.supplierId, input.supplierId))
+                .orderBy(desc(supplierDocuments.createdAt))
+                .limit(1);
+              if (lastDoc) {
+                await db2.update(supplierDocuments)
+                  .set({ driveFileId: driveResult.fileId, driveSynced: 1 })
+                  .where(eq(supplierDocuments.id, lastDoc.id));
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('[Drive Sync] Lieferanten-Dokument Sync fehlgeschlagen:', e);
+        }
         return { success: true, url, fileKey };
       }),
 
@@ -3423,6 +3457,54 @@ Diese Nachricht ist ausschließlich für den oben bezeichneten Adressaten bestim
           .set({ notes: input.notes || null })
           .where(eq(supplierDocuments.id, input.id));
         return { success: true };
+      }),
+
+    // Manueller Re-Sync eines Lieferanten-Dokuments zu Google Drive
+    syncToDrive: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const db = await (await import('./db')).getDb();
+        if (!db) throw new Error('DB nicht verfügbar');
+        const { supplierDocuments } = await import('../drizzle/schema');
+        const { eq } = await import('drizzle-orm');
+        const { getSupplierById } = await import('./db');
+
+        // Dokument aus DB laden
+        const [doc] = await db.select().from(supplierDocuments).where(eq(supplierDocuments.id, input.id)).limit(1);
+        if (!doc) throw new Error('Dokument nicht gefunden');
+
+        // Lieferant laden
+        const supplier = await getSupplierById(doc.supplierId);
+        if (!supplier) throw new Error('Lieferant nicht gefunden');
+        const supplierName = (supplier as any).company || supplier.name;
+
+        // Datei von S3 herunterladen
+        const fetchRes = await fetch(doc.fileUrl);
+        if (!fetchRes.ok) throw new Error('Datei konnte nicht von S3 geladen werden');
+        const arrayBuffer = await fetchRes.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+
+        // In Drive-Lieferantenordner hochladen
+        const { uploadFileToDrive, getOrCreateSupplierFolder } = await import('./googleDrive');
+        const folderId = await getOrCreateSupplierFolder(supplierName);
+        const driveResult = await uploadFileToDrive({
+          filename: doc.filename,
+          mimeType: doc.mimeType || 'application/octet-stream',
+          buffer,
+          customerName: supplierName,
+          folderId,
+        });
+
+        // Drive-Status in DB speichern
+        await db.update(supplierDocuments)
+          .set({ driveFileId: driveResult.fileId, driveSynced: 1 })
+          .where(eq(supplierDocuments.id, input.id));
+
+        return {
+          success: true,
+          driveFileId: driveResult.fileId,
+          driveUrl: driveResult.fileUrl,
+        };
       }),
   }),
 });

@@ -22,7 +22,7 @@ import {
   ArrowLeft, Building2, Mail, Phone, MapPin, Star,
   FileText, FileArchive, FileCheck, FileX, File,
   ExternalLink, Download, FolderOpen, Calendar,
-  Upload, Plus, Trash2, Pencil,
+  Upload, Plus, Trash2, Pencil, RefreshCw, CloudOff, Cloud,
 } from "lucide-react";
 
 // ─── Kategorie-Labels & Icons ─────────────────────────────────────────────────
@@ -125,13 +125,33 @@ function ProjectDocCard({ doc, onProjectClick }: {
 }
 
 // ─── Lieferanten-Dokument-Karte (direkt am Lieferanten) ──────────────────────
-function SupplierDocCard({ doc, onDelete, onEditNote }: {
+function SupplierDocCard({ doc, supplierId, onDelete, onEditNote, onSynced }: {
   doc: any;
+  supplierId: number;
   onDelete: (id: number) => void;
   onEditNote: (doc: any) => void;
+  onSynced: () => void;
 }) {
   const meta = CATEGORY_META[doc.category] ?? CATEGORY_META.other;
   const Icon = meta.Icon;
+  const isSynced = doc.driveSynced === 1 || doc.driveSynced === true;
+
+  const syncMut = trpc.supplierDocs.syncToDrive.useMutation({
+    onSuccess: (result) => {
+      toast.success(
+        <span className="flex items-center gap-2">
+          <Cloud className="h-4 w-4 text-green-400" />
+          In Drive gespeichert
+          {result.driveUrl && (
+            <a href={result.driveUrl} target="_blank" rel="noopener noreferrer"
+               className="underline text-primary ml-1">Öffnen</a>
+          )}
+        </span>
+      );
+      onSynced();
+    },
+    onError: (e) => toast.error(`Drive-Sync fehlgeschlagen: ${e.message}`),
+  });
 
   return (
     <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/30 border border-border hover:border-primary/40 transition-all group">
@@ -156,6 +176,17 @@ function SupplierDocCard({ doc, onDelete, onEditNote }: {
             <a href={doc.fileUrl} download={doc.filename} title="Herunterladen">
               <Download className="h-3.5 w-3.5 text-muted-foreground hover:text-primary" />
             </a>
+            {!isSynced && (
+              <button
+                onClick={() => syncMut.mutate({ id: doc.id })}
+                disabled={syncMut.isPending}
+                title="Mit Google Drive synchronisieren"
+              >
+                {syncMut.isPending
+                  ? <RefreshCw className="h-3.5 w-3.5 text-muted-foreground animate-spin" />
+                  : <CloudOff className="h-3.5 w-3.5 text-muted-foreground hover:text-blue-400" />}
+              </button>
+            )}
             <button onClick={() => onDelete(doc.id)} title="Löschen">
               <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
             </button>
@@ -165,6 +196,30 @@ function SupplierDocCard({ doc, onDelete, onEditNote }: {
           <Badge variant="outline" className={`text-xs px-1.5 py-0 ${meta.color}`}>
             {meta.label}
           </Badge>
+          {/* Drive-Status */}
+          {isSynced ? (
+            <a
+              href={`https://drive.google.com/file/d/${doc.driveFileId}/view`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-xs text-green-400 hover:text-green-300 transition-colors"
+              title="In Google Drive öffnen"
+            >
+              <Cloud className="h-3 w-3" />Drive
+            </a>
+          ) : (
+            <button
+              onClick={() => syncMut.mutate({ id: doc.id })}
+              disabled={syncMut.isPending}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-blue-400 transition-colors"
+              title="Jetzt mit Drive synchronisieren"
+            >
+              {syncMut.isPending
+                ? <RefreshCw className="h-3 w-3 animate-spin" />
+                : <CloudOff className="h-3 w-3" />}
+              {syncMut.isPending ? "Sync..." : "Nicht in Drive"}
+            </button>
+          )}
           <span className="flex items-center gap-1 text-xs text-muted-foreground">
             <Calendar className="h-3 w-3" />
             {formatDate(doc.createdAt)}
@@ -622,8 +677,10 @@ export default function SupplierDetail() {
                     <SupplierDocCard
                       key={doc.id}
                       doc={doc}
+                      supplierId={id}
                       onDelete={(docId) => setDeleteId(docId)}
                       onEditNote={(d) => setEditNoteDoc(d)}
+                      onSynced={() => utils.supplierDocs.list.invalidate({ supplierId: id })}
                     />
                   ))}
                 </div>

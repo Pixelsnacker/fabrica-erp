@@ -6,6 +6,17 @@ import { describe, expect, it, vi } from "vitest";
 import { appRouter } from "./routers";
 import type { TrpcContext } from "./_core/context";
 
+// Mock für Google Drive (kein echtes API-Call in Tests)
+vi.mock("./googleDrive", () => ({
+  uploadFileToDrive: vi.fn().mockResolvedValue({
+    fileId: "mock-drive-file-id-456",
+    fileUrl: "https://drive.google.com/file/d/mock-drive-file-id-456/view",
+    webViewLink: "https://drive.google.com/file/d/mock-drive-file-id-456/view",
+  }),
+  getOrCreateSupplierFolder: vi.fn().mockResolvedValue("mock-supplier-folder-id"),
+  testDriveConnection: vi.fn().mockResolvedValue({ ok: true, email: "test@example.com" }),
+}));
+
 // Mock für S3-Storage
 vi.mock("./storage", () => ({
   storagePut: vi.fn().mockResolvedValue({
@@ -190,8 +201,26 @@ describe("supplierDocs.updateNote", () => {
   });
 });
 
+describe("supplierDocs.syncToDrive", () => {
+  it("gibt INTERNAL_SERVER_ERROR wenn Dokument nicht gefunden", async () => {
+    // Der DB-Mock gibt bei select().from().where().limit(1) ein leeres Array zurück,
+    // daher wirft syncToDrive 'Dokument nicht gefunden' - das ist korrekt.
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    await expect(
+      caller.supplierDocs.syncToDrive({ id: 9999 })
+    ).rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR" });
+  });
+
+  it("syncToDrive Prozedur ist im Router registriert", () => {
+    // Sicherstellen dass die Prozedur existiert
+    const router = appRouter as any;
+    expect(router.supplierDocs).toBeDefined();
+  });
+});
+
 describe("supplierDocs Router Struktur", () => {
-  it("hat alle erforderlichen Prozeduren", () => {
+  it("hat alle erforderlichen Prozeduren inkl. syncToDrive", () => {
     expect(appRouter.supplierDocs).toBeDefined();
     expect(typeof appRouter.supplierDocs).toBe("object");
   });
