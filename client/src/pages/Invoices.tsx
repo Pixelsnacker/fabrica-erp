@@ -279,6 +279,7 @@ export default function Invoices() {
     }
   });
   const generatePdfMut = trpc.invoices.generatePdf.useMutation();
+  const generateEInvoiceMut = trpc.invoices.generateEInvoice.useMutation();
   const exportZipMut = trpc.invoices.exportZip.useMutation();
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [exportYear, setExportYear] = useState(new Date().getFullYear());
@@ -806,6 +807,32 @@ export default function Invoices() {
     }
   }
 
+  async function downloadEInvoice(inv: any) {
+    const toastId = toast.loading('E-Rechnung (ZUGFeRD 2.3) wird erstellt...');
+    try {
+      const result = await generateEInvoiceMut.mutateAsync({ id: inv.id });
+      if (!result?.pdf) throw new Error('Kein PDF erhalten');
+      const byteChars = atob(result.pdf);
+      const byteArr = new Uint8Array(byteChars.length);
+      for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
+      const blob = new Blob([byteArr], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = result.filename ?? inv.invoiceNumber + '_ZUGFeRD.pdf';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.dismiss(toastId);
+      toast.success('E-Rechnung (ZUGFeRD 2.3) heruntergeladen – gesetzeskonform nach §14 UStG');
+    } catch (err: any) {
+      toast.dismiss(toastId);
+      toast.error(err?.message ?? 'E-Rechnung fehlgeschlagen');
+      console.error(err);
+    }
+  }
+
   return (
     <DashboardLayout>
       <div className="p-4 md:p-6 space-y-6">
@@ -921,7 +948,11 @@ export default function Invoices() {
                 <Button size="sm" variant="outline" onClick={() => downloadPDF(inv)} title="PDF herunterladen">
                   <Download className="w-3 h-3 mr-1" /> PDF
                 </Button>
-
+                {['invoice','credit_note'].includes(inv.type) && (
+                  <Button size="sm" variant="outline" className="text-emerald-400 border-emerald-400/30" onClick={() => downloadEInvoice(inv)} title="E-Rechnung (ZUGFeRD 2.3) herunterladen">
+                    <FileText className="w-3 h-3 mr-1" /> E-Rechnung
+                  </Button>
+                )}
                 {['offer','order_confirmation','purchase_order'].includes(inv.type) && (
                   <>
                   <Button size="sm" variant="outline" className="text-blue-400 border-blue-400/30" onClick={() => {
@@ -1637,8 +1668,12 @@ export default function Invoices() {
                 <p className="text-xs text-muted-foreground break-all">SHA-256: {detailData.contentHash}</p>
               )}
               <div className="flex gap-2 flex-wrap">
-                <Button size="sm" variant="outline" onClick={() => downloadPDF(detailData)}><Download className="w-3 h-3 mr-1" /> PDF</Button>
-
+                 <Button size="sm" variant="outline" onClick={() => downloadPDF(detailData)}><Download className="w-3 h-3 mr-1" /> PDF</Button>
+                {['invoice','credit_note'].includes(detailData.type) && (
+                  <Button size="sm" variant="outline" className="text-emerald-400 border-emerald-400/30" onClick={() => downloadEInvoice(detailData)} title="E-Rechnung (ZUGFeRD 2.3)">
+                    <FileText className="w-3 h-3 mr-1" /> E-Rechnung
+                  </Button>
+                )}
                 {detailData.type === 'offer' && (
                     <Button size="sm" variant="outline" className="text-green-400 border-green-400/30 hover:bg-green-400/10" onClick={() => setShowConvertDialog(detailData.id)}>
                       <ArrowRight className="w-3 h-3 mr-1" /> Konvertieren

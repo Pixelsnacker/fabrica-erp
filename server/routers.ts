@@ -1706,6 +1706,23 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
         return { pdf: pdfBuffer.toString('base64'), filename, driveFileId };
       }),
 
+    generateEInvoice: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const inv = await getInvoiceById(input.id);
+        if (!inv) throw new Error('Dokument nicht gefunden');
+        if (!['invoice', 'credit_note'].includes((inv as any).invoiceType ?? '')) {
+          throw new Error('E-Rechnung ist nur für Rechnungen und Gutschriften verfügbar.');
+        }
+        const cs = await getCompanySettings();
+        const pdfBuffer = await renderInvoicePdf(inv, cs);
+        const { embedZugferdInPdf, buildEInvoiceData } = await import('./eInvoice');
+        const eData = await buildEInvoiceData(inv, cs);
+        const zugferdPdf = await embedZugferdInPdf(pdfBuffer, eData);
+        const filename = (inv.invoiceNumber ?? 'ENTWURF') + '_ZUGFeRD.pdf';
+        return { pdf: zugferdPdf.toString('base64'), filename };
+      }),
+
     exportZip: protectedProcedure
       .input(z.object({
         year: z.number().int().min(2020).max(2099),

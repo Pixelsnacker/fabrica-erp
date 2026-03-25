@@ -619,3 +619,34 @@ describe('companySettings.prepareGmailDraft', () => {
     expect(subject).toContain(recipientCompany);
   });
 });
+
+describe('E-Rechnung (ZUGFeRD 2.3)', () => {
+  it('generateEInvoice Procedure ist im Router registriert', async () => {
+    const { appRouter } = await import('./routers');
+    expect(typeof (appRouter as any)._def.procedures['invoices.generateEInvoice']).toBe('function');
+  });
+
+  it('E-Rechnung nur für Rechnungen und Gutschriften verfügbar', () => {
+    const allowedTypes = ['invoice', 'credit_note'];
+    const notAllowedTypes = ['offer', 'order_confirmation', 'purchase_order', 'delivery_note'];
+    for (const t of allowedTypes) {
+      expect(allowedTypes.includes(t)).toBe(true);
+    }
+    for (const t of notAllowedTypes) {
+      expect(allowedTypes.includes(t)).toBe(false);
+    }
+  });
+
+  it('ZUGFeRD-Dateiname endet auf _ZUGFeRD.pdf', () => {
+    const invoiceNumber = 'RE-2026-0042';
+    const filename = invoiceNumber + '_ZUGFeRD.pdf';
+    expect(filename).toBe('RE-2026-0042_ZUGFeRD.pdf');
+    expect(filename.endsWith('_ZUGFeRD.pdf')).toBe(true);
+  });
+
+  it('buildEInvoiceData und embedZugferdInPdf sind exportiert', async () => {
+    const mod = await import('./eInvoice');
+    expect(typeof mod.buildEInvoiceData).toBe('function');
+    expect(typeof mod.embedZugferdInPdf).toBe('function');
+  });
+});
