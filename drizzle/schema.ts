@@ -555,6 +555,36 @@ export const projectDocuments = mysqlTable("project_documents", {
 export type InsertProjectDocument = typeof projectDocuments.$inferInsert;
 export type ProjectDocument = typeof projectDocuments.$inferSelect;
 
+// ── Lieferanten-Dokumente (ohne Projektbezug) ────────────────────────────────
+export const supplierDocuments = mysqlTable("supplier_documents", {
+  id: int("id").primaryKey().autoincrement(),
+  supplierId: int("supplier_id").notNull(),
+  category: mysqlEnum("category", [
+    "nda",              // Geheimhaltungserklärung
+    "contract",         // Rahmenvertrag
+    "supplier_offer",   // Allgemeines Angebot
+    "invoice",          // Eingangsrechnung
+    "delivery_note",    // Lieferschein
+    "drawing",          // Zeichnung / Technische Unterlagen
+    "cad_data",         // CAD Daten
+    "photo",            // Foto / Bild
+    "protocol",         // Protokoll
+    "other",            // Sonstiges
+  ]).default("other").notNull(),
+  filename: varchar("filename", { length: 512 }).notNull(),
+  fileKey: varchar("file_key", { length: 512 }).notNull(),
+  fileUrl: text("file_url").notNull(),
+  fileSize: int("file_size"),
+  mimeType: varchar("mime_type", { length: 128 }),
+  notes: text("notes"),
+  uploadedBy: varchar("uploaded_by", { length: 255 }),
+  driveFileId: varchar("drive_file_id", { length: 255 }),
+  driveSynced: tinyint("drive_synced").default(0).notNull(),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+});
+export type InsertSupplierDocument = typeof supplierDocuments.$inferInsert;
+export type SupplierDocument = typeof supplierDocuments.$inferSelect;
+
 // ── Artikeldatenbank ──────────────────────────────────────────────────────────
 export const articles = mysqlTable("articles", {
   id: int("id").autoincrement().notNull(),

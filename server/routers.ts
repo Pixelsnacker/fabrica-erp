@@ -3352,5 +3352,78 @@ Diese Nachricht ist ausschließlich für den oben bezeichneten Adressaten bestim
       return { byMonth, rejectionReasons, kpis: { hitRate, totalOffers, totalOrders } };
     }),
   }),
+
+  // ─── Lieferanten-Dokumente (ohne Projektbezug) ────────────────────────────────
+  supplierDocs: router({
+    list: protectedProcedure
+      .input(z.object({ supplierId: z.number() }))
+      .query(async ({ input }) => {
+        const db = await (await import('./db')).getDb();
+        if (!db) return [];
+        const { supplierDocuments } = await import('../drizzle/schema');
+        const { eq, desc } = await import('drizzle-orm');
+        return db.select().from(supplierDocuments)
+          .where(eq(supplierDocuments.supplierId, input.supplierId))
+          .orderBy(desc(supplierDocuments.createdAt));
+      }),
+
+    upload: protectedProcedure
+      .input(z.object({
+        supplierId: z.number(),
+        category: z.enum(['nda','contract','supplier_offer','invoice','delivery_note','drawing','cad_data','photo','protocol','other']).default('other'),
+        filename: z.string(),
+        fileBase64: z.string(),
+        mimeType: z.string().default('application/octet-stream'),
+        notes: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const db = await (await import('./db')).getDb();
+        if (!db) throw new Error('DB nicht verfügbar');
+        const { supplierDocuments } = await import('../drizzle/schema');
+        const buffer = Buffer.from(input.fileBase64, 'base64');
+        const fileKey = `supplier-docs/${input.supplierId}/${input.category}/${Date.now()}-${input.filename}`;
+        const { url } = await storagePut(fileKey, buffer, input.mimeType);
+        await db.insert(supplierDocuments).values({
+          supplierId: input.supplierId,
+          category: input.category,
+          filename: input.filename,
+          fileKey,
+          fileUrl: url,
+          fileSize: buffer.length,
+          mimeType: input.mimeType,
+          notes: input.notes ?? null,
+          uploadedBy: ctx.user.name ?? 'Unknown',
+          createdAt: Date.now(),
+        });
+        return { success: true, url, fileKey };
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const db = await (await import('./db')).getDb();
+        if (!db) throw new Error('DB nicht verfügbar');
+        const { supplierDocuments } = await import('../drizzle/schema');
+        const { eq } = await import('drizzle-orm');
+        await db.delete(supplierDocuments).where(eq(supplierDocuments.id, input.id));
+        return { success: true };
+      }),
+
+    updateNote: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        notes: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await (await import('./db')).getDb();
+        if (!db) throw new Error('DB nicht verfügbar');
+        const { supplierDocuments } = await import('../drizzle/schema');
+        const { eq } = await import('drizzle-orm');
+        await db.update(supplierDocuments)
+          .set({ notes: input.notes || null })
+          .where(eq(supplierDocuments.id, input.id));
+        return { success: true };
+      }),
+  }),
 });
 export type AppRouter = typeof appRouter;

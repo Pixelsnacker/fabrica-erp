@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `supplier_documents` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `supplier_id` int NOT NULL,\n  `category` enum('nda','contract','supplier_offer','invoice','delivery_note','drawing','cad_data','photo','protocol','other') NOT NULL DEFAULT 'other',\n  `filename` varchar(512) NOT NULL,\n  `file_key` varchar(512) NOT NULL,\n  `file_url` text NOT NULL,\n  `file_size` int DEFAULT NULL,\n  `mime_type` varchar(128) DEFAULT NULL,\n  `notes` text DEFAULT NULL,\n  `uploaded_by` varchar(255) DEFAULT NULL,\n  `drive_file_id` varchar(255) DEFAULT NULL,\n  `drive_synced` tinyint NOT NULL DEFAULT 0,\n  `created_at` bigint NOT NULL,\n  PRIMARY KEY (`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 9NNjvn7NV7enobv.7ea640e70a8c --database YMZow7uQxpBVyBGbmbpvvd --execute CREATE TABLE IF NOT EXISTS `supplier_documents` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `supplier_id` int NOT NULL,\n  `category` enum('nda','contract','supplier_offer','invoice','delivery_note','drawing','cad_data','photo','protocol','other') NOT NULL DEFAULT 'other',\n  `filename` varchar(512) NOT NULL,\n  `file_key` varchar(512) NOT NULL,\n  `file_url` text NOT NULL,\n  `file_size` int DEFAULT NULL,\n  `mime_type` varchar(128) DEFAULT NULL,\n  `notes` text DEFAULT NULL,\n  `uploaded_by` varchar(255) DEFAULT NULL,\n  `drive_file_id` varchar(255) DEFAULT NULL,\n  `drive_synced` tinyint NOT NULL DEFAULT 0,\n  `created_at` bigint NOT NULL,\n  PRIMARY KEY (`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 514
+}
