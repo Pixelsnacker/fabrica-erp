@@ -116,3 +116,6 @@ drizzle/meta/0[0-9][0-9][0-9]_snapshot.json
 # Interne Entwicklungsdateien
 todo.md
 client/src/pages/ComponentShowcase.tsx
+scripts/
+.manus-logs/
+*.mjs
