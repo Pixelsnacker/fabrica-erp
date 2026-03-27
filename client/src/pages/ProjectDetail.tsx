@@ -269,8 +269,13 @@ function ProjectChatTab({ projectId }: { projectId: number }) {
 
       {/* Chat-Bereich */}
       <div className="border border-border rounded-lg overflow-hidden">
-        {/* Suchleiste */}
+        {/* Chat-Header mit Logo und Suchleiste */}
         <div className="border-b border-border bg-card px-3 py-2 flex items-center gap-2">
+          <img
+            src="https://d2xsxph8kpxj0f.cloudfront.net/310419663031764330/YMZow7uQxpBVyBGbmbpvvd/FabricaLogoneu_096a1b04.png"
+            alt="Fabrica 3D"
+            className="h-6 object-contain shrink-0 opacity-80"
+          />
           {showSearch ? (
             <>
               <Input

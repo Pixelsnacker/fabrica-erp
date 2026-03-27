@@ -98,10 +98,11 @@ function PortalLogin({ projectId, onLogin }: {
       <div className="w-full max-w-sm">
         {/* Logo/Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-slate-900 mb-4">
-            <Building2 className="h-7 w-7 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold text-slate-900">Fabrica GmbH</h1>
+          <img
+            src="https://d2xsxph8kpxj0f.cloudfront.net/310419663031764330/YMZow7uQxpBVyBGbmbpvvd/FabricaLogoneu_096a1b04.png"
+            alt="Fabrica 3D Digital Production"
+            className="h-14 mx-auto mb-4 object-contain"
+          />
           <p className="text-slate-500 mt-1">Kundenportal</p>
         </div>
 
@@ -264,11 +265,13 @@ function PortalChat({ projectId, password, senderName, onLogout }: {
     <div className="min-h-screen bg-slate-50 flex flex-col">
       {/* Header mit Live-Projektname */}
       <header className="bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-3 sticky top-0 z-10">
-        <div className="h-8 w-8 rounded-lg bg-slate-900 flex items-center justify-center shrink-0">
-          <Building2 className="h-4 w-4 text-white" />
-        </div>
+        <img
+          src="https://d2xsxph8kpxj0f.cloudfront.net/310419663031764330/YMZow7uQxpBVyBGbmbpvvd/FabricaLogoneu_096a1b04.png"
+          alt="Fabrica 3D"
+          className="h-7 object-contain shrink-0"
+        />
         <div className="flex-1 min-w-0">
-          <p className="text-xs text-slate-500">Fabrica GmbH · Kundenportal</p>
+          <p className="text-xs text-slate-500">Kundenportal</p>
           <p className="text-sm font-semibold text-slate-900 truncate">{liveProjectTitle}</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
