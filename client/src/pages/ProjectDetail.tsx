@@ -273,7 +273,7 @@ function ProjectChatTab({ projectId, customerName, customerEmail, portalUrl }: {
       )}
 
       {/* Chat + Todo Bereich (horizontal aufgeteilt) */}
-      <div className="border border-border rounded-lg overflow-hidden flex" style={{ minHeight: 480 }}>
+      <div className="border border-border rounded-lg overflow-hidden flex" style={{ minHeight: 540 }}>
         {/* Chat (links, 60%) */}
         <div className="flex flex-col" style={{ flex: '0 0 60%', borderRight: '1px solid hsl(var(--border))' }}>
         {/* Chat-Header mit Logo, Kundenname und Suchleiste */}
@@ -320,7 +320,7 @@ function ProjectChatTab({ projectId, customerName, customerEmail, portalUrl }: {
         </div>
 
         {/* Nachrichten-Liste */}
-        <div className="h-80 overflow-y-auto p-4 space-y-3 bg-background/50">
+        <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-background/50" style={{ minHeight: 0 }}>
           {msgsLoading ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground py-4 justify-center">
               <Loader2 className="h-4 w-4 animate-spin" />Lade Nachrichten...

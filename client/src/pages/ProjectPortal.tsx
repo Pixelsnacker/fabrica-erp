@@ -463,7 +463,7 @@ function PortalChat({ projectId, password, senderName, onLogout }: {
       </div>
 
       {/* Haupt-Bereich: Chat + Todos nebeneinander */}
-      <div className="flex flex-1 overflow-hidden max-w-4xl mx-auto w-full">
+      <div className="flex flex-1 max-w-4xl mx-auto w-full" style={{ overflow: 'visible' }}>
 
       {/* Chat (links, 60%) */}
       <div className="flex flex-col" style={{ flex: '0 0 60%', minWidth: 0 }}>
@@ -546,7 +546,7 @@ function PortalChat({ projectId, password, senderName, onLogout }: {
 
       {/* Eingabebereich */}
       {!isChatClosed ? (
-        <div className="bg-white border-t border-slate-200 px-4 py-3 sticky bottom-0">
+        <div className="bg-white border-t border-slate-200 px-4 py-3">
           <div className="max-w-2xl mx-auto space-y-2">
             {chatFile && (
               <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-lg text-xs text-slate-600 border border-slate-200">
