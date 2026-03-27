@@ -16,6 +16,127 @@ import {
 } from "lucide-react";
 import TodoPanel from "@/components/TodoPanel";
 
+// ─── Datenschutz-Hilfsfunktionen ─────────────────────────────────────────────
+const PRIVACY_KEY = (projectId: string) => `portal_privacy_accepted_${projectId}`;
+
+function loadPrivacyAccepted(projectId: string): boolean {
+  try {
+    return sessionStorage.getItem(PRIVACY_KEY(projectId)) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function savePrivacyAccepted(projectId: string) {
+  try {
+    sessionStorage.setItem(PRIVACY_KEY(projectId), 'true');
+  } catch { /* ignore */ }
+}
+
+// ─── Datenschutz-Modal ───────────────────────────────────────────────────────
+function PrivacyModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[80vh] overflow-y-auto"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between rounded-t-2xl">
+          <h2 className="text-base font-semibold text-slate-900">Datenschutzhinweis</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1 rounded">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="px-6 py-5 space-y-5 text-sm text-slate-700 leading-relaxed">
+          <div>
+            <p className="font-semibold text-slate-900 mb-1">Verantwortlicher</p>
+            <p>Fabrica GmbH<br />Hüttenstraße 205, 50170 Kerpen-Sindorf<br />kontakt@fabrica3d.eu</p>
+          </div>
+          <div>
+            <p className="font-semibold text-slate-900 mb-1">Was dieses Portal ist</p>
+            <p>Dieses Kundenportal dient der direkten Projektkommunikation zwischen Fabrica GmbH und Ihnen als Kunde. Es werden ausschließlich Daten verarbeitet, die für die Projektabwicklung notwendig sind.</p>
+          </div>
+          <div>
+            <p className="font-semibold text-slate-900 mb-2">Welche Daten gespeichert werden</p>
+            <ul className="space-y-1 list-disc list-inside text-slate-600">
+              <li>Ihr Name und Ihre E-Mail-Adresse, die im Rahmen des Projekts hinterlegt wurden</li>
+              <li>Nachrichten die Sie im Chat senden, inklusive Datum und Uhrzeit</li>
+              <li>Dateien und Bilder die Sie im Chat hochladen</li>
+              <li>Aufgaben (Todos) die Ihnen zugewiesen werden oder die Sie erstellen</li>
+              <li>Ein technischer Session-Token der Ihren Login-Status speichert</li>
+            </ul>
+          </div>
+          <div>
+            <p className="font-semibold text-slate-900 mb-1">Warum diese Daten gespeichert werden</p>
+            <p>Die Verarbeitung erfolgt auf Basis von Art. 6 Abs. 1 lit. b DSGVO zur Durchführung eines Vertrags sowie auf Basis von Art. 6 Abs. 1 lit. f DSGVO für das berechtigte Interesse an einer geordneten Projektkommunikation.</p>
+          </div>
+          <div>
+            <p className="font-semibold text-slate-900 mb-1">Cookies und lokale Speicherung</p>
+            <p>Dieses Portal verwendet ausschließlich einen technisch notwendigen Session-Cookie, der Ihren Login-Status für die Dauer Ihrer Sitzung speichert. Es werden keine Tracking-Cookies, Analyse-Tools oder Werbecookies eingesetzt. Für technisch notwendige Cookies ist nach deutschem und europäischem Recht keine gesonderte Einwilligung erforderlich.</p>
+          </div>
+          <div>
+            <p className="font-semibold text-slate-900 mb-1">Wie lange Daten gespeichert werden</p>
+            <p>Ihre Projektdaten inklusive Chatverlauf werden für die Dauer des Projekts sowie für den gesetzlich vorgeschriebenen Aufbewahrungszeitraum von zehn Jahren gespeichert. Nach Ablauf dieser Frist werden die Daten gelöscht.</p>
+          </div>
+          <div>
+            <p className="font-semibold text-slate-900 mb-1">Wer die Daten sieht</p>
+            <p>Ihre Nachrichten und Dateien sind ausschließlich für die am Projekt beteiligten Personen bei Fabrica GmbH sowie für Sie als Kunde sichtbar. Eine Weitergabe an Dritte findet nicht statt, außer es besteht eine gesetzliche Verpflichtung dazu.</p>
+          </div>
+          <div>
+            <p className="font-semibold text-slate-900 mb-1">Ihre Rechte</p>
+            <p>Sie haben jederzeit das Recht auf Auskunft über Ihre gespeicherten Daten, Berichtigung unrichtiger Daten, Löschung soweit keine gesetzliche Aufbewahrungspflicht entgegensteht, sowie Einschränkung der Verarbeitung. Für alle Anfragen wenden Sie sich bitte an: <span className="font-medium">kontakt@fabrica3d.eu</span></p>
+          </div>
+          <div>
+            <p className="font-semibold text-slate-900 mb-1">Beschwerderecht</p>
+            <p>Sie haben das Recht, sich bei der zuständigen Datenschutzaufsichtsbehörde zu beschweren. In Nordrhein-Westfalen ist dies die Landesbeauftragte für Datenschutz und Informationsfreiheit NRW, Postfach 20 04 44, 40102 Düsseldorf.</p>
+          </div>
+        </div>
+        <div className="sticky bottom-0 bg-white border-t border-slate-200 px-6 py-4 rounded-b-2xl">
+          <button
+            onClick={onClose}
+            className="w-full py-2.5 rounded-xl bg-slate-900 text-white text-sm font-medium hover:bg-slate-800 transition-colors"
+          >
+            Schließen
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Datenschutz-Banner ───────────────────────────────────────────────────────
+function PrivacyBanner({ projectId, onAccept }: { projectId: number; onAccept: () => void }) {
+  const [showModal, setShowModal] = useState(false);
+  return (
+    <>
+      <div className="bg-slate-800 text-white px-4 py-3 flex flex-wrap items-center gap-3 text-xs">
+        <span className="flex-1 min-w-0">
+          <span className="font-semibold">Datenschutzhinweis:</span>{' '}
+          Dieses Portal speichert Ihre Projektkommunikation gemäß DSGVO.
+          Durch die Nutzung stimmen Sie der Verarbeitung Ihrer Daten zu.{' '}
+          <button
+            onClick={() => setShowModal(true)}
+            className="underline hover:text-slate-300 transition-colors"
+          >
+            Vollständigen Datenschutzhinweis lesen
+          </button>
+        </span>
+        <button
+          onClick={() => { savePrivacyAccepted(String(projectId)); onAccept(); }}
+          className="shrink-0 px-4 py-1.5 rounded-lg bg-white text-slate-900 font-semibold hover:bg-slate-100 transition-colors"
+        >
+          Verstanden &amp; Akzeptieren
+        </button>
+      </div>
+      {showModal && <PrivacyModal onClose={() => setShowModal(false)} />}
+    </>
+  );
+}
+
 // ─── Session-Hilfsfunktionen ──────────────────────────────────────────────────
 const SESSION_KEY = (projectId: string) => `portal_session_${projectId}`;
 
@@ -181,6 +302,7 @@ function PortalChat({ projectId, password, senderName, onLogout }: {
   const [chatFile, setChatFile] = useState<File | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
+  const [privacyAccepted, setPrivacyAccepted] = useState(() => loadPrivacyAccepted(String(projectId)));
   const chatFileRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const colorMapRef = useRef<Map<string, number>>(new Map());
@@ -292,6 +414,11 @@ function PortalChat({ projectId, password, senderName, onLogout }: {
           </button>
         </div>
       </header>
+
+      {/* Datenschutz-Banner */}
+      {!privacyAccepted && (
+        <PrivacyBanner projectId={projectId} onAccept={() => setPrivacyAccepted(true)} />
+      )}
 
       {/* Chat geschlossen — Hinweis */}
       {isChatClosed && (
