@@ -391,7 +391,19 @@ function ProjectChatTab({ projectId, customerName, customerEmail, portalUrl }: {
               </div>
             </div>
             <input ref={chatFileRef} type="file" className="hidden" onChange={e => e.target.files?.[0] && setChatFile(e.target.files[0])} />
-            <p className="text-xs text-muted-foreground mt-1.5">Enter = Senden · Shift+Enter = Zeilenumbruch · @Name für E-Mail-Benachrichtigung</p>
+            <p style={{
+              fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif',
+              fontWeight: 300,
+              fontSize: '13px',
+              lineHeight: 1.7,
+              letterSpacing: '0.02em',
+              color: '#4a4a4a',
+              fontStyle: 'italic',
+              borderLeft: '2px solid #DC143C',
+              paddingLeft: '10px',
+              marginTop: '12px',
+              marginBottom: '8px',
+            }}>Enter = Senden · Shift+Enter = Zeilenumbruch · <span style={{ fontStyle: 'normal', fontWeight: 400 }}>@Name für E-Mail-Benachrichtigung</span></p>
           </div>
         ) : (
           <div className="border-t border-border p-3 bg-card text-center text-xs text-muted-foreground">

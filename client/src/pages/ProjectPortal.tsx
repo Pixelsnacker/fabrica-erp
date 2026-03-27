@@ -582,7 +582,19 @@ function PortalChat({ projectId, password, senderName, onLogout }: {
               </div>
             </div>
             <input ref={chatFileRef} type="file" className="hidden" onChange={e => e.target.files?.[0] && setChatFile(e.target.files[0])} />
-            <p className="text-xs text-slate-400 text-center">Enter = Senden · Shift+Enter = Zeilenumbruch</p>
+            <p style={{
+              fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif',
+              fontWeight: 300,
+              fontSize: '13px',
+              lineHeight: 1.7,
+              letterSpacing: '0.02em',
+              color: '#4a4a4a',
+              fontStyle: 'italic',
+              borderLeft: '2px solid #DC143C',
+              paddingLeft: '10px',
+              marginTop: '12px',
+              marginBottom: '8px',
+            }}>Enter = Senden · <span style={{ fontStyle: 'normal', fontWeight: 400 }}>Shift+Enter = Zeilenumbruch</span></p>
           </div>
         </div>
       ) : (
