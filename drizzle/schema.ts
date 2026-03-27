@@ -722,3 +722,14 @@ export const projectTodos = mysqlTable("project_todos", {
 });
 export type InsertProjectTodo = typeof projectTodos.$inferInsert;
 export type ProjectTodo = typeof projectTodos.$inferSelect;
+
+// Chat-Lösch-Audit-Log (Admin-only)
+export const chatDeleteLog = mysqlTable("chat_delete_log", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("project_id").notNull(),
+  deletedBy: varchar("deleted_by", { length: 255 }).notNull(),
+  deletedAt: bigint("deleted_at", { mode: "number" }).notNull(),
+  messageCount: int("message_count").notNull().default(0),
+  attachmentCount: int("attachment_count").notNull().default(0),
+});
+export type ChatDeleteLog = typeof chatDeleteLog.$inferSelect;

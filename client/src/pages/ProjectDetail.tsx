@@ -68,7 +68,10 @@ function getErpPersonColor(name: string, colorMap: Map<string, number>) {
 // ─── Kundenportal-Chat-Tab ────────────────────────────────────────────────────
 function ProjectChatTab({ projectId, customerName, customerEmail, portalUrl }: { projectId: number; customerName?: string; customerEmail?: string; portalUrl?: string }) {
   const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const currentUser = user?.name ?? user?.email ?? 'Fabrica';
+  const [showDeleteChatConfirm, setShowDeleteChatConfirm] = useState(false);
+  const [chatDeleted, setChatDeleted] = useState(false);
   const utils = trpc.useUtils();
   const [newMessage, setNewMessage] = useState('');
   const [setupPassword, setSetupPassword] = useState('');
@@ -113,6 +116,16 @@ function ProjectChatTab({ projectId, customerName, customerEmail, portalUrl }: {
       toast.success('Einladungs-E-Mail gesendet');
     },
     onError: (e) => toast.error(`Fehler: ${e.message}`),
+  });
+
+  const deleteChat = trpc.deleteChat.deleteProjectChat.useMutation({
+    onSuccess: (result) => {
+      utils.projectChat.getMessages.invalidate({ projectId });
+      setShowDeleteChatConfirm(false);
+      setChatDeleted(true);
+      toast.success(`Chatverlauf gelöscht (${result.messageCount} Nachrichten, ${result.attachmentCount} Anhänge)`);
+    },
+    onError: (e) => toast.error(`Fehler beim Löschen: ${e.message}`),
   });
 
   const closeChat = trpc.projectChat.closeChat.useMutation({
@@ -315,6 +328,16 @@ function ProjectChatTab({ projectId, customerName, customerEmail, portalUrl }: {
                 Suchen
               </button>
               <ExportDropdown projectId={projectId} mode="erp" />
+              {isAdmin && (
+                <button
+                  onClick={() => setShowDeleteChatConfirm(true)}
+                  className="flex items-center gap-1.5 text-sm ml-2 px-2 py-1 rounded border border-red-600 text-red-600 hover:bg-red-600 hover:text-white transition-colors"
+                  title="Chat löschen (Admin)"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Chat löschen
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -504,6 +527,58 @@ function ProjectChatTab({ projectId, customerName, customerEmail, portalUrl }: {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+      )}
+
+      {/* Chat-Löschen Bestätigungsdialog (nur Admin) */}
+      {isAdmin && showDeleteChatConfirm && (
+        <Dialog open={showDeleteChatConfirm} onOpenChange={setShowDeleteChatConfirm}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-red-600 flex items-center gap-2">
+                <Trash2 className="h-5 w-5" />
+                Chat unwiderruflich löschen
+              </DialogTitle>
+              <DialogDescription className="text-sm text-muted-foreground pt-2">
+                Möchten Sie den gesamten Chatverlauf dieses Projekts unwiderruflich löschen?
+                Diese Aktion kann nicht rückgängig gemacht werden.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="rounded-md bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 p-3 text-sm text-red-700 dark:text-red-400">
+              Alle Nachrichten und hochgeladenen Anhänge werden dauerhaft gelöscht.
+              Die Todo-Liste und Projektdaten bleiben erhalten.
+            </div>
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={() => setShowDeleteChatConfirm(false)} disabled={deleteChat.isPending}>
+                Abbrechen
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => deleteChat.mutate({ projectId })}
+                disabled={deleteChat.isPending}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                {deleteChat.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+                Ja, Chat endgültig löschen
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Meldung nach Löschung */}
+      {chatDeleted && (
+        <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm z-10 rounded-lg">
+          <div className="text-center text-muted-foreground">
+            <Trash2 className="h-8 w-8 mx-auto mb-2 opacity-40" />
+            <p className="text-sm">Der Chatverlauf wurde gelöscht.</p>
+            <button
+              className="mt-2 text-xs underline text-muted-foreground hover:text-foreground"
+              onClick={() => setChatDeleted(false)}
+            >
+              Schließen
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
