@@ -45,6 +45,23 @@ function fmtSize(bytes?: number | null): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+// ─── Personenfarben-Hilfsfunktion ────────────────────────────────────────────
+const PERSON_COLORS_ERP = [
+  { bg: '#1d4ed8', text: '#ffffff' },
+  { bg: '#7c3aed', text: '#ffffff' },
+  { bg: '#b45309', text: '#ffffff' },
+  { bg: '#0f766e', text: '#ffffff' },
+  { bg: '#be123c', text: '#ffffff' },
+  { bg: '#4338ca', text: '#ffffff' },
+  { bg: '#047857', text: '#ffffff' },
+  { bg: '#c2410c', text: '#ffffff' },
+];
+
+function getErpPersonColor(name: string, colorMap: Map<string, number>) {
+  if (!colorMap.has(name)) colorMap.set(name, colorMap.size % PERSON_COLORS_ERP.length);
+  return PERSON_COLORS_ERP[colorMap.get(name)!];
+}
+
 // ─── Kundenportal-Chat-Tab ────────────────────────────────────────────────────
 function ProjectChatTab({ projectId }: { projectId: number }) {
   const utils = trpc.useUtils();
@@ -52,16 +69,19 @@ function ProjectChatTab({ projectId }: { projectId: number }) {
   const [setupPassword, setSetupPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showSetupDialog, setShowSetupDialog] = useState(false);
-  const [portalUrl, setPortalUrl] = useState('');
   const [chatFile, setChatFile] = useState<File | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSearch, setShowSearch] = useState(false);
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const chatFileRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const colorMapRef = useRef<Map<string, number>>(new Map());
 
   const { data: messages = [], isLoading: msgsLoading } = trpc.projectChat.getMessages.useQuery(
     { projectId },
     { refetchInterval: 10000 }
   );
-  const { data: portalConfig } = trpc.projectChat.getPortalConfig.useQuery({ projectId });
+  const { data: portalConfig, refetch: refetchConfig } = trpc.projectChat.getPortalConfig.useQuery({ projectId });
 
   const sendMsg = trpc.projectChat.sendMessage.useMutation({
     onSuccess: () => {
@@ -90,12 +110,33 @@ function ProjectChatTab({ projectId }: { projectId: number }) {
     onError: (e) => toast.error(`Fehler: ${e.message}`),
   });
 
-  // Scroll to bottom on new messages
+  const closeChat = trpc.projectChat.closeChat.useMutation({
+    onSuccess: () => {
+      refetchConfig();
+      setShowCloseConfirm(false);
+      toast.success('Chat wurde beendet');
+    },
+    onError: (e) => toast.error(`Fehler: ${e.message}`),
+  });
+
+  const reopenChat = trpc.projectChat.reopenChat.useMutation({
+    onSuccess: () => {
+      refetchConfig();
+      toast.success('Chat wurde wieder geöffnet');
+    },
+    onError: (e) => toast.error(`Fehler: ${e.message}`),
+  });
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { scrollToBottom(); }, [messages.length]);
+
+  // Personenfarben-Map zurücksetzen wenn Nachrichten sich ändern
+  useEffect(() => {
+    colorMapRef.current = new Map();
+  }, [messages]);
 
   const handleSend = async () => {
     if (!newMessage.trim() && !chatFile) return;
@@ -127,7 +168,29 @@ function ProjectChatTab({ projectId }: { projectId: number }) {
 
   const isActive = portalConfig?.isActive === 1;
   const hasPortal = !!portalConfig;
+  const isChatClosed = (portalConfig as any)?.chatClosed === 1;
   const currentPortalUrl = `${window.location.origin}/projekt-portal/${projectId}`;
+
+  // Suche: Nachrichten filtern
+  const filteredMessages = searchQuery.trim()
+    ? messages.filter(m =>
+        m.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        m.senderName.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : messages;
+
+  const highlight = (text: string, query: string) => {
+    if (!query.trim()) return <span>{text}</span>;
+    const idx = text.toLowerCase().indexOf(query.toLowerCase());
+    if (idx === -1) return <span>{text}</span>;
+    return (
+      <span>
+        {text.slice(0, idx)}
+        <mark className="bg-yellow-400/60 text-foreground rounded px-0.5">{text.slice(idx, idx + query.length)}</mark>
+        {text.slice(idx + query.length)}
+      </span>
+    );
+  };
 
   return (
     <div className="space-y-4">
@@ -144,7 +207,7 @@ function ProjectChatTab({ projectId }: { projectId: number }) {
             <p className="text-xs text-muted-foreground truncate">{currentPortalUrl}</p>
           )}
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
           {hasPortal && (
             <Button variant="outline" size="sm" className="h-7 gap-1 text-xs" onClick={copyPortalUrl}>
               <Copy className="h-3 w-3" />Link
@@ -166,8 +229,36 @@ function ProjectChatTab({ projectId }: { projectId: number }) {
           >
             <Key className="h-3 w-3" />{hasPortal ? 'Passwort ändern' : 'Portal einrichten'}
           </Button>
+          {hasPortal && !isChatClosed && (
+            <Button
+              variant="outline" size="sm"
+              className="h-7 gap-1 text-xs text-red-400 border-red-500/40 hover:bg-red-500/10"
+              onClick={() => setShowCloseConfirm(true)}
+            >
+              <Lock className="h-3 w-3" />Chat beenden
+            </Button>
+          )}
+          {hasPortal && isChatClosed && (
+            <Button
+              variant="outline" size="sm"
+              className="h-7 gap-1 text-xs text-emerald-400 border-emerald-500/40 hover:bg-emerald-500/10"
+              onClick={() => reopenChat.mutate({ projectId })}
+              disabled={reopenChat.isPending}
+            >
+              {reopenChat.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+              Chat öffnen
+            </Button>
+          )}
         </div>
       </div>
+
+      {/* Chat geschlossen — Hinweis */}
+      {isChatClosed && (
+        <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 text-sm">
+          <Lock className="h-4 w-4 shrink-0" />
+          <span>Chat beendet — Verlauf ist lesbar, neue Nachrichten können von beiden Seiten nicht mehr gesendet werden.</span>
+        </div>
+      )}
 
       {/* Letzter Einladungsversand */}
       {portalConfig?.invitationSentAt && (
@@ -178,76 +269,136 @@ function ProjectChatTab({ projectId }: { projectId: number }) {
 
       {/* Chat-Bereich */}
       <div className="border border-border rounded-lg overflow-hidden">
+        {/* Suchleiste */}
+        <div className="border-b border-border bg-card px-3 py-2 flex items-center gap-2">
+          {showSearch ? (
+            <>
+              <Input
+                autoFocus
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Nachrichten durchsuchen..."
+                className="h-7 text-xs flex-1"
+              />
+              <button
+                onClick={() => { setShowSearch(false); setSearchQuery(''); }}
+                className="text-muted-foreground hover:text-foreground shrink-0"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => setShowSearch(true)}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground ml-auto"
+            >
+              <MessageCircle className="h-3.5 w-3.5" />
+              Suchen
+            </button>
+          )}
+        </div>
+
         {/* Nachrichten-Liste */}
         <div className="h-80 overflow-y-auto p-4 space-y-3 bg-background/50">
           {msgsLoading ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground py-4 justify-center">
               <Loader2 className="h-4 w-4 animate-spin" />Lade Nachrichten...
             </div>
-          ) : messages.length === 0 ? (
+          ) : filteredMessages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full gap-3 text-center">
               <MessageCircle className="h-10 w-10 text-muted-foreground opacity-20" />
-              <p className="text-sm text-muted-foreground">Noch keine Nachrichten</p>
-              <p className="text-xs text-muted-foreground">Nachrichten erscheinen hier, sobald du oder der Kunde schreibt</p>
+              <p className="text-sm text-muted-foreground">
+                {searchQuery ? 'Keine Treffer für diese Suche' : 'Noch keine Nachrichten'}
+              </p>
+              {!searchQuery && <p className="text-xs text-muted-foreground">Nachrichten erscheinen hier, sobald du oder der Kunde schreibt</p>}
             </div>
           ) : (
-            messages.map(msg => (
-              <div key={msg.id} className={`flex gap-2 ${msg.senderType === 'erp' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[75%] rounded-xl px-3 py-2 ${
-                  msg.senderType === 'erp'
-                    ? 'bg-emerald-600/20 border border-emerald-500/30 text-right'
-                    : 'bg-card border border-border'
-                }`}>
-                  <p className="text-xs text-muted-foreground mb-0.5">
-                    {msg.senderName} · {new Date(msg.createdAt).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                  </p>
-                  <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                  {msg.attachmentUrl && (
-                    <a href={msg.attachmentUrl} target="_blank" rel="noopener noreferrer"
-                       className="mt-1 flex items-center gap-1 text-xs text-primary hover:underline">
-                      <Paperclip className="h-3 w-3" />{msg.attachmentName ?? 'Anhang'}
-                      {msg.attachmentSize ? ` (${fmtSize(msg.attachmentSize)})` : ''}
-                    </a>
-                  )}
+            filteredMessages.map(msg => {
+              const color = getErpPersonColor(msg.senderName, colorMapRef.current);
+              return (
+                <div key={msg.id} className={`flex gap-2 ${msg.senderType === 'erp' ? 'justify-end' : 'justify-start'}`}>
+                  <div
+                    className="max-w-[75%] rounded-xl px-3 py-2"
+                    style={{ backgroundColor: color.bg, color: color.text }}
+                  >
+                    <p className="text-xs opacity-80 mb-0.5">
+                      {msg.senderName} · {new Date(msg.createdAt).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                    <p className="text-sm whitespace-pre-wrap">{highlight(msg.content, searchQuery)}</p>
+                    {msg.attachmentUrl && (
+                      <a href={msg.attachmentUrl} target="_blank" rel="noopener noreferrer"
+                         className="mt-1 flex items-center gap-1 text-xs hover:underline opacity-90">
+                        <Paperclip className="h-3 w-3" />{msg.attachmentName ?? 'Anhang'}
+                        {msg.attachmentSize ? ` (${fmtSize(msg.attachmentSize)})` : ''}
+                      </a>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
           <div ref={messagesEndRef} />
         </div>
 
         {/* Eingabebereich */}
-        <div className="border-t border-border p-3 bg-card">
-          {chatFile && (
-            <div className="flex items-center gap-2 mb-2 p-2 rounded bg-muted/50 text-xs">
-              <Paperclip className="h-3 w-3 text-muted-foreground" />
-              <span className="flex-1 truncate">{chatFile.name}</span>
-              <button onClick={() => setChatFile(null)} className="text-muted-foreground hover:text-foreground">
-                <X className="h-3 w-3" />
-              </button>
+        {!isChatClosed ? (
+          <div className="border-t border-border p-3 bg-card">
+            {chatFile && (
+              <div className="flex items-center gap-2 mb-2 p-2 rounded bg-muted/50 text-xs">
+                <Paperclip className="h-3 w-3 text-muted-foreground" />
+                <span className="flex-1 truncate">{chatFile.name}</span>
+                <button onClick={() => setChatFile(null)} className="text-muted-foreground hover:text-foreground">
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            )}
+            <div className="flex items-end gap-2">
+              <Textarea
+                value={newMessage}
+                onChange={e => setNewMessage(e.target.value)}
+                placeholder="Nachricht an Kunden... (@Name für E-Mail-Benachrichtigung)"
+                className="min-h-[60px] max-h-32 text-sm resize-none flex-1"
+                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+              />
+              <div className="flex flex-col gap-1">
+                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => chatFileRef.current?.click()}>
+                  <CloudUpload className="h-3.5 w-3.5" />
+                </Button>
+                <Button size="icon" className="h-8 w-8 bg-emerald-600 hover:bg-emerald-700" onClick={handleSend} disabled={sendMsg.isPending || (!newMessage.trim() && !chatFile)}>
+                  {sendMsg.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                </Button>
+              </div>
             </div>
-          )}
-          <div className="flex items-end gap-2">
-            <Textarea
-              value={newMessage}
-              onChange={e => setNewMessage(e.target.value)}
-              placeholder="Nachricht an Kunden... (@Name für E-Mail-Benachrichtigung)"
-              className="min-h-[60px] max-h-32 text-sm resize-none flex-1"
-              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-            />
-            <div className="flex flex-col gap-1">
-              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => chatFileRef.current?.click()}>
-                <CloudUpload className="h-3.5 w-3.5" />
-              </Button>
-              <Button size="icon" className="h-8 w-8 bg-emerald-600 hover:bg-emerald-700" onClick={handleSend} disabled={sendMsg.isPending || (!newMessage.trim() && !chatFile)}>
-                {sendMsg.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-              </Button>
-            </div>
+            <input ref={chatFileRef} type="file" className="hidden" onChange={e => e.target.files?.[0] && setChatFile(e.target.files[0])} />
+            <p className="text-xs text-muted-foreground mt-1.5">Enter = Senden · Shift+Enter = Zeilenumbruch · @Name für E-Mail-Benachrichtigung</p>
           </div>
-          <input ref={chatFileRef} type="file" className="hidden" onChange={e => e.target.files?.[0] && setChatFile(e.target.files[0])} />
-          <p className="text-xs text-muted-foreground mt-1.5">Enter = Senden · Shift+Enter = Zeilenumbruch · @Name für E-Mail-Benachrichtigung</p>
-        </div>
+        ) : (
+          <div className="border-t border-border p-3 bg-card text-center text-xs text-muted-foreground">
+            Chat beendet — keine neuen Nachrichten möglich
+          </div>
+        )}
       </div>
+
+      {/* Bestätigungsdialog: Chat beenden */}
+      <AlertDialog open={showCloseConfirm} onOpenChange={setShowCloseConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Chat wirklich beenden?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Der Chatverlauf bleibt vollständig lesbar, aber neue Nachrichten können von beiden Seiten nicht mehr gesendet werden. Du kannst den Chat jederzeit wieder öffnen.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700"
+              onClick={() => closeChat.mutate({ projectId })}
+            >
+              Chat beenden
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Portal-Setup-Dialog */}
       {showSetupDialog && (

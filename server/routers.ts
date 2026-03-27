@@ -358,8 +358,7 @@ export const appRouter = router({
                 const { uploadFileToDrive } = await import('./googleDrive');
                 const projectData = await (await import('./db')).getProject(input.id);
                 const projectTitle = (projectData as any)?.title ?? `Projekt-${input.id}`;
-                const customerName = ((projectData as any)?.customer?.company ||
-                  (projectData as any)?.customer?.name) ?? 'Unbekannt';
+                const customerName = (((projectData as any)?.customer?.company) || ((projectData as any)?.customer?.name) || 'Unbekannt');
                 // Einfaches Text-Backup des Chatverlaufs
                 const lines = messages.map(m => {
                   const dt = new Date(m.createdAt).toLocaleString('de-DE');

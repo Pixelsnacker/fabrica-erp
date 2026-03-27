@@ -218,6 +218,13 @@
       "when": 1774620598532,
       "tag": "0030_previous_edwin_jarvis",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "5",
+      "when": 1774626007916,
+      "tag": "0031_dry_rafael_vega",
+      "breakpoints": true
     }
   ]
 }

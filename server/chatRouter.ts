@@ -364,4 +364,66 @@ export const chatRouter = router({
 
       return { success: true };
     }),
+
+  // ─── Chat beenden / wieder öffnen (ERP-intern) ───────────────────────────────
+  closeChat: protectedProcedure
+    .input(z.object({ projectId: z.number().int().positive() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      const [cfg] = await db
+        .select()
+        .from(projectPortalConfig)
+        .where(eq(projectPortalConfig.projectId, input.projectId))
+        .limit(1);
+      if (!cfg) throw new TRPCError({ code: "NOT_FOUND", message: "Portal nicht konfiguriert" });
+      await db
+        .update(projectPortalConfig)
+        .set({ chatClosed: 1, updatedAt: Date.now() })
+        .where(eq(projectPortalConfig.projectId, input.projectId));
+      return { success: true };
+    }),
+
+  reopenChat: protectedProcedure
+    .input(z.object({ projectId: z.number().int().positive() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      const [cfg] = await db
+        .select()
+        .from(projectPortalConfig)
+        .where(eq(projectPortalConfig.projectId, input.projectId))
+        .limit(1);
+      if (!cfg) throw new TRPCError({ code: "NOT_FOUND", message: "Portal nicht konfiguriert" });
+      await db
+        .update(projectPortalConfig)
+        .set({ chatClosed: 0, updatedAt: Date.now() })
+        .where(eq(projectPortalConfig.projectId, input.projectId));
+      return { success: true };
+    }),
+
+  // ─── Projektname live laden (für Portal-Header) ──────────────────────────────
+  getProjectInfo: publicProcedure
+    .input(z.object({
+      projectId: z.number().int().positive(),
+      password: z.string().min(1),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      const [cfg] = await db
+        .select()
+        .from(projectPortalConfig)
+        .where(eq(projectPortalConfig.projectId, input.projectId))
+        .limit(1);
+      if (!cfg) throw new TRPCError({ code: "NOT_FOUND", message: "Portal nicht gefunden" });
+      const valid = await bcrypt.compare(input.password, cfg.passwordHash);
+      if (!valid) throw new TRPCError({ code: "UNAUTHORIZED", message: "Nicht autorisiert" });
+      const [project] = await db
+        .select({ id: projects.id, title: projects.title })
+        .from(projects)
+        .where(eq(projects.id, input.projectId))
+        .limit(1);
+      return {
+        title: project?.title ?? `Projekt #${input.projectId}`,
+        chatClosed: cfg.chatClosed === 1,
+      };
+    }),
 });

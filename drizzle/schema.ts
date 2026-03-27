@@ -698,6 +698,7 @@ export const projectPortalConfig = mysqlTable("project_portal_config", {
   driveBackupDone: tinyint("drive_backup_done").default(0),
   driveBackupError: text("drive_backup_error"),
   invitationSentAt: bigint("invitation_sent_at", { mode: "number" }),
+  chatClosed: tinyint("chat_closed").default(0).notNull(),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
   updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
 });

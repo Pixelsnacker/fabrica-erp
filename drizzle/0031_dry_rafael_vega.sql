@@ -1,0 +1,1 @@
+ALTER TABLE `project_portal_config` ADD `chat_closed` tinyint DEFAULT 0 NOT NULL;
