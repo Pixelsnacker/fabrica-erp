@@ -15,6 +15,7 @@ import {
   CloudUpload, AlertCircle, CheckCircle2, LogOut, Building2,
 } from "lucide-react";
 import TodoPanel from "@/components/TodoPanel";
+import ExportDropdown from "@/components/ExportDropdown";
 
 // ─── Datenschutz-Hilfsfunktionen ─────────────────────────────────────────────
 const PRIVACY_KEY = (projectId: string) => `portal_privacy_accepted_${projectId}`;
@@ -447,14 +448,17 @@ function PortalChat({ projectId, password, senderName, onLogout }: {
             </button>
           </>
         ) : (
-          <button
-            onClick={() => setShowSearch(true)}
-            className="flex items-center gap-1.5 text-sm ml-auto"
-            style={{ color: '#DC143C' }}
-          >
-            <MessageCircle className="h-4 w-4" style={{ color: '#DC143C' }} />
-            Suchen
-          </button>
+          <div className="flex items-center gap-2 ml-auto">
+            <button
+              onClick={() => setShowSearch(true)}
+              className="flex items-center gap-1.5 text-sm"
+              style={{ color: '#DC143C' }}
+            >
+              <MessageCircle className="h-4 w-4" style={{ color: '#DC143C' }} />
+              Suchen
+            </button>
+            <ExportDropdown projectId={projectId} mode="portal" password={password} />
+          </div>
         )}
       </div>
 
