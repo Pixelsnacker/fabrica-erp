@@ -2,7 +2,7 @@ import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { TrendingUp, FolderKanban, Euro, ArrowRight, Plus, HardDrive, Wifi, WifiOff, Loader2 } from "lucide-react";
+import { TrendingUp, FolderKanban, Euro, ArrowRight, Plus, HardDrive, Wifi, WifiOff, Loader2, AlertTriangle, FileCheck, Calendar } from "lucide-react";
 import { useLocation } from "wouter";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
@@ -36,6 +36,7 @@ export default function Dashboard() {
     undefined,
     { retry: false, refetchOnWindowFocus: false }
   );
+  const { data: expiringDocs } = trpc.supplierDocs.expiringDocs.useQuery();
 
   const recentProjects = projects?.slice(0, 6) ?? [];
 
@@ -116,6 +117,52 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Ablaufende Lieferanten-Dokumente Warnung */}
+      {expiringDocs && expiringDocs.length > 0 && (() => {
+        const now = Date.now();
+        const expired = expiringDocs.filter(d => (d.expiresAt ?? 0) < now);
+        const expiringSoon = expiringDocs.filter(d => (d.expiresAt ?? 0) >= now);
+        return (
+          <div className="rounded-lg border border-yellow-500/40 bg-yellow-500/10 p-4 space-y-2">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-yellow-400 shrink-0" />
+              <span className="text-sm font-semibold text-yellow-300">
+                {expired.length > 0
+                  ? `${expired.length} Dokument${expired.length > 1 ? 'e' : ''} abgelaufen`
+                  : `${expiringSoon.length} Dokument${expiringSoon.length > 1 ? 'e' : ''} läuft${expiringSoon.length > 1 ? 'en' : ''} bald ab`
+                }
+              </span>
+            </div>
+            <div className="space-y-1.5">
+              {expiringDocs.slice(0, 5).map(doc => {
+                const isExpired = (doc.expiresAt ?? 0) < now;
+                const daysLeft = Math.ceil(((doc.expiresAt ?? 0) - now) / (1000 * 60 * 60 * 24));
+                const supplierLabel = doc.supplierCompany || doc.supplierName;
+                return (
+                  <div key={doc.id} className="flex items-center gap-2 text-xs">
+                    <FileCheck className={`h-3.5 w-3.5 shrink-0 ${isExpired ? 'text-red-400' : 'text-yellow-400'}`} />
+                    <span className="font-medium truncate max-w-[200px]">{doc.filename}</span>
+                    <span className="text-muted-foreground">– {supplierLabel}</span>
+                    <span className={`ml-auto shrink-0 flex items-center gap-1 ${
+                      isExpired ? 'text-red-400' : 'text-yellow-400'
+                    }`}>
+                      <Calendar className="h-3 w-3" />
+                      {isExpired
+                        ? `Abgelaufen am ${new Date(doc.expiresAt!).toLocaleDateString('de-DE')}`
+                        : `In ${daysLeft} Tag${daysLeft !== 1 ? 'en' : ''}`
+                      }
+                    </span>
+                  </div>
+                );
+              })}
+              {expiringDocs.length > 5 && (
+                <p className="text-xs text-muted-foreground">… und {expiringDocs.length - 5} weitere</p>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Google Drive Status */}
       <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg border border-border bg-card">

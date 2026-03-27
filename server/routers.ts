@@ -3375,6 +3375,7 @@ Diese Nachricht ist ausschließlich für den oben bezeichneten Adressaten bestim
         fileBase64: z.string(),
         mimeType: z.string().default('application/octet-stream'),
         notes: z.string().optional(),
+        expiresAt: z.number().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
         const db = await (await import('./db')).getDb();
@@ -3395,6 +3396,7 @@ Diese Nachricht ist ausschließlich für den oben bezeichneten Adressaten bestim
           notes: input.notes ?? null,
           uploadedBy: ctx.user.name ?? 'Unknown',
           createdAt: Date.now(),
+          expiresAt: input.expiresAt ?? null,
         });
         // Auto-Sync nach Google Drive (im Hintergrund, blockiert nicht den Upload)
         try {
@@ -3447,6 +3449,7 @@ Diese Nachricht ist ausschließlich für den oben bezeichneten Adressaten bestim
       .input(z.object({
         id: z.number(),
         notes: z.string(),
+        expiresAt: z.number().nullable().optional(),
       }))
       .mutation(async ({ input }) => {
         const db = await (await import('./db')).getDb();
@@ -3454,9 +3457,43 @@ Diese Nachricht ist ausschließlich für den oben bezeichneten Adressaten bestim
         const { supplierDocuments } = await import('../drizzle/schema');
         const { eq } = await import('drizzle-orm');
         await db.update(supplierDocuments)
-          .set({ notes: input.notes || null })
+          .set({
+            notes: input.notes || null,
+            ...(input.expiresAt !== undefined ? { expiresAt: input.expiresAt } : {}),
+          })
           .where(eq(supplierDocuments.id, input.id));
         return { success: true };
+      }),
+
+    // Alle Lieferanten-Dokumente die in den nächsten 30 Tagen ablaufen (oder bereits abgelaufen)
+    expiringDocs: protectedProcedure
+      .query(async () => {
+        const db = await (await import('./db')).getDb();
+        if (!db) return [];
+        const { supplierDocuments, suppliers } = await import('../drizzle/schema');
+        const { and, isNotNull, lte, eq } = await import('drizzle-orm');
+        const in30Days = Date.now() + 30 * 24 * 60 * 60 * 1000;
+        const docs = await db
+          .select({
+            id: supplierDocuments.id,
+            supplierId: supplierDocuments.supplierId,
+            category: supplierDocuments.category,
+            filename: supplierDocuments.filename,
+            fileUrl: supplierDocuments.fileUrl,
+            notes: supplierDocuments.notes,
+            expiresAt: supplierDocuments.expiresAt,
+            supplierName: suppliers.name,
+            supplierCompany: suppliers.company,
+          })
+          .from(supplierDocuments)
+          .innerJoin(suppliers, eq(supplierDocuments.supplierId, suppliers.id))
+          .where(
+            and(
+              isNotNull(supplierDocuments.expiresAt),
+              lte(supplierDocuments.expiresAt, in30Days),
+            )
+          );
+        return docs;
       }),
 
     // Manueller Re-Sync eines Lieferanten-Dokuments zu Google Drive

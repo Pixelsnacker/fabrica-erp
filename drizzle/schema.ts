@@ -581,6 +581,7 @@ export const supplierDocuments = mysqlTable("supplier_documents", {
   driveFileId: varchar("drive_file_id", { length: 255 }),
   driveSynced: tinyint("drive_synced").default(0).notNull(),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  expiresAt: bigint("expires_at", { mode: "number" }),
 });
 export type InsertSupplierDocument = typeof supplierDocuments.$inferInsert;
 export type SupplierDocument = typeof supplierDocuments.$inferSelect;

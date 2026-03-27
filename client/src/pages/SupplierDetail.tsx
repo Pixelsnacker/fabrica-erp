@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -230,6 +230,31 @@ function SupplierDocCard({ doc, supplierId, onDelete, onEditNote, onSynced }: {
           {doc.uploadedBy && (
             <span className="text-xs text-muted-foreground">von {doc.uploadedBy}</span>
           )}
+          {/* Ablaufdatum-Badge */}
+          {doc.expiresAt && (() => {
+            const now = Date.now();
+            const diff = doc.expiresAt - now;
+            const daysLeft = Math.ceil(diff / (1000 * 60 * 60 * 24));
+            const isExpired = diff < 0;
+            const isSoon = !isExpired && daysLeft <= 30;
+            return (
+              <span className={`flex items-center gap-1 text-xs font-medium px-1.5 py-0.5 rounded border ${
+                isExpired
+                  ? 'bg-red-500/15 text-red-400 border-red-500/30'
+                  : isSoon
+                  ? 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30'
+                  : 'bg-muted text-muted-foreground border-border'
+              }`}>
+                <Calendar className="h-3 w-3" />
+                {isExpired
+                  ? `Abgelaufen (${formatDate(doc.expiresAt)})`
+                  : isSoon
+                  ? `Läuft ab in ${daysLeft}d`
+                  : `Gültig bis ${formatDate(doc.expiresAt)}`
+                }
+              </span>
+            );
+          })()}
         </div>
         {doc.notes && (
           <p className="mt-1 text-xs text-muted-foreground italic border-l-2 border-border pl-2">{doc.notes}</p>
@@ -248,6 +273,7 @@ function UploadDialog({ supplierId, open, onClose }: {
   const utils = trpc.useUtils();
   const [category, setCategory] = useState<string>("other");
   const [notes, setNotes] = useState("");
+  const [expiresAt, setExpiresAt] = useState(""); // ISO date string YYYY-MM-DD
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -259,6 +285,7 @@ function UploadDialog({ supplierId, open, onClose }: {
       setSelectedFile(null);
       setNotes("");
       setCategory("other");
+      setExpiresAt("");
       onClose();
     },
     onError: (e) => toast.error(`Fehler: ${e.message}`),
@@ -278,6 +305,7 @@ function UploadDialog({ supplierId, open, onClose }: {
         fileBase64: base64,
         mimeType: selectedFile.type || "application/octet-stream",
         notes: notes.trim() || undefined,
+        expiresAt: expiresAt ? new Date(expiresAt).getTime() : undefined,
       });
     } finally {
       setUploading(false);
@@ -334,10 +362,23 @@ function UploadDialog({ supplierId, open, onClose }: {
             />
           </div>
 
+          {/* Ablaufdatum – nur bei NDA und Vertrag sinnvoll, aber für alle verfügbar */}
+          <div className="space-y-1.5">
+            <Label>Ablaufdatum (optional)</Label>
+            <input
+              type="date"
+              value={expiresAt}
+              onChange={(e) => setExpiresAt(e.target.value)}
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              min={new Date().toISOString().split('T')[0]}
+            />
+            <p className="text-xs text-muted-foreground">Für NDAs und Verträge — wird als Warnung auf dem Dashboard angezeigt</p>
+          </div>
+
           <div className="space-y-1.5">
             <Label>Notiz (optional)</Label>
             <Textarea
-              placeholder="z.B. Gültig bis 31.12.2026, unterzeichnet von ..."
+              placeholder="z.B. Unterzeichnet von ..."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
@@ -364,40 +405,71 @@ function EditNoteDialog({ doc, supplierId, open, onClose }: {
 }) {
   const utils = trpc.useUtils();
   const [notes, setNotes] = useState(doc?.notes ?? "");
+  const [expiresAt, setExpiresAt] = useState(
+    doc?.expiresAt ? new Date(doc.expiresAt).toISOString().split('T')[0] : ""
+  );
+
+  // Sync wenn doc sich ändert (beim Öffnen)
+  useEffect(() => {
+    if (doc) {
+      setNotes(doc.notes ?? "");
+      setExpiresAt(doc.expiresAt ? new Date(doc.expiresAt).toISOString().split('T')[0] : "");
+    }
+  }, [doc?.id]);
 
   const updateMut = trpc.supplierDocs.updateNote.useMutation({
     onSuccess: () => {
       utils.supplierDocs.list.invalidate({ supplierId });
-      toast.success("Notiz gespeichert");
+      toast.success("Gespeichert");
       onClose();
     },
     onError: (e) => toast.error(`Fehler: ${e.message}`),
   });
 
-  // Sync wenn doc sich ändert
-  if (doc && notes !== (doc.notes ?? "") && !updateMut.isPending) {
-    // nur beim ersten Öffnen
-  }
-
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>Notiz bearbeiten</DialogTitle>
+          <DialogTitle>Dokument bearbeiten</DialogTitle>
         </DialogHeader>
-        <div className="py-2">
-          <Textarea
-            placeholder="Notiz zum Dokument..."
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            rows={3}
-            autoFocus
-          />
+        <div className="space-y-4 py-2">
+          <div className="space-y-1.5">
+            <Label>Ablaufdatum (optional)</Label>
+            <input
+              type="date"
+              value={expiresAt}
+              onChange={(e) => setExpiresAt(e.target.value)}
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            />
+            {expiresAt && (
+              <button
+                type="button"
+                onClick={() => setExpiresAt("")}
+                className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+              >
+                Ablaufdatum entfernen
+              </button>
+            )}
+          </div>
+          <div className="space-y-1.5">
+            <Label>Notiz</Label>
+            <Textarea
+              placeholder="Notiz zum Dokument..."
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={3}
+              autoFocus
+            />
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Abbrechen</Button>
           <Button
-            onClick={() => doc && updateMut.mutate({ id: doc.id, notes })}
+            onClick={() => doc && updateMut.mutate({
+              id: doc.id,
+              notes,
+              expiresAt: expiresAt ? new Date(expiresAt).getTime() : null,
+            })}
             disabled={updateMut.isPending}
           >
             Speichern

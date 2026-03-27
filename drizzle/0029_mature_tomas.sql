@@ -1,0 +1,1 @@
+ALTER TABLE `supplier_documents` ADD `expires_at` bigint;
