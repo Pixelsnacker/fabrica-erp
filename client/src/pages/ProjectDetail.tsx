@@ -63,7 +63,7 @@ function getErpPersonColor(name: string, colorMap: Map<string, number>) {
 }
 
 // ─── Kundenportal-Chat-Tab ────────────────────────────────────────────────────
-function ProjectChatTab({ projectId }: { projectId: number }) {
+function ProjectChatTab({ projectId, customerName }: { projectId: number; customerName?: string }) {
   const utils = trpc.useUtils();
   const [newMessage, setNewMessage] = useState('');
   const [setupPassword, setSetupPassword] = useState('');
@@ -269,13 +269,18 @@ function ProjectChatTab({ projectId }: { projectId: number }) {
 
       {/* Chat-Bereich */}
       <div className="border border-border rounded-lg overflow-hidden">
-        {/* Chat-Header mit Logo und Suchleiste */}
+        {/* Chat-Header mit Logo, Kundenname und Suchleiste */}
         <div className="border-b border-border bg-card px-3 py-2 flex items-center gap-2">
           <img
             src="https://d2xsxph8kpxj0f.cloudfront.net/310419663031764330/YMZow7uQxpBVyBGbmbpvvd/FabricaLogoneu_096a1b04.png"
             alt="Fabrica 3D"
-            className="h-6 object-contain shrink-0 opacity-80"
+            className="h-[30px] object-contain shrink-0 opacity-80"
           />
+          {customerName && (
+            <span className="text-xs text-muted-foreground shrink-0 border-l border-border pl-2">
+              {customerName}
+            </span>
+          )}
           {showSearch ? (
             <>
               <Input
@@ -283,7 +288,7 @@ function ProjectChatTab({ projectId }: { projectId: number }) {
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 placeholder="Nachrichten durchsuchen..."
-                className="h-7 text-xs flex-1"
+                className="h-[34px] text-sm flex-1 ml-1"
               />
               <button
                 onClick={() => { setShowSearch(false); setSearchQuery(''); }}
@@ -295,9 +300,10 @@ function ProjectChatTab({ projectId }: { projectId: number }) {
           ) : (
             <button
               onClick={() => setShowSearch(true)}
-              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground ml-auto"
+              className="flex items-center gap-1.5 text-sm ml-auto"
+              style={{ color: '#DC143C' }}
             >
-              <MessageCircle className="h-3.5 w-3.5" />
+              <MessageCircle className="h-4 w-4" style={{ color: '#DC143C' }} />
               Suchen
             </button>
           )}
@@ -1769,7 +1775,10 @@ export default function ProjectDetail() {
 
         {/* ── Kundenportal & Chat ── */}
         <TabsContent value="chat" className="mt-4">
-          <ProjectChatTab projectId={id} />
+          <ProjectChatTab
+            projectId={id}
+            customerName={(project as any).customer?.company || (project as any).customer?.name || undefined}
+          />
         </TabsContent>
       </Tabs>
 

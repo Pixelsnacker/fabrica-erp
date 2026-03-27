@@ -417,13 +417,23 @@ export const chatRouter = router({
       const valid = await bcrypt.compare(input.password, cfg.passwordHash);
       if (!valid) throw new TRPCError({ code: "UNAUTHORIZED", message: "Nicht autorisiert" });
       const [project] = await db
-        .select({ id: projects.id, title: projects.title })
+        .select({ id: projects.id, title: projects.title, customerId: projects.customerId })
         .from(projects)
         .where(eq(projects.id, input.projectId))
         .limit(1);
+      let customerName: string | null = null;
+      if (project?.customerId) {
+        const [customer] = await db
+          .select({ name: customers.name, company: customers.company })
+          .from(customers)
+          .where(eq(customers.id, project.customerId))
+          .limit(1);
+        if (customer) customerName = customer.company ?? customer.name ?? null;
+      }
       return {
-        title: project?.title ?? `Projekt #${input.projectId}`,
+        projectTitle: project?.title ?? `Projekt #${input.projectId}`,
         chatClosed: cfg.chatClosed === 1,
+        customerName: customerName ?? undefined,
       };
     }),
 });

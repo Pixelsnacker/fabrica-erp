@@ -191,6 +191,7 @@ function PortalChat({ projectId, password, senderName, onLogout }: {
   );
   const liveProjectTitle = projectInfo?.projectTitle ?? '…';
   const isChatClosed = projectInfo?.chatClosed === true;
+  const liveCustomerName = projectInfo?.customerName;
 
   const { data: messages = [], isLoading, refetch } = trpc.projectChat.portalGetMessages.useQuery(
     { projectId, password },
@@ -268,10 +269,12 @@ function PortalChat({ projectId, password, senderName, onLogout }: {
         <img
           src="https://d2xsxph8kpxj0f.cloudfront.net/310419663031764330/YMZow7uQxpBVyBGbmbpvvd/FabricaLogoneu_096a1b04.png"
           alt="Fabrica 3D"
-          className="h-7 object-contain shrink-0"
+          className="h-[35px] object-contain shrink-0"
         />
         <div className="flex-1 min-w-0">
-          <p className="text-xs text-slate-500">Kundenportal</p>
+          <p className="text-xs text-slate-500">
+            Kundenportal{liveCustomerName ? <span className="ml-1.5 font-medium text-slate-700">· {liveCustomerName}</span> : null}
+          </p>
           <p className="text-sm font-semibold text-slate-900 truncate">{liveProjectTitle}</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -306,7 +309,7 @@ function PortalChat({ projectId, password, senderName, onLogout }: {
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder="Nachrichten durchsuchen..."
-              className="h-7 text-xs flex-1 bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400"
+              className="h-[34px] text-sm flex-1 bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400"
             />
             <button
               onClick={() => { setShowSearch(false); setSearchQuery(''); }}
@@ -318,9 +321,10 @@ function PortalChat({ projectId, password, senderName, onLogout }: {
         ) : (
           <button
             onClick={() => setShowSearch(true)}
-            className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-600 ml-auto"
+            className="flex items-center gap-1.5 text-sm ml-auto"
+            style={{ color: '#DC143C' }}
           >
-            <MessageCircle className="h-3.5 w-3.5" />
+            <MessageCircle className="h-4 w-4" style={{ color: '#DC143C' }} />
             Suchen
           </button>
         )}
