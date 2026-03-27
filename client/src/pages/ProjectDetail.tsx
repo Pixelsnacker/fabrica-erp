@@ -24,6 +24,8 @@ import {
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
+import TodoPanel from "@/components/TodoPanel";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 // ─── Datei-Kategorien (gleich wie in Customers.tsx) ─────────────────────────
 const FILE_CATEGORIES_PD: Record<string, { label: string; color: string }> = {
@@ -63,7 +65,9 @@ function getErpPersonColor(name: string, colorMap: Map<string, number>) {
 }
 
 // ─── Kundenportal-Chat-Tab ────────────────────────────────────────────────────
-function ProjectChatTab({ projectId, customerName }: { projectId: number; customerName?: string }) {
+function ProjectChatTab({ projectId, customerName, customerEmail, portalUrl }: { projectId: number; customerName?: string; customerEmail?: string; portalUrl?: string }) {
+  const { user } = useAuth();
+  const currentUser = user?.name ?? user?.email ?? 'Fabrica';
   const utils = trpc.useUtils();
   const [newMessage, setNewMessage] = useState('');
   const [setupPassword, setSetupPassword] = useState('');
@@ -267,8 +271,10 @@ function ProjectChatTab({ projectId, customerName }: { projectId: number; custom
         </p>
       )}
 
-      {/* Chat-Bereich */}
-      <div className="border border-border rounded-lg overflow-hidden">
+      {/* Chat + Todo Bereich (horizontal aufgeteilt) */}
+      <div className="border border-border rounded-lg overflow-hidden flex" style={{ minHeight: 480 }}>
+        {/* Chat (links, 60%) */}
+        <div className="flex flex-col" style={{ flex: '0 0 60%', borderRight: '1px solid hsl(var(--border))' }}>
         {/* Chat-Header mit Logo, Kundenname und Suchleiste */}
         <div className="border-b border-border bg-card px-3 py-2 flex items-center gap-2">
           <img
@@ -388,6 +394,24 @@ function ProjectChatTab({ projectId, customerName }: { projectId: number; custom
             Chat beendet — keine neuen Nachrichten möglich
           </div>
         )}
+        </div>
+        {/* Todo-Panel (rechts, 40%) */}
+        <div className="flex flex-col" style={{ flex: '0 0 40%', minWidth: 0 }}>
+          <div className="px-3 py-2 border-b border-border bg-card flex items-center gap-2 shrink-0">
+            <span className="text-xs font-semibold text-foreground">Aufgaben</span>
+            <span className="text-xs text-muted-foreground ml-auto">für dieses Projekt</span>
+          </div>
+          <div className="flex-1 overflow-hidden">
+            <TodoPanel
+              mode="erp"
+              projectId={projectId}
+              currentUser={currentUser}
+              customerName={customerName}
+              customerEmail={customerEmail}
+              portalUrl={portalUrl ?? `${window.location.origin}/projekt-portal/${projectId}`}
+            />
+          </div>
+        </div>
       </div>
 
       {/* Bestätigungsdialog: Chat beenden */}
@@ -1778,6 +1802,8 @@ export default function ProjectDetail() {
           <ProjectChatTab
             projectId={id}
             customerName={(project as any).customer?.company || (project as any).customer?.name || undefined}
+            customerEmail={(project as any).customer?.email || undefined}
+            portalUrl={`${window.location.origin}/projekt-portal/${id}`}
           />
         </TabsContent>
       </Tabs>

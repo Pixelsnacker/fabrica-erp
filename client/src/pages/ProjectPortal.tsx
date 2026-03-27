@@ -14,6 +14,7 @@ import {
   MessageCircle, Send, Paperclip, X, Loader2, Lock, Eye, EyeOff,
   CloudUpload, AlertCircle, CheckCircle2, LogOut, Building2,
 } from "lucide-react";
+import TodoPanel from "@/components/TodoPanel";
 
 // ─── Session-Hilfsfunktionen ──────────────────────────────────────────────────
 const SESSION_KEY = (projectId: string) => `portal_session_${projectId}`;
@@ -301,7 +302,7 @@ function PortalChat({ projectId, password, senderName, onLogout }: {
       )}
 
       {/* Suchleiste */}
-      <div className="bg-white border-b border-slate-100 px-4 py-2 flex items-center gap-2 max-w-2xl mx-auto w-full">
+      <div className="bg-white border-b border-slate-100 px-4 py-2 flex items-center gap-2 max-w-4xl mx-auto w-full">
         {showSearch ? (
           <>
             <Input
@@ -330,8 +331,13 @@ function PortalChat({ projectId, password, senderName, onLogout }: {
         )}
       </div>
 
+      {/* Haupt-Bereich: Chat + Todos nebeneinander */}
+      <div className="flex flex-1 overflow-hidden max-w-4xl mx-auto w-full">
+
+      {/* Chat (links, 60%) */}
+      <div className="flex flex-col" style={{ flex: '0 0 60%', minWidth: 0 }}>
       {/* Nachrichten */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 max-w-2xl mx-auto w-full">
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
         {isLoading ? (
           <div className="flex items-center justify-center py-12 gap-2 text-slate-400">
             <Loader2 className="h-5 w-5 animate-spin" />
@@ -453,6 +459,25 @@ function PortalChat({ projectId, password, senderName, onLogout }: {
           <p className="text-sm text-slate-500">Der Chat für dieses Projekt wurde beendet.</p>
         </div>
       )}
+      </div> {/* Ende Chat-Spalte */}
+
+      {/* Todo-Panel (rechts, 40%) */}
+      <div className="flex flex-col border-l border-slate-200 bg-white" style={{ flex: '0 0 40%', minWidth: 0 }}>
+        <div className="px-3 py-2 border-b border-slate-200 flex items-center gap-2 shrink-0">
+          <span className="text-xs font-semibold text-slate-700">Aufgaben</span>
+          <span className="text-xs text-slate-400 ml-auto">für dieses Projekt</span>
+        </div>
+        <div className="flex-1 overflow-hidden">
+          <TodoPanel
+            mode="portal"
+            projectId={projectId}
+            password={password}
+            senderName={senderName}
+          />
+        </div>
+      </div>
+
+      </div> {/* Ende Haupt-Bereich */}
     </div>
   );
 }

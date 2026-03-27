@@ -138,7 +138,59 @@ export async function sendMentionNotification(opts: {
   });
 }
 
-// ─── API-Key-Validierung (für Tests) ─────────────────────────────────────────
+// ─── Todo-Zuweisung an Kunden ─────────────────────────────────────────────
+export async function sendTodoAssignedEmail(opts: {
+  to: string;
+  customerName?: string;
+  projectTitle: string;
+  portalUrl: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const greeting = opts.customerName
+    ? `Sehr geehrte/r ${opts.customerName},`
+    : "Sehr geehrte Damen und Herren,";
+
+  const html = `<!DOCTYPE html>
+<html lang="de">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="font-family:Arial,sans-serif;font-size:14px;color:#111;max-width:600px;margin:0 auto;padding:24px;background:#fff;">
+  <div style="background:#1e293b;padding:20px 24px;border-radius:8px 8px 0 0;">
+    <h1 style="color:#fff;margin:0;font-size:20px;">Fabrica ERP — Neue Aufgabe</h1>
+  </div>
+  <div style="border:1px solid #e2e8f0;border-top:none;padding:24px;border-radius:0 0 8px 8px;">
+    <p>${greeting}</p>
+    <p>Ihnen wurde eine neue Aufgabe im Projekt <strong>${opts.projectTitle}</strong> zugewiesen.</p>
+    <p>Bitte öffnen Sie das Projektportal, um die Aufgabe einzusehen und zu bestätigen:</p>
+    <div style="margin:24px 0;text-align:center;">
+      <a href="${opts.portalUrl}"
+         style="background:#2563eb;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:600;display:inline-block;">
+        Zum Kundenportal
+      </a>
+    </div>
+    <p style="font-size:12px;color:#64748b;">
+      Oder kopieren Sie diesen Link in Ihren Browser:<br>
+      <a href="${opts.portalUrl}" style="color:#2563eb;">${opts.portalUrl}</a>
+    </p>
+    <hr style="border:none;border-top:1px solid #e2e8f0;margin:20px 0;">
+    <p style="font-size:12px;color:#64748b;margin:0;">
+      Mit freundlichen Grüßen<br>
+      <strong>Daniel Rincón</strong><br>
+      Fabrica GmbH · Hüttenstraße 205 · 50170 Kerpen-Sindorf<br>
+      Tel.: +49(0)2273-9529429 · d.rincon@fabrica3d.eu
+    </p>
+  </div>
+</body>
+</html>`;
+
+  return sendResendEmail({
+    from: FROM_EMAIL,
+    to: [opts.to],
+    subject: `Neue Aufgabe in Projekt ${opts.projectTitle}`,
+    html,
+    text: `${greeting}\n\nIhnen wurde eine neue Aufgabe im Projekt "${opts.projectTitle}" zugewiesen.\n\nBitte öffnen Sie das Projektportal: ${opts.portalUrl}\n\nMit freundlichen Grüßen\nDaniel Rincón · Fabrica GmbH`,
+  });
+}
+
+// ─── API-Key-Validierung (für Tests) ─────────────────────────────────────────────
 export function isResendConfigured(): boolean {
   return !!RESEND_API_KEY && RESEND_API_KEY.startsWith("re_");
 }

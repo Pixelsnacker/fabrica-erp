@@ -704,3 +704,21 @@ export const projectPortalConfig = mysqlTable("project_portal_config", {
 });
 export type InsertProjectPortalConfig = typeof projectPortalConfig.$inferInsert;
 export type ProjectPortalConfig = typeof projectPortalConfig.$inferSelect;
+
+// ─── Project Todos ─────────────────────────────────────────────────────────────
+export const projectTodos = mysqlTable("project_todos", {
+  id: int("id").autoincrement().notNull(),
+  projectId: int("project_id").notNull(),
+  text: text("text").notNull(),
+  createdBy: varchar("created_by", { length: 255 }).notNull(),
+  createdByType: mysqlEnum("created_by_type", ["erp", "customer"]).default("erp").notNull(),
+  assignedTo: varchar("assigned_to", { length: 255 }),
+  assignedToType: mysqlEnum("assigned_to_type", ["erp", "customer"]),
+  status: mysqlEnum("status", ["open", "done"]).default("open").notNull(),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  doneAt: bigint("done_at", { mode: "number" }),
+  doneBy: varchar("done_by", { length: 255 }),
+  handoverComment: text("handover_comment"),
+});
+export type InsertProjectTodo = typeof projectTodos.$inferInsert;
+export type ProjectTodo = typeof projectTodos.$inferSelect;

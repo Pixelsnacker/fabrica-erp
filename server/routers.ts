@@ -4,6 +4,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { chatRouter } from "./chatRouter";
+import { todoRouter } from "./todoRouter";
 import { invokeLLM } from "./_core/llm";
 import { storagePut } from "./storage";
 import { renderInvoicePdf } from "./pdfRenderer";
@@ -3594,5 +3595,6 @@ Diese Nachricht ist ausschließlich für den oben bezeichneten Adressaten bestim
       }),
   }),
   projectChat: chatRouter,
+  projectTodos: todoRouter,
 });
 export type AppRouter = typeof appRouter;
