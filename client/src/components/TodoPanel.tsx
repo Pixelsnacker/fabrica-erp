@@ -342,15 +342,23 @@ function TodoItem({
 
   return (
     <div className={`rounded-md border text-sm transition-colors ${isDone ? "border-border/50 bg-muted/30 opacity-60" : "border-border bg-card hover:border-primary/30"}`}>
-      <div className="flex items-start gap-2 px-2.5 py-2 cursor-pointer" onClick={onToggle}>
+      <div className="flex items-start gap-2 px-2.5 py-2">
         {isDone
           ? <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
-          : <Circle className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+          : (
+            <button
+              className="h-4 w-4 shrink-0 mt-0.5 rounded-full border-2 border-muted-foreground hover:border-emerald-500 hover:bg-emerald-50 transition-colors focus:outline-none"
+              title="Als erledigt markieren"
+              onClick={(e) => { e.stopPropagation(); onDone(); }}
+            />
+          )
         }
-        <span className={`flex-1 leading-snug ${isDone ? "line-through text-muted-foreground" : ""}`}>
-          {todo.text}
-        </span>
-        {expanded ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground shrink-0" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+        <div className="flex-1 flex items-start gap-1 cursor-pointer" onClick={onToggle}>
+          <span className={`flex-1 leading-snug ${isDone ? "line-through text-muted-foreground" : ""}`}>
+            {todo.text}
+          </span>
+          {expanded ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />}
+        </div>
       </div>
 
       {expanded && (
@@ -443,15 +451,28 @@ function PortalTodoItem({ todo, expanded, onToggle, onDone, senderName }: Portal
 
   return (
     <div className={`rounded-md border text-sm transition-colors ${isDone ? "border-slate-200 bg-slate-50 opacity-60" : "border-slate-200 bg-white hover:border-slate-300"}`}>
-      <div className="flex items-start gap-2 px-2.5 py-2 cursor-pointer" onClick={onToggle}>
+      <div className="flex items-start gap-2 px-2.5 py-2">
         {isDone
           ? <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
-          : <Circle className="h-4 w-4 text-slate-400 shrink-0 mt-0.5" />
+          : (
+            <button
+              className={`h-4 w-4 shrink-0 mt-0.5 rounded-full border-2 transition-colors focus:outline-none ${
+                canDone
+                  ? "border-slate-400 hover:border-emerald-500 hover:bg-emerald-50 cursor-pointer"
+                  : "border-slate-300 cursor-default opacity-50"
+              }`}
+              title={canDone ? "Als erledigt markieren" : ""}
+              onClick={(e) => { e.stopPropagation(); if (canDone) onDone(); }}
+              disabled={!canDone}
+            />
+          )
         }
-        <span className={`flex-1 leading-snug text-slate-800 ${isDone ? "line-through text-slate-400" : ""}`}>
-          {todo.text}
-        </span>
-        {expanded ? <ChevronUp className="h-3.5 w-3.5 text-slate-400 shrink-0" /> : <ChevronDown className="h-3.5 w-3.5 text-slate-400 shrink-0" />}
+        <div className="flex-1 flex items-start gap-1 cursor-pointer" onClick={onToggle}>
+          <span className={`flex-1 leading-snug text-slate-800 ${isDone ? "line-through text-slate-400" : ""}`}>
+            {todo.text}
+          </span>
+          {expanded ? <ChevronUp className="h-3.5 w-3.5 text-slate-400 shrink-0 mt-0.5" /> : <ChevronDown className="h-3.5 w-3.5 text-slate-400 shrink-0 mt-0.5" />}
+        </div>
       </div>
 
       {expanded && (
