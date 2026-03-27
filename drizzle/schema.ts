@@ -671,3 +671,35 @@ export const customerFiles = mysqlTable("customer_files", {
 });
 export type InsertCustomerFile = typeof customerFiles.$inferInsert;
 export type CustomerFile = typeof customerFiles.$inferSelect;
+
+// ─── Kunden-Chat-Modul ────────────────────────────────────────────────────────
+export const projectChatMessages = mysqlTable("project_chat_messages", {
+  id: int("id").autoincrement().notNull(),
+  projectId: int("project_id").notNull(),
+  senderType: mysqlEnum("sender_type", ["erp", "customer"]).notNull(),
+  senderName: varchar("sender_name", { length: 255 }).notNull(),
+  content: text("content").notNull(),
+  attachmentUrl: text("attachment_url"),
+  attachmentKey: varchar("attachment_key", { length: 512 }),
+  attachmentName: varchar("attachment_name", { length: 512 }),
+  attachmentMime: varchar("attachment_mime", { length: 128 }),
+  attachmentSize: bigint("attachment_size", { mode: "number" }),
+  mentionTriggered: tinyint("mention_triggered").default(0),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+});
+export type InsertProjectChatMessage = typeof projectChatMessages.$inferInsert;
+export type ProjectChatMessage = typeof projectChatMessages.$inferSelect;
+
+export const projectPortalConfig = mysqlTable("project_portal_config", {
+  id: int("id").autoincrement().notNull(),
+  projectId: int("project_id").notNull(),
+  passwordHash: varchar("password_hash", { length: 255 }).notNull(),
+  isActive: tinyint("is_active").default(1).notNull(),
+  driveBackupDone: tinyint("drive_backup_done").default(0),
+  driveBackupError: text("drive_backup_error"),
+  invitationSentAt: bigint("invitation_sent_at", { mode: "number" }),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+});
+export type InsertProjectPortalConfig = typeof projectPortalConfig.$inferInsert;
+export type ProjectPortalConfig = typeof projectPortalConfig.$inferSelect;

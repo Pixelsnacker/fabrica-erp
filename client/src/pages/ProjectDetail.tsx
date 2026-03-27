@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { CadViewer, CadFileThumbnail } from "@/components/CadViewer";
 import { EntitySearch } from "@/components/EntitySearch";
 import { trpc } from "@/lib/trpc";
@@ -20,6 +20,7 @@ import {
   AlertCircle, Upload, FileText, Image, X, Edit2, Save, AlertTriangle,
   ShieldAlert, Receipt, BookOpen, Loader2, Printer, ChevronDown, ChevronUp,
   Download, FolderOpen, Shield, ClipboardList, FolderSync, Wifi, WifiOff, Archive, RotateCcw,
+  MessageCircle, Send, Lock, Mail, RefreshCw, Eye, EyeOff, Copy, CloudUpload, Key,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
@@ -42,6 +43,268 @@ function fmtSize(bytes?: number | null): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+// ─── Kundenportal-Chat-Tab ────────────────────────────────────────────────────
+function ProjectChatTab({ projectId }: { projectId: number }) {
+  const utils = trpc.useUtils();
+  const [newMessage, setNewMessage] = useState('');
+  const [setupPassword, setSetupPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showSetupDialog, setShowSetupDialog] = useState(false);
+  const [portalUrl, setPortalUrl] = useState('');
+  const [chatFile, setChatFile] = useState<File | null>(null);
+  const chatFileRef = useRef<HTMLInputElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const { data: messages = [], isLoading: msgsLoading } = trpc.projectChat.getMessages.useQuery(
+    { projectId },
+    { refetchInterval: 10000 }
+  );
+  const { data: portalConfig } = trpc.projectChat.getPortalConfig.useQuery({ projectId });
+
+  const sendMsg = trpc.projectChat.sendMessage.useMutation({
+    onSuccess: () => {
+      utils.projectChat.getMessages.invalidate({ projectId });
+      setNewMessage('');
+      setChatFile(null);
+    },
+    onError: (e) => toast.error(`Fehler: ${e.message}`),
+  });
+
+  const setupPortal = trpc.projectChat.setupPortal.useMutation({
+    onSuccess: () => {
+      utils.projectChat.getPortalConfig.invalidate({ projectId });
+      setShowSetupDialog(false);
+      setSetupPassword('');
+      toast.success('Portal-Passwort gesetzt');
+    },
+    onError: (e) => toast.error(`Fehler: ${e.message}`),
+  });
+
+  const sendInvitation = trpc.projectChat.sendInvitation.useMutation({
+    onSuccess: () => {
+      utils.projectChat.getPortalConfig.invalidate({ projectId });
+      toast.success('Einladungs-E-Mail gesendet');
+    },
+    onError: (e) => toast.error(`Fehler: ${e.message}`),
+  });
+
+  // Scroll to bottom on new messages
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { scrollToBottom(); }, [messages.length]);
+
+  const handleSend = async () => {
+    if (!newMessage.trim() && !chatFile) return;
+    let fileBase64: string | undefined;
+    let filename: string | undefined;
+    let mimeType: string | undefined;
+    let fileSize: number | undefined;
+    if (chatFile) {
+      const buf = await chatFile.arrayBuffer();
+      fileBase64 = btoa(Array.from(new Uint8Array(buf)).map(b => String.fromCharCode(b)).join(''));
+      filename = chatFile.name;
+      mimeType = chatFile.type || 'application/octet-stream';
+      fileSize = chatFile.size;
+    }
+    sendMsg.mutate({
+      projectId,
+      content: newMessage.trim() || (chatFile ? `[Datei: ${chatFile.name}]` : ''),
+      fileBase64,
+      filename,
+      mimeType,
+      fileSize,
+    });
+  };
+
+  const copyPortalUrl = () => {
+    const url = `${window.location.origin}/projekt-portal/${projectId}`;
+    navigator.clipboard.writeText(url).then(() => toast.success('Link kopiert'));
+  };
+
+  const isActive = portalConfig?.isActive === 1;
+  const hasPortal = !!portalConfig;
+  const currentPortalUrl = `${window.location.origin}/projekt-portal/${projectId}`;
+
+  return (
+    <div className="space-y-4">
+      {/* Portal-Status-Header */}
+      <div className="flex items-center gap-3 p-3 rounded-lg bg-card border border-border">
+        <div className={`h-8 w-8 rounded-full flex items-center justify-center ${isActive ? 'bg-emerald-500/20' : 'bg-muted'}`}>
+          {isActive ? <Wifi className="h-4 w-4 text-emerald-400" /> : <WifiOff className="h-4 w-4 text-muted-foreground" />}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium">
+            {!hasPortal ? 'Kundenportal nicht eingerichtet' : isActive ? 'Kundenportal aktiv' : 'Kundenportal deaktiviert (Projekt abgeschlossen)'}
+          </p>
+          {hasPortal && (
+            <p className="text-xs text-muted-foreground truncate">{currentPortalUrl}</p>
+          )}
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {hasPortal && (
+            <Button variant="outline" size="sm" className="h-7 gap-1 text-xs" onClick={copyPortalUrl}>
+              <Copy className="h-3 w-3" />Link
+            </Button>
+          )}
+          {hasPortal && isActive && (
+            <Button
+              variant="outline" size="sm" className="h-7 gap-1 text-xs"
+              onClick={() => sendInvitation.mutate({ projectId, origin: window.location.origin })}
+              disabled={sendInvitation.isPending}
+            >
+              {sendInvitation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Mail className="h-3 w-3" />}
+              Einladen
+            </Button>
+          )}
+          <Button
+            variant={hasPortal ? 'outline' : 'default'} size="sm" className="h-7 gap-1 text-xs"
+            onClick={() => setShowSetupDialog(true)}
+          >
+            <Key className="h-3 w-3" />{hasPortal ? 'Passwort ändern' : 'Portal einrichten'}
+          </Button>
+        </div>
+      </div>
+
+      {/* Letzter Einladungsversand */}
+      {portalConfig?.invitationSentAt && (
+        <p className="text-xs text-muted-foreground px-1">
+          Letzte Einladung: {new Date(portalConfig.invitationSentAt).toLocaleString('de-DE')}
+        </p>
+      )}
+
+      {/* Chat-Bereich */}
+      <div className="border border-border rounded-lg overflow-hidden">
+        {/* Nachrichten-Liste */}
+        <div className="h-80 overflow-y-auto p-4 space-y-3 bg-background/50">
+          {msgsLoading ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground py-4 justify-center">
+              <Loader2 className="h-4 w-4 animate-spin" />Lade Nachrichten...
+            </div>
+          ) : messages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full gap-3 text-center">
+              <MessageCircle className="h-10 w-10 text-muted-foreground opacity-20" />
+              <p className="text-sm text-muted-foreground">Noch keine Nachrichten</p>
+              <p className="text-xs text-muted-foreground">Nachrichten erscheinen hier, sobald du oder der Kunde schreibt</p>
+            </div>
+          ) : (
+            messages.map(msg => (
+              <div key={msg.id} className={`flex gap-2 ${msg.senderType === 'erp' ? 'justify-end' : 'justify-start'}`}>
+                <div className={`max-w-[75%] rounded-xl px-3 py-2 ${
+                  msg.senderType === 'erp'
+                    ? 'bg-emerald-600/20 border border-emerald-500/30 text-right'
+                    : 'bg-card border border-border'
+                }`}>
+                  <p className="text-xs text-muted-foreground mb-0.5">
+                    {msg.senderName} · {new Date(msg.createdAt).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                  <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                  {msg.attachmentUrl && (
+                    <a href={msg.attachmentUrl} target="_blank" rel="noopener noreferrer"
+                       className="mt-1 flex items-center gap-1 text-xs text-primary hover:underline">
+                      <Paperclip className="h-3 w-3" />{msg.attachmentName ?? 'Anhang'}
+                      {msg.attachmentSize ? ` (${fmtSize(msg.attachmentSize)})` : ''}
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Eingabebereich */}
+        <div className="border-t border-border p-3 bg-card">
+          {chatFile && (
+            <div className="flex items-center gap-2 mb-2 p-2 rounded bg-muted/50 text-xs">
+              <Paperclip className="h-3 w-3 text-muted-foreground" />
+              <span className="flex-1 truncate">{chatFile.name}</span>
+              <button onClick={() => setChatFile(null)} className="text-muted-foreground hover:text-foreground">
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          )}
+          <div className="flex items-end gap-2">
+            <Textarea
+              value={newMessage}
+              onChange={e => setNewMessage(e.target.value)}
+              placeholder="Nachricht an Kunden... (@Name für E-Mail-Benachrichtigung)"
+              className="min-h-[60px] max-h-32 text-sm resize-none flex-1"
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+            />
+            <div className="flex flex-col gap-1">
+              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => chatFileRef.current?.click()}>
+                <CloudUpload className="h-3.5 w-3.5" />
+              </Button>
+              <Button size="icon" className="h-8 w-8 bg-emerald-600 hover:bg-emerald-700" onClick={handleSend} disabled={sendMsg.isPending || (!newMessage.trim() && !chatFile)}>
+                {sendMsg.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+              </Button>
+            </div>
+          </div>
+          <input ref={chatFileRef} type="file" className="hidden" onChange={e => e.target.files?.[0] && setChatFile(e.target.files[0])} />
+          <p className="text-xs text-muted-foreground mt-1.5">Enter = Senden · Shift+Enter = Zeilenumbruch · @Name für E-Mail-Benachrichtigung</p>
+        </div>
+      </div>
+
+      {/* Portal-Setup-Dialog */}
+      {showSetupDialog && (
+        <Dialog open={true} onOpenChange={o => { if (!o) { setShowSetupDialog(false); setSetupPassword(''); } }}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Key className="h-4 w-4 text-emerald-400" />
+                {hasPortal ? 'Portal-Passwort ändern' : 'Kundenportal einrichten'}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Das Passwort wird dem Kunden separat mitgeteilt. Der Kunde greift über diesen Link auf das Portal zu:
+              </p>
+              <div className="flex items-center gap-2 p-2 rounded bg-muted/50 text-xs font-mono break-all">
+                {currentPortalUrl}
+                <button onClick={copyPortalUrl} className="shrink-0 text-muted-foreground hover:text-foreground">
+                  <Copy className="h-3 w-3" />
+                </button>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Passwort (min. 6 Zeichen)</Label>
+                <div className="relative">
+                  <Input
+                    type={showPassword ? 'text' : 'password'}
+                    value={setupPassword}
+                    onChange={e => setSetupPassword(e.target.value)}
+                    placeholder="Sicheres Passwort eingeben..."
+                    className="pr-9"
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => { setShowSetupDialog(false); setSetupPassword(''); }}>Abbrechen</Button>
+              <Button
+                onClick={() => setupPortal.mutate({ projectId, password: setupPassword })}
+                disabled={setupPortal.isPending || setupPassword.length < 6}
+                className="bg-emerald-600 hover:bg-emerald-700"
+              >
+                {setupPortal.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                {hasPortal ? 'Passwort ändern' : 'Portal aktivieren'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+    </div>
+  );
 }
 
 // ─── Akte-Tab im Projekt-Detail ──────────────────────────────────────────────
@@ -805,6 +1068,7 @@ export default function ProjectDetail() {
           {project.customerId && (
             <TabsTrigger value="akte" className="gap-1.5 text-xs md:text-sm text-blue-400 data-[state=active]:text-blue-300"><FolderOpen className="h-3.5 w-3.5" /><span className="hidden sm:inline">Akte</span></TabsTrigger>
           )}
+          <TabsTrigger value="chat" className="gap-1.5 text-xs md:text-sm text-emerald-400 data-[state=active]:text-emerald-300"><MessageCircle className="h-3.5 w-3.5" /><span className="hidden sm:inline">Kundenportal</span></TabsTrigger>
         </TabsList>
 
         {/* ── Positionen (editierbar) ── */}
@@ -1346,6 +1610,11 @@ export default function ProjectDetail() {
             />
           </TabsContent>
         )}
+
+        {/* ── Kundenportal & Chat ── */}
+        <TabsContent value="chat" className="mt-4">
+          <ProjectChatTab projectId={id} />
+        </TabsContent>
       </Tabs>
 
       {/* Projekt-Bearbeiten-Dialog */}

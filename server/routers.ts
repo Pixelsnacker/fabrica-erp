@@ -3,6 +3,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
+import { chatRouter } from "./chatRouter";
 import { invokeLLM } from "./_core/llm";
 import { storagePut } from "./storage";
 import { renderInvoicePdf } from "./pdfRenderer";
@@ -335,7 +336,56 @@ export const appRouter = router({
     changeStatus: protectedProcedure.input(z.object({
       id: z.number(),
       status: z.enum(["inquiry", "calculation", "offer", "order", "production", "shipping", "completed", "cancelled", "rejected"]),
-    })).mutation(async ({ input }) => { await updateProject(input.id, { status: input.status }); return { success: true }; }),
+    })).mutation(async ({ input }) => {
+      await updateProject(input.id, { status: input.status });
+      // Wenn Projekt abgeschlossen → Portal deaktivieren + Drive PDF-Backup
+      if (input.status === 'completed') {
+        try {
+          const db = await (await import('./db')).getDb();
+          if (db) {
+            const { projectPortalConfig, projectChatMessages } = await import('../drizzle/schema');
+            const { eq, asc } = await import('drizzle-orm');
+            // Portal deaktivieren
+            await db.update(projectPortalConfig)
+              .set({ isActive: 0 })
+              .where(eq(projectPortalConfig.projectId, input.id));
+            // Drive PDF-Backup des Chatverlaufs
+            const messages = await db.select().from(projectChatMessages)
+              .where(eq(projectChatMessages.projectId, input.id))
+              .orderBy(asc(projectChatMessages.createdAt));
+            if (messages.length > 0) {
+              try {
+                const { uploadFileToDrive } = await import('./googleDrive');
+                const projectData = await (await import('./db')).getProject(input.id);
+                const projectTitle = (projectData as any)?.title ?? `Projekt-${input.id}`;
+                const customerName = ((projectData as any)?.customer?.company ||
+                  (projectData as any)?.customer?.name) ?? 'Unbekannt';
+                // Einfaches Text-Backup des Chatverlaufs
+                const lines = messages.map(m => {
+                  const dt = new Date(m.createdAt).toLocaleString('de-DE');
+                  const sender = m.senderType === 'erp' ? `[ERP] ${m.senderName}` : `[Kunde] ${m.senderName}`;
+                  return `${dt} — ${sender}\n${m.content}\n`;
+                });
+                const textContent = `Chatverlauf: ${projectTitle}\nExportiert: ${new Date().toLocaleString('de-DE')}\n${'='.repeat(60)}\n\n${lines.join('\n')}`;
+                const textBuffer = Buffer.from(textContent, 'utf-8');
+                await uploadFileToDrive({
+                  filename: `Chatverlauf_${projectTitle.replace(/[^a-zA-Z0-9äöüÄÖÜß\s-]/g, '')}_${new Date().toISOString().slice(0,10)}.txt`,
+                  mimeType: 'text/plain',
+                  buffer: textBuffer,
+                  customerName,
+                  projectName: projectTitle,
+                });
+              } catch (driveErr: any) {
+                console.warn('[Chat] Drive-Backup fehlgeschlagen:', driveErr.message);
+              }
+            }
+          }
+        } catch (err: any) {
+          console.warn('[Chat] Portal-Deaktivierung fehlgeschlagen:', err.message);
+        }
+      }
+      return { success: true };
+    }),
     archive: protectedProcedure.input(z.object({
       id: z.number(),
       rejectionReason: z.enum(['preis','timing','wettbewerber','kein_feedback','sonstiges']),
@@ -3544,5 +3594,6 @@ Diese Nachricht ist ausschließlich für den oben bezeichneten Adressaten bestim
         };
       }),
   }),
+  projectChat: chatRouter,
 });
 export type AppRouter = typeof appRouter;

@@ -25,6 +25,7 @@ import Calendar from "@/pages/Calendar";
 import Articles from "@/pages/Articles";
 import Inquiries from "@/pages/Inquiries";
 import Statistics from "@/pages/Statistics";
+import ProjectPortal from "./pages/ProjectPortal";
 
 function Router() {
   return (
@@ -64,7 +65,12 @@ function App() {
       <ThemeProvider defaultTheme="dark">
         <TooltipProvider>
           <Toaster />
-          <Router />
+          <Switch>
+            {/* Öffentliches Kundenportal — außerhalb DashboardLayout, helles Design */}
+            <Route path="/projekt-portal/:id" component={ProjectPortal} />
+            {/* Alle anderen Routen — innerhalb DashboardLayout */}
+            <Route component={Router} />
+          </Switch>
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>
