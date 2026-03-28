@@ -236,6 +236,21 @@ export const todoRouter = router({
       return { id: (result as any).insertId };
     }),
 
+  // ERP: Todo-Text bearbeiten (nur ERP-Nutzer)
+  updateTodo: protectedProcedure
+    .input(z.object({
+      todoId: z.number().int().positive(),
+      text: z.string().min(1).max(1000),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      await db
+        .update(projectTodos)
+        .set({ text: input.text.trim() })
+        .where(eq(projectTodos.id, input.todoId));
+      return { success: true };
+    }),
+
   // ERP: Todo wieder öffnen (Toggle)
   reopen: protectedProcedure
     .input(z.object({ todoId: z.number().int().positive() }))

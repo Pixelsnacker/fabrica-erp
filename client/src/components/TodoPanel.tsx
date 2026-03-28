@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   CheckCircle2, Circle, ArrowRightLeft, ChevronDown, ChevronUp,
-  Plus, Loader2, User, Trash2
+  Plus, Loader2, User, Trash2, Pencil, Check, X
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -65,6 +65,8 @@ function ErpTodoPanel({ projectId, currentUser, customerName, customerEmail, por
   const [handoverTarget, setHandoverTarget] = useState<"erp" | "customer">("erp");
   const [handoverComment, setHandoverComment] = useState("");
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editText, setEditText] = useState("");
 
   const { data: todos = [], isLoading } = trpc.projectTodos.list.useQuery({ projectId }, { refetchInterval: 15000 });
 
@@ -102,6 +104,16 @@ function ErpTodoPanel({ projectId, currentUser, customerName, customerEmail, por
     onError: (e) => toast.error(`Fehler: ${e.message}`),
   });
 
+  const updateTodo = trpc.projectTodos.updateTodo.useMutation({
+    onSuccess: () => {
+      utils.projectTodos.list.invalidate({ projectId });
+      setEditingId(null);
+      setEditText("");
+      toast.success("Aufgabe aktualisiert");
+    },
+    onError: (e) => toast.error(`Fehler: ${e.message}`),
+  });
+
   const handover = trpc.projectTodos.handover.useMutation({
     onSuccess: () => {
       utils.projectTodos.list.invalidate({ projectId });
@@ -133,6 +145,25 @@ function ErpTodoPanel({ projectId, currentUser, customerName, customerEmail, por
       customerEmail: handoverTarget === "customer" ? customerEmail : undefined,
       portalUrl: handoverTarget === "customer" ? portalUrl : undefined,
     });
+  };
+
+  const handleEditStart = (todo: Todo) => {
+    setEditingId(todo.id);
+    setEditText(todo.text);
+    setExpandedId(todo.id);
+    // Andere offene Aktionen schließen
+    setDeleteConfirmId(null);
+    setHandoverId(null);
+  };
+
+  const handleEditSave = (todoId: number) => {
+    if (!editText.trim()) return;
+    updateTodo.mutate({ todoId, text: editText.trim() });
+  };
+
+  const handleEditCancel = () => {
+    setEditingId(null);
+    setEditText("");
   };
 
   const open = todos.filter(t => t.status === "open");
@@ -190,7 +221,10 @@ function ErpTodoPanel({ projectId, currentUser, customerName, customerEmail, por
                 key={todo.id}
                 todo={todo}
                 expanded={expandedId === todo.id}
-                onToggle={() => setExpandedId(expandedId === todo.id ? null : todo.id)}
+                onToggle={() => {
+                  if (editingId === todo.id) return; // Kein Collapse während Edit
+                  setExpandedId(expandedId === todo.id ? null : todo.id);
+                }}
                 onDone={() => markDone.mutate({ todoId: todo.id })}
                 onReopen={() => reopen.mutate({ todoId: todo.id })}
                 onHandover={() => { setHandoverId(todo.id); setExpandedId(todo.id); }}
@@ -208,6 +242,13 @@ function ErpTodoPanel({ projectId, currentUser, customerName, customerEmail, por
                 onDeleteRequest={() => { setDeleteConfirmId(todo.id); setExpandedId(todo.id); }}
                 onDeleteConfirm={() => deleteTodo.mutate({ todoId: todo.id })}
                 onDeleteCancel={() => setDeleteConfirmId(null)}
+                isEditing={editingId === todo.id}
+                editText={editText}
+                onEditStart={() => handleEditStart(todo)}
+                onEditTextChange={setEditText}
+                onEditSave={() => handleEditSave(todo.id)}
+                onEditCancel={handleEditCancel}
+                editPending={updateTodo.isPending}
               />
             ))}
             {done.length > 0 && (
@@ -238,6 +279,13 @@ function ErpTodoPanel({ projectId, currentUser, customerName, customerEmail, por
                     onDeleteRequest={() => { setDeleteConfirmId(todo.id); setExpandedId(todo.id); }}
                     onDeleteConfirm={() => deleteTodo.mutate({ todoId: todo.id })}
                     onDeleteCancel={() => setDeleteConfirmId(null)}
+                    isEditing={editingId === todo.id}
+                    editText={editText}
+                    onEditStart={() => handleEditStart(todo)}
+                    onEditTextChange={setEditText}
+                    onEditSave={() => handleEditSave(todo.id)}
+                    onEditCancel={handleEditCancel}
+                    editPending={updateTodo.isPending}
                   />
                 ))}
               </>
@@ -366,6 +414,14 @@ interface TodoItemProps {
   onDeleteRequest: () => void;
   onDeleteConfirm: () => void;
   onDeleteCancel: () => void;
+  // Edit-Props
+  isEditing: boolean;
+  editText: string;
+  onEditStart: () => void;
+  onEditTextChange: (v: string) => void;
+  onEditSave: () => void;
+  onEditCancel: () => void;
+  editPending: boolean;
 }
 
 function TodoItem({
@@ -373,12 +429,13 @@ function TodoItem({
   showHandover, handoverTarget, setHandoverTarget,
   handoverComment, setHandoverComment, onHandoverSubmit, onHandoverCancel,
   customerName, currentUser,
-  showDeleteConfirm, onDeleteRequest, onDeleteConfirm, onDeleteCancel
+  showDeleteConfirm, onDeleteRequest, onDeleteConfirm, onDeleteCancel,
+  isEditing, editText, onEditStart, onEditTextChange, onEditSave, onEditCancel, editPending,
 }: TodoItemProps) {
   const isDone = todo.status === "done";
 
   return (
-    <div className={`rounded-md border text-sm transition-colors ${isDone ? "border-border/50 bg-muted/30 opacity-60" : "border-border bg-card hover:border-primary/30"}`}>
+    <div className={`rounded-md border text-sm transition-colors ${isDone ? "border-border/50 bg-muted/30 opacity-60" : "border-border bg-card hover:border-primary/30"} ${isEditing ? "border-amber-400/60 bg-amber-50/5" : ""}`}>
       <div className="flex items-start gap-2 px-2.5 py-2">
         {isDone
           ? <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
@@ -390,15 +447,47 @@ function TodoItem({
             />
           )
         }
-        <div className="flex-1 flex items-start gap-1 cursor-pointer" onClick={onToggle}>
-          <span className={`flex-1 leading-snug ${isDone ? "line-through text-muted-foreground" : ""}`}>
-            {todo.text}
-          </span>
-          {expanded ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />}
-        </div>
+        {/* Titelzeile: im Edit-Modus → Inline-Input, sonst → Text */}
+        {isEditing ? (
+          <div className="flex-1 flex items-center gap-1.5">
+            <Input
+              value={editText}
+              onChange={e => onEditTextChange(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === "Enter") { e.preventDefault(); onEditSave(); }
+                if (e.key === "Escape") onEditCancel();
+              }}
+              autoFocus
+              className="h-7 text-sm flex-1 border-amber-400/60 focus-visible:ring-amber-400/40"
+              placeholder="Aufgabentext…"
+            />
+            <button
+              className="h-6 w-6 shrink-0 rounded flex items-center justify-center text-emerald-600 hover:bg-emerald-500/10 transition-colors disabled:opacity-50"
+              title="Speichern (Enter)"
+              onClick={onEditSave}
+              disabled={editPending || !editText.trim()}
+            >
+              {editPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+            </button>
+            <button
+              className="h-6 w-6 shrink-0 rounded flex items-center justify-center text-muted-foreground hover:bg-muted/50 transition-colors"
+              title="Abbrechen (Esc)"
+              onClick={onEditCancel}
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        ) : (
+          <div className="flex-1 flex items-start gap-1 cursor-pointer" onClick={onToggle}>
+            <span className={`flex-1 leading-snug ${isDone ? "line-through text-muted-foreground" : ""}`}>
+              {todo.text}
+            </span>
+            {expanded ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />}
+          </div>
+        )}
       </div>
 
-      {expanded && (
+      {expanded && !isEditing && (
         <div className="px-2.5 pb-2.5 space-y-2 border-t border-border/50 pt-2">
           <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
@@ -430,6 +519,9 @@ function TodoItem({
               <Button size="sm" variant="outline" className="h-7 text-xs gap-1 text-slate-500 border-slate-300 hover:bg-slate-50" onClick={onReopen}>
                 <Circle className="h-3 w-3" /> Wieder öffnen
               </Button>
+              <Button size="sm" variant="outline" className="h-7 text-xs gap-1 text-amber-600 border-amber-400/50 hover:bg-amber-500/10" onClick={onEditStart}>
+                <Pencil className="h-3 w-3" /> Bearbeiten
+              </Button>
               <Button size="sm" variant="outline" className="h-7 text-xs gap-1 text-red-500 border-red-300 hover:bg-red-50 ml-auto" onClick={onDeleteRequest}>
                 <Trash2 className="h-3 w-3" /> Löschen
               </Button>
@@ -437,9 +529,12 @@ function TodoItem({
           )}
 
           {!isDone && (
-            <div className="flex gap-2 pt-1">
+            <div className="flex gap-2 pt-1 flex-wrap">
               <Button size="sm" variant="outline" className="h-7 text-xs gap-1 text-emerald-600 border-emerald-500/50 hover:bg-emerald-500/10" onClick={onDone}>
                 <CheckCircle2 className="h-3 w-3" /> Erledigt
+              </Button>
+              <Button size="sm" variant="outline" className="h-7 text-xs gap-1 text-amber-600 border-amber-400/50 hover:bg-amber-500/10" onClick={onEditStart}>
+                <Pencil className="h-3 w-3" /> Bearbeiten
               </Button>
               <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={onHandover}>
                 <ArrowRightLeft className="h-3 w-3" /> Übergeben
@@ -494,6 +589,15 @@ function TodoItem({
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Edit-Modus: Metadaten bleiben sichtbar, aber keine Aktionsbuttons */}
+      {expanded && isEditing && (
+        <div className="px-2.5 pb-2.5 border-t border-amber-400/30 pt-2">
+          <p className="text-xs text-amber-600/80">
+            Enter zum Speichern · Esc zum Abbrechen
+          </p>
         </div>
       )}
     </div>

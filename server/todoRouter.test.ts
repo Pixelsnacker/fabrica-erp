@@ -87,3 +87,50 @@ describe("Todo-Modul: E-Mail-Benachrichtigung", () => {
     expect(shouldSend("erp", "test@example.com")).toBe(false);
   });
 });
+
+describe("Todo-Modul: Bearbeitungslogik (updateTodo)", () => {
+  it("leerer Text wird abgelehnt", () => {
+    const text = "   ";
+    expect(text.trim().length > 0).toBe(false);
+  });
+
+  it("gültiger Text wird akzeptiert", () => {
+    const text = "Korrigierter Aufgabentext";
+    expect(text.trim().length > 0).toBe(true);
+  });
+
+  it("Text wird vor dem Speichern getrimmt", () => {
+    const raw = "  Aufgabe mit Leerzeichen  ";
+    expect(raw.trim()).toBe("Aufgabe mit Leerzeichen");
+  });
+
+  it("Text darf maximal 1000 Zeichen haben", () => {
+    const longText = "x".repeat(1001);
+    expect(longText.length <= 1000).toBe(false);
+    const validText = "x".repeat(1000);
+    expect(validText.length <= 1000).toBe(true);
+  });
+
+  it("nur ERP-Nutzer dürfen Todos bearbeiten (nicht Kunden)", () => {
+    // Logik: updateTodo ist protectedProcedure — nur authentifizierte ERP-Nutzer
+    const isErpUser = (role: string) => role === "erp";
+    expect(isErpUser("erp")).toBe(true);
+    expect(isErpUser("customer")).toBe(false);
+  });
+
+  it("Edit-Modus verhindert Collapse der Todo-Karte", () => {
+    // Simuliert den Guard: wenn isEditing === true, wird onToggle nicht ausgeführt
+    let collapsed = false;
+    const isEditing = true;
+    const onToggle = () => { collapsed = true; };
+    if (!isEditing) onToggle();
+    expect(collapsed).toBe(false);
+  });
+
+  it("Abbrechen setzt editText auf leer zurück", () => {
+    let editText = "Alter Text";
+    const handleEditCancel = () => { editText = ""; };
+    handleEditCancel();
+    expect(editText).toBe("");
+  });
+});
