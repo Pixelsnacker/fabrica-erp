@@ -184,15 +184,15 @@ export const todoRouter = router({
       const valid = await bcrypt.compare(input.password, cfg.passwordHash);
       if (!valid) throw new TRPCError({ code: "UNAUTHORIZED" });
 
-      // Nur Todos die dem Kunden zugewiesen sind dürfen erledigt markiert werden
+      // Todos die dem Kunden zugewiesen sind ODER keine Zuweisung haben dürfen erledigt markiert werden
       const [todo] = await db
         .select()
         .from(projectTodos)
         .where(and(eq(projectTodos.id, input.todoId), eq(projectTodos.projectId, input.projectId)))
         .limit(1);
       if (!todo) throw new TRPCError({ code: "NOT_FOUND" });
-      if (todo.assignedToType !== "customer") {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Nur Aufgaben, die Ihnen zugewiesen sind, können erledigt werden." });
+      if (todo.assignedToType === "erp") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Diese Aufgabe ist dem Fabrica-Team zugewiesen und kann nicht vom Kunden erledigt werden." });
       }
 
       await db
@@ -234,5 +234,17 @@ export const todoRouter = router({
       });
 
       return { id: (result as any).insertId };
+    }),
+
+  // ERP: Todo wieder öffnen (Toggle)
+  reopen: protectedProcedure
+    .input(z.object({ todoId: z.number().int().positive() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      await db
+        .update(projectTodos)
+        .set({ status: "open", doneAt: null, doneBy: null })
+        .where(eq(projectTodos.id, input.todoId));
+      return { success: true };
     }),
 });

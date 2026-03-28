@@ -77,7 +77,18 @@ function ErpTodoPanel({ projectId, currentUser, customerName, customerEmail, por
   });
 
   const markDone = trpc.projectTodos.markDone.useMutation({
-    onSuccess: () => utils.projectTodos.list.invalidate({ projectId }),
+    onSuccess: () => {
+      utils.projectTodos.list.invalidate({ projectId });
+      toast.success("Aufgabe erledigt");
+    },
+    onError: (e) => toast.error(`Fehler: ${e.message}`),
+  });
+
+  const reopen = trpc.projectTodos.reopen.useMutation({
+    onSuccess: () => {
+      utils.projectTodos.list.invalidate({ projectId });
+      toast.success("Aufgabe wieder geöffnet");
+    },
     onError: (e) => toast.error(`Fehler: ${e.message}`),
   });
 
@@ -171,6 +182,7 @@ function ErpTodoPanel({ projectId, currentUser, customerName, customerEmail, por
                 expanded={expandedId === todo.id}
                 onToggle={() => setExpandedId(expandedId === todo.id ? null : todo.id)}
                 onDone={() => markDone.mutate({ todoId: todo.id })}
+                onReopen={() => reopen.mutate({ todoId: todo.id })}
                 onHandover={() => { setHandoverId(todo.id); setExpandedId(todo.id); }}
                 showHandover={handoverId === todo.id}
                 handoverTarget={handoverTarget}
@@ -189,13 +201,14 @@ function ErpTodoPanel({ projectId, currentUser, customerName, customerEmail, por
                 <div className="text-xs text-muted-foreground px-1 pt-2 pb-1 border-t border-border mt-2">
                   Erledigt ({done.length})
                 </div>
-                {done.map(todo => (
+                  {done.map(todo => (
                   <TodoItem
                     key={todo.id}
                     todo={todo}
                     expanded={expandedId === todo.id}
                     onToggle={() => setExpandedId(expandedId === todo.id ? null : todo.id)}
                     onDone={() => {}}
+                    onReopen={() => reopen.mutate({ todoId: todo.id })}
                     onHandover={() => {}}
                     showHandover={false}
                     handoverTarget="erp"
@@ -319,6 +332,7 @@ interface TodoItemProps {
   expanded: boolean;
   onToggle: () => void;
   onDone: () => void;
+  onReopen: () => void;
   onHandover: () => void;
   showHandover: boolean;
   handoverTarget: "erp" | "customer";
@@ -333,7 +347,7 @@ interface TodoItemProps {
 }
 
 function TodoItem({
-  todo, expanded, onToggle, onDone, onHandover,
+  todo, expanded, onToggle, onDone, onReopen, onHandover,
   showHandover, handoverTarget, setHandoverTarget,
   handoverComment, setHandoverComment, onHandoverSubmit, onHandoverCancel,
   customerName, currentUser
@@ -386,6 +400,14 @@ function TodoItem({
           )}
           {isDone && todo.doneBy && (
             <p className="text-xs text-emerald-600">✓ Erledigt von {todo.doneBy} am {formatDate(todo.doneAt!)}</p>
+          )}
+
+          {isDone && (
+            <div className="flex gap-2 pt-1">
+              <Button size="sm" variant="outline" className="h-7 text-xs gap-1 text-slate-500 border-slate-300 hover:bg-slate-50" onClick={onReopen}>
+                <Circle className="h-3 w-3" /> Wieder öffnen
+              </Button>
+            </div>
           )}
 
           {!isDone && (
@@ -447,7 +469,8 @@ interface PortalTodoItemProps {
 
 function PortalTodoItem({ todo, expanded, onToggle, onDone, senderName }: PortalTodoItemProps) {
   const isDone = todo.status === "done";
-  const canDone = !isDone && todo.assignedToType === "customer";
+  // Kunde kann abhaken wenn: explizit zugewiesen (customer) ODER keine Zuweisung (null = jeder)
+  const canDone = !isDone && (todo.assignedToType === "customer" || todo.assignedToType === null);
 
   return (
     <div className={`rounded-md border text-sm transition-colors ${isDone ? "border-slate-200 bg-slate-50 opacity-60" : "border-slate-200 bg-white hover:border-slate-300"}`}>
