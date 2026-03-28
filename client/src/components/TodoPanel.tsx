@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   CheckCircle2, Circle, ArrowRightLeft, ChevronDown, ChevronUp,
-  Plus, Loader2, User
+  Plus, Loader2, User, Trash2
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -64,6 +64,7 @@ function ErpTodoPanel({ projectId, currentUser, customerName, customerEmail, por
   const [handoverId, setHandoverId] = useState<number | null>(null);
   const [handoverTarget, setHandoverTarget] = useState<"erp" | "customer">("erp");
   const [handoverComment, setHandoverComment] = useState("");
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
 
   const { data: todos = [], isLoading } = trpc.projectTodos.list.useQuery({ projectId }, { refetchInterval: 15000 });
 
@@ -88,6 +89,15 @@ function ErpTodoPanel({ projectId, currentUser, customerName, customerEmail, por
     onSuccess: () => {
       utils.projectTodos.list.invalidate({ projectId });
       toast.success("Aufgabe wieder geöffnet");
+    },
+    onError: (e) => toast.error(`Fehler: ${e.message}`),
+  });
+
+  const deleteTodo = trpc.projectTodos.deleteTodo.useMutation({
+    onSuccess: () => {
+      utils.projectTodos.list.invalidate({ projectId });
+      setDeleteConfirmId(null);
+      toast.success("Aufgabe gelöscht");
     },
     onError: (e) => toast.error(`Fehler: ${e.message}`),
   });
@@ -194,6 +204,10 @@ function ErpTodoPanel({ projectId, currentUser, customerName, customerEmail, por
                 customerName={customerName}
                 currentUser={currentUser}
                 mode="erp"
+                showDeleteConfirm={deleteConfirmId === todo.id}
+                onDeleteRequest={() => { setDeleteConfirmId(todo.id); setExpandedId(todo.id); }}
+                onDeleteConfirm={() => deleteTodo.mutate({ todoId: todo.id })}
+                onDeleteCancel={() => setDeleteConfirmId(null)}
               />
             ))}
             {done.length > 0 && (
@@ -220,6 +234,10 @@ function ErpTodoPanel({ projectId, currentUser, customerName, customerEmail, por
                     customerName={customerName}
                     currentUser={currentUser}
                     mode="erp"
+                    showDeleteConfirm={deleteConfirmId === todo.id}
+                    onDeleteRequest={() => { setDeleteConfirmId(todo.id); setExpandedId(todo.id); }}
+                    onDeleteConfirm={() => deleteTodo.mutate({ todoId: todo.id })}
+                    onDeleteCancel={() => setDeleteConfirmId(null)}
                   />
                 ))}
               </>
@@ -344,13 +362,18 @@ interface TodoItemProps {
   customerName?: string;
   currentUser: string;
   mode: "erp";
+  showDeleteConfirm: boolean;
+  onDeleteRequest: () => void;
+  onDeleteConfirm: () => void;
+  onDeleteCancel: () => void;
 }
 
 function TodoItem({
   todo, expanded, onToggle, onDone, onReopen, onHandover,
   showHandover, handoverTarget, setHandoverTarget,
   handoverComment, setHandoverComment, onHandoverSubmit, onHandoverCancel,
-  customerName, currentUser
+  customerName, currentUser,
+  showDeleteConfirm, onDeleteRequest, onDeleteConfirm, onDeleteCancel
 }: TodoItemProps) {
   const isDone = todo.status === "done";
 
@@ -407,6 +430,9 @@ function TodoItem({
               <Button size="sm" variant="outline" className="h-7 text-xs gap-1 text-slate-500 border-slate-300 hover:bg-slate-50" onClick={onReopen}>
                 <Circle className="h-3 w-3" /> Wieder öffnen
               </Button>
+              <Button size="sm" variant="outline" className="h-7 text-xs gap-1 text-red-500 border-red-300 hover:bg-red-50 ml-auto" onClick={onDeleteRequest}>
+                <Trash2 className="h-3 w-3" /> Löschen
+              </Button>
             </div>
           )}
 
@@ -418,6 +444,22 @@ function TodoItem({
               <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={onHandover}>
                 <ArrowRightLeft className="h-3 w-3" /> Übergeben
               </Button>
+              <Button size="sm" variant="outline" className="h-7 text-xs gap-1 text-red-500 border-red-300 hover:bg-red-50 ml-auto" onClick={onDeleteRequest}>
+                <Trash2 className="h-3 w-3" /> Löschen
+              </Button>
+            </div>
+          )}
+
+          {showDeleteConfirm && (
+            <div className="space-y-2 pt-1 border-t border-red-200 bg-red-50/50 rounded p-2">
+              <p className="text-xs text-red-700 font-medium">Aufgabe wirklich löschen?</p>
+              <p className="text-xs text-red-600">Diese Aktion kann nicht rückgängig gemacht werden.</p>
+              <div className="flex gap-2">
+                <Button size="sm" className="h-7 text-xs bg-red-600 hover:bg-red-700 text-white gap-1" onClick={onDeleteConfirm}>
+                  <Trash2 className="h-3 w-3" /> Ja, löschen
+                </Button>
+                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={onDeleteCancel}>Abbrechen</Button>
+              </div>
             </div>
           )}
 

@@ -247,4 +247,15 @@ export const todoRouter = router({
         .where(eq(projectTodos.id, input.todoId));
       return { success: true };
     }),
+
+  // ERP: Todo löschen (nur ERP-Nutzer)
+  deleteTodo: protectedProcedure
+    .input(z.object({ todoId: z.number().int().positive() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      await db
+        .delete(projectTodos)
+        .where(eq(projectTodos.id, input.todoId));
+      return { success: true };
+    }),
 });
