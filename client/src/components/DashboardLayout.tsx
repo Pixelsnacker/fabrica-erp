@@ -32,6 +32,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
   { icon: FolderKanban, label: "Projekte", path: "/projects" },
+  { icon: Receipt, label: "Angebote & Rechnungen", path: "/invoices" },
   { icon: Users, label: "Kunden", path: "/customers" },
   { icon: Truck, label: "Lieferanten", path: "/suppliers" },
   { icon: MessageSquare, label: "Beratungshistorie", path: "/consultation" },
@@ -43,7 +44,6 @@ const menuItems = [
   { icon: Bell, label: "Notizen", path: "/notes" },
   { icon: AlertTriangle, label: "Reklamationen", path: "/complaints" },
   { icon: Package, label: "Artikeldatenbank", path: "/articles" },
-  { icon: Receipt, label: "Angebote & Rechnungen", path: "/invoices" },
   { icon: SendHorizontal, label: "Lieferantenanfragen", path: "/inquiries" },
   { icon: BarChart2, label: "Statistik", path: "/statistics" },
   { icon: CalendarDays, label: "Kalender", path: "/calendar" },
