@@ -236,7 +236,9 @@ export default function Invoices() {
       utils.invoices.list.invalidate();
       if (data?.id) utils.invoices.getById.invalidate({ id: data.id });
       setShowForm(false);
-      toast.success('Erstellt');
+      const typeLabel = TYPE_LABELS[form.type as InvoiceType] ?? 'Dokument';
+      const numLabel = data?.invoiceNumber ?? '';
+      toast.success(`✅ ${typeLabel} erstellt — Nr. ${numLabel}`);
     },
     onError: (err) => toast.error(`Fehler beim Erstellen: ${err.message}`),
   });
