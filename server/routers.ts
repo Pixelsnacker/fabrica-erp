@@ -687,6 +687,7 @@ export const appRouter = router({
       rating: z.number().min(1).max(5).default(3),
       website: z.string().optional(),
       notes: z.string().optional(),
+      supplierNumber: z.number().optional(),
     })).mutation(async ({ input }) => { await createSupplier(input as any); return { success: true }; }),
     update: protectedProcedure.input(z.object({
       id: z.number(),
@@ -708,6 +709,7 @@ export const appRouter = router({
       isActive: z.boolean().optional(),
       website: z.string().optional(),
       notes: z.string().optional(),
+      supplierNumber: z.number().optional(),
     })).mutation(async ({ input }) => { const { id, ...data } = input; await updateSupplier(id, data as any); return { success: true }; }),
     delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => { await deleteSupplier(input.id); return { success: true }; }),
   }),

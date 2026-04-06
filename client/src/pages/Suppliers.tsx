@@ -25,6 +25,7 @@ type SupplierForm = {
   rating: number;
   notes: string;
   website: string;
+  supplierNumber: string;
 };
 
 const EMPTY_FORM: SupplierForm = {
@@ -37,6 +38,7 @@ const EMPTY_FORM: SupplierForm = {
   rating: 3,
   notes: "",
   website: "",
+  supplierNumber: "",
 };
 
 function SupplierDialog({
@@ -79,9 +81,15 @@ function SupplierDialog({
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <Label>Firma</Label>
-            <Input value={form.company} onChange={e => set("company", e.target.value)} placeholder="Musterfirma GmbH" />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Firma</Label>
+              <Input value={form.company} onChange={e => set("company", e.target.value)} placeholder="Musterfirma GmbH" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Lieferanten-Nr.</Label>
+              <Input type="number" value={form.supplierNumber} onChange={e => set("supplierNumber", e.target.value)} placeholder="z. B. 1" />
+            </div>
           </div>
 
           <Separator />
@@ -250,6 +258,7 @@ export default function Suppliers() {
     rating: editSupplier.rating ?? 3,
     notes: editSupplier.notes ?? "",
     website: (editSupplier as any).website ?? "",
+    supplierNumber: String((editSupplier as any).supplierNumber ?? ""),
   } : EMPTY_FORM;
 
   const toMutationInput = (f: SupplierForm) => ({
@@ -269,7 +278,8 @@ export default function Suppliers() {
     rating: f.rating,
     notes: f.notes || undefined,
     website: f.website || undefined,
-  });
+    supplierNumber: f.supplierNumber ? parseInt(f.supplierNumber, 10) : undefined,
+  } as any);
 
   return (
     <div className="space-y-5">

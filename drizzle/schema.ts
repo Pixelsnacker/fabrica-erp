@@ -256,6 +256,7 @@ export const shipments = mysqlTable("shipments", {
 
 export const suppliers = mysqlTable("suppliers", {
 	id: int().autoincrement().notNull(),
+	supplierNumber: int("supplier_number"),
 	name: varchar({ length: 255 }).notNull(),
 	company: varchar({ length: 255 }),
 	email: varchar({ length: 320 }),
