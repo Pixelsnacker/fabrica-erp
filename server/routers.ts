@@ -1438,7 +1438,8 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
       // Angebote, Rechnungen, Gutschriften und AB bekommen die Nummer erst beim Senden
       // Bestellungen und Lieferscheine bekommen die Nummer sofort (interne Dokumente)
       const needsNumberOnSend = ['invoice', 'credit_note', 'order_confirmation', 'offer'].includes(input.type);
-      const invoiceNumber = needsNumberOnSend ? 'ENTWURF' : await getNextInvoiceNumber(input.type);
+      // Eindeutige ENTWURF-Nummer mit Timestamp um UNIQUE-Constraint-Konflikte zu vermeiden
+      const invoiceNumber = needsNumberOnSend ? `ENTWURF-${Date.now()}` : await getNextInvoiceNumber(input.type);
       const mappedItems = items.map(it => ({
         ...it,
         isOptional: it.isOptional ? 1 : 0,

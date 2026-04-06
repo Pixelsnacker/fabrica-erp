@@ -1040,9 +1040,67 @@ export async function createInvoice(data: InsertInvoice, items: InsertInvoiceIte
   const db = await getDb();
   if (!db || !_pool) return;
   const now = Date.now();
-  await db.insert(invoices).values({ ...data, createdAt: now, updatedAt: now });
-  const created = await db.select().from(invoices).where(eq(invoices.invoiceNumber, data.invoiceNumber!));
-  const invoiceId = created[0]?.id;
+  // Direktes SQL INSERT (Drizzle übergibt id=DEFAULT was TiDB ablehnt)
+  await _pool.execute(
+    `INSERT INTO invoices (
+      invoice_number, type, status, customer_id, supplier_id, project_id,
+      sender_name, sender_street, sender_zip, sender_city, sender_tax_id, sender_vat_id,
+      sender_email, sender_phone, sender_iban, sender_bic,
+      recipient_name, recipient_company, recipient_street, recipient_zip, recipient_city, recipient_email,
+      issue_date, due_date, delivery_date, payment_terms, tax_mode,
+      subtotal_net, tax_amount, total_gross, currency,
+      intro_text, notes, footer_text,
+      pdf_url, pdf_key, content_hash, is_locked, cancelled_by, cancels_invoice,
+      created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      data.invoiceNumber ?? `ENTWURF-${now}`,
+      data.type ?? 'invoice',
+      data.status ?? 'draft',
+      data.customerId ?? null,
+      data.supplierId ?? null,
+      data.projectId ?? null,
+      data.senderName ?? '',
+      data.senderStreet ?? null,
+      data.senderZip ?? null,
+      data.senderCity ?? null,
+      data.senderTaxId ?? null,
+      data.senderVatId ?? null,
+      data.senderEmail ?? null,
+      data.senderPhone ?? null,
+      data.senderIban ?? null,
+      data.senderBic ?? null,
+      data.recipientName ?? '',
+      data.recipientCompany ?? null,
+      data.recipientStreet ?? null,
+      data.recipientZip ?? null,
+      data.recipientCity ?? null,
+      data.recipientEmail ?? null,
+      data.issueDate ?? null,
+      data.dueDate ?? null,
+      data.deliveryDate ?? null,
+      data.paymentTerms ?? null,
+      data.taxMode ?? 'standard',
+      data.subtotalNet ?? '0.00',
+      data.taxAmount ?? '0.00',
+      data.totalGross ?? '0.00',
+      data.currency ?? 'EUR',
+      data.introText ?? null,
+      data.notes ?? null,
+      data.footerText ?? null,
+      data.pdfUrl ?? null,
+      data.pdfKey ?? null,
+      data.contentHash ?? null,
+      data.isLocked ?? 0,
+      data.cancelledBy ?? null,
+      data.cancelsInvoice ?? null,
+      now,
+      now,
+    ]
+  );
+  // LAST_INSERT_ID() verwenden statt invoice_number-Suche (eindeutiger und schneller)
+  const [[lastIdRow]] = await _pool.execute('SELECT LAST_INSERT_ID() as id') as any;
+  const invoiceId = lastIdRow?.id;
   if (!invoiceId) return;
   // Direktes SQL INSERT (Drizzle übergibt id=DEFAULT was TiDB ablehnt)
   await insertInvoiceItemsRaw(_pool, invoiceId, items);

@@ -437,7 +437,7 @@ export default function Invoices() {
   function buildSenderFromSettings() {
     if (!companySettings) return DEFAULT_SENDER;
     return {
-      senderName: [companySettings.name, companySettings.legalForm].filter(Boolean).join(' ') || '',
+      senderName: companySettings.name ?? '',
       senderStreet: companySettings.street ?? '',
       senderZip: companySettings.zip ?? '',
       senderCity: companySettings.city ?? '',
