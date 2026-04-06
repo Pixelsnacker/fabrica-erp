@@ -182,7 +182,6 @@ export function InvoicePDF({ inv, cs }: { inv: InvoiceWithItems; cs: CompanySett
   const recipientLines = [
     inv.recipientCompany,
     inv.recipientName,
-    inv.recipientCustomerNumber ? `Kunden-Nr.: ${inv.recipientCustomerNumber}` : null,
     inv.recipientStreet,
     [inv.recipientZip, inv.recipientCity].filter(Boolean).join(' '),
   ].filter(Boolean);
@@ -232,10 +231,10 @@ export function InvoicePDF({ inv, cs }: { inv: InvoiceWithItems; cs: CompanySett
                 <Text style={S.metaValue}>{inv.deliveryDate}</Text>
               </View>
             ) : null}
-            {inv.customerId || inv.supplierId ? (
+            {inv.recipientCustomerNumber ? (
               <View style={S.metaRow}>
                 <Text style={S.metaLabel}>{inv.supplierId ? 'Lieferant-Nr.:' : 'Kunden-Nr.:'}</Text>
-                <Text style={S.metaValue}>{inv.supplierId ?? inv.customerId}</Text>
+                <Text style={S.metaValue}>{inv.recipientCustomerNumber}</Text>
               </View>
             ) : null}
           </View>
