@@ -5,7 +5,7 @@ import {
 import type { Invoice, InvoiceItem, CompanySettings } from '../drizzle/schema';
 
 // ─── Typen ────────────────────────────────────────────────────────────────────
-type InvoiceWithItems = Invoice & { items: InvoiceItem[] };
+type InvoiceWithItems = Invoice & { items: InvoiceItem[]; recipientCustomerNumber?: number | null };
 
 // ─── Hilfsfunktionen ─────────────────────────────────────────────────────────
 function fmt(val: string | number | null | undefined): string {
@@ -182,6 +182,7 @@ export function InvoicePDF({ inv, cs }: { inv: InvoiceWithItems; cs: CompanySett
   const recipientLines = [
     inv.recipientCompany,
     inv.recipientName,
+    inv.recipientCustomerNumber ? `Kunden-Nr.: ${inv.recipientCustomerNumber}` : null,
     inv.recipientStreet,
     [inv.recipientZip, inv.recipientCity].filter(Boolean).join(' '),
   ].filter(Boolean);

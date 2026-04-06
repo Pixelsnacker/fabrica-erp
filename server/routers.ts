@@ -1727,7 +1727,10 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
         const inv = await getInvoiceById(input.id);
         if (!inv) throw new Error('Dokument nicht gefunden');
         const cs = await getCompanySettings();
-        const pdfBuffer = await renderInvoicePdf(inv, cs);
+        // Kundennummer für PDF nachladen
+        const recipientCustomer = (inv as any).customerId ? await getCustomerById((inv as any).customerId) : null;
+        const invWithCustomerNumber = { ...inv, recipientCustomerNumber: (recipientCustomer as any)?.customerNumber ?? null };
+        const pdfBuffer = await renderInvoicePdf(invWithCustomerNumber as any, cs);
         const filename = inv.invoiceNumber + '.pdf';
 
         // Automatisch in Google Drive hochladen wenn Angebot einem Projekt zugeordnet ist
