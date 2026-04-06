@@ -201,6 +201,7 @@ type CustomerForm = {
   notes: string;
   website: string;
   flags: string[];
+  customerNumber: string;
 };
 
 const EMPTY_FORM: CustomerForm = {
@@ -212,6 +213,7 @@ const EMPTY_FORM: CustomerForm = {
   notes: "",
   website: "",
   flags: [],
+  customerNumber: "",
 };
 
 // ─── sevDesk CSV-Spalten → ERP-Felder Mapping ────────────────────────────────
@@ -531,6 +533,10 @@ function CustomerDialog({
             <div className="space-y-1.5">
               <Label>Firma</Label>
               <Input value={form.company} onChange={e => set("company", e.target.value)} placeholder="Musterfirma GmbH" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Kunden-Nr.</Label>
+              <Input type="number" value={form.customerNumber} onChange={e => set("customerNumber", e.target.value)} placeholder="z. B. 111" />
             </div>
             <div className="space-y-1.5">
               <Label>Typ</Label>
@@ -886,6 +892,7 @@ export default function Customers() {
     notes: editCustomer.notes ?? "",
     website: (editCustomer as any).website ?? "",
     flags: (editCustomer as any).flags ?? [],
+    customerNumber: String((editCustomer as any).customerNumber ?? ""),
   } : EMPTY_FORM;
 
   const handleCreate = (f: CustomerForm) => {
@@ -906,7 +913,8 @@ export default function Customers() {
       notes: f.notes || undefined,
       website: f.website || undefined,
       flags: f.flags.length > 0 ? f.flags : undefined,
-    });
+      customerNumber: f.customerNumber ? parseInt(f.customerNumber, 10) : undefined,
+    } as any);
   };
 
   const handleUpdate = (f: CustomerForm) => {
@@ -929,7 +937,8 @@ export default function Customers() {
       notes: f.notes || undefined,
       website: f.website || undefined,
       flags: f.flags,
-    });
+      customerNumber: f.customerNumber ? parseInt(f.customerNumber, 10) : undefined,
+    } as any);
   };
 
   return (
