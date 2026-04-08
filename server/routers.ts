@@ -1930,6 +1930,9 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
         smtpFrom: z.string().optional(),
         smtpSecure: z.boolean().optional(),
         emailSignature: z.string().optional(),
+        // Überfälligkeits-Erinnerungen
+        overdueReminderEnabled: z.boolean().optional(),
+        overdueReminderEmail: z.string().optional(),
       }))
       .mutation(async ({ input }) => {
         return upsertCompanySettings({
@@ -1937,6 +1940,7 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
           kleinunternehmer: input.kleinunternehmer !== undefined ? (input.kleinunternehmer ? 1 : 0) : undefined,
           includeYear: input.includeYear !== undefined ? (input.includeYear ? 1 : 0) : undefined,
           smtpSecure: input.smtpSecure !== undefined ? (input.smtpSecure ? 1 : 0) : undefined,
+          overdueReminderEnabled: input.overdueReminderEnabled !== undefined ? (input.overdueReminderEnabled ? 1 : 0) : undefined,
         } as any);
       }),
     // SMTP-Verbindungstest

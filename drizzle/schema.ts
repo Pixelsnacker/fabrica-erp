@@ -399,6 +399,7 @@ export const invoices = mysqlTable("invoices", {
   isLocked: tinyint("is_locked").default(0),
   cancelledBy: int("cancelled_by"),
   cancelsInvoice: int("cancels_invoice"),
+  overdueReminderSent: tinyint("overdue_reminder_sent").default(0),
   createdAt: bigint("created_at", { mode: "number" }),
   updatedAt: bigint("updated_at", { mode: "number" }),
 });
@@ -489,6 +490,9 @@ export const companySettings = mysqlTable("company_settings", {
   smtpFrom: varchar("smtp_from", { length: 255 }),
   smtpSecure: tinyint("smtp_secure").default(0),
   emailSignature: text("email_signature"),
+  // Überfälligkeits-Erinnerungen
+  overdueReminderEnabled: tinyint("overdue_reminder_enabled").default(0),
+  overdueReminderEmail: varchar("overdue_reminder_email", { length: 255 }),
   createdAt: bigint("created_at", { mode: "number" }),
   updatedAt: bigint("updated_at", { mode: "number" }),
 });

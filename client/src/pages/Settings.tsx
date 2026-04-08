@@ -73,6 +73,9 @@ export default function Settings() {
     smtpFrom: "",
     smtpSecure: false,
     emailSignature: "",
+    // Überfälligkeits-Erinnerungen
+    overdueReminderEnabled: false,
+    overdueReminderEmail: "",
   });
 
   const { data: companyData, isLoading: isLoadingCompany } = trpc.companySettings.get.useQuery();
@@ -141,6 +144,8 @@ export default function Settings() {
         smtpFrom: (companyData as any).smtpFrom ?? "",
         smtpSecure: Boolean((companyData as any).smtpSecure),
         emailSignature: (companyData as any).emailSignature ?? "",
+        overdueReminderEnabled: Boolean((companyData as any).overdueReminderEnabled),
+        overdueReminderEmail: (companyData as any).overdueReminderEmail ?? "",
       });
       if (companyData.logoUrl) setLogoPreview(companyData.logoUrl);
     }
@@ -667,6 +672,36 @@ export default function Settings() {
                     </div>
                   </CardContent>
                 </Card>
+
+                {/* Überfälligkeits-Erinnerungen */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">⚠️ Überfälligkeits-Erinnerungen</CardTitle>
+                    <CardDescription>Tägliche E-Mail-Erinnerung wenn Rechnungen überfällig sind (jeden Morgen um 08:00 Uhr).</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <Switch
+                        checked={form.overdueReminderEnabled}
+                        onCheckedChange={v => setForm(f => ({ ...f, overdueReminderEnabled: v }))}
+                      />
+                      <Label>Automatische Erinnerungen aktivieren</Label>
+                    </div>
+                    {form.overdueReminderEnabled && (
+                      <div>
+                        <Label>Empfänger-E-Mail-Adresse</Label>
+                        <Input
+                          value={form.overdueReminderEmail}
+                          onChange={e => setForm(f => ({ ...f, overdueReminderEmail: e.target.value }))}
+                          placeholder="d.rincon@fabrica3d.eu"
+                          type="email"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">Wenn leer, wird die Firmen-E-Mail oder der SMTP-Benutzername verwendet. Voraussetzung: SMTP muss konfiguriert sein.</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
                 <div className="flex justify-end">
                   <Button onClick={handleSaveCompany} disabled={isSaving} className="gap-2">
                     {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}

@@ -1435,3 +1435,46 @@ export async function replaceInquiryItems(inquiryId: number, items: Array<Omit<I
     })) as any);
   }
 }
+
+// ─── Überfälligkeits-Erinnerungen ────────────────────────────────────────────
+export async function getOverdueInvoicesForReminder(): Promise<Array<{
+  id: number;
+  invoiceNumber: string;
+  recipientCompany: string | null;
+  recipientName: string | null;
+  dueDate: string | null;
+  totalGross: string | null;
+}>> {
+  const db = await getDb();
+  if (!db) return [];
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const rows = await db.execute(
+    `SELECT id, invoice_number, recipient_company, recipient_name, due_date, total_gross
+     FROM invoices
+     WHERE type = 'invoice'
+       AND status IN ('sent', 'overdue')
+       AND due_date IS NOT NULL
+       AND due_date < ?
+       AND overdue_reminder_sent = 0
+       AND is_locked = 0`,
+    [today]
+  );
+  const list = (rows as any)[0] as any[];
+  return list.map((r: any) => ({
+    id: r.id,
+    invoiceNumber: r.invoice_number,
+    recipientCompany: r.recipient_company,
+    recipientName: r.recipient_name,
+    dueDate: r.due_date,
+    totalGross: r.total_gross,
+  }));
+}
+
+export async function markOverdueReminderSent(invoiceId: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.execute(
+    `UPDATE invoices SET overdue_reminder_sent = 1 WHERE id = ?`,
+    [invoiceId]
+  );
+}
