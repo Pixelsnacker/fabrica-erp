@@ -4,6 +4,9 @@ import {
 } from '@react-pdf/renderer';
 import type { Invoice, InvoiceItem, CompanySettings } from '../drizzle/schema';
 
+// Silbentrennung global deaktivieren
+Font.registerHyphenationCallback((word) => [word]);
+
 // ─── Typen ────────────────────────────────────────────────────────────────────
 type InvoiceWithItems = Invoice & { items: InvoiceItem[]; recipientCustomerNumber?: number | null };
 
