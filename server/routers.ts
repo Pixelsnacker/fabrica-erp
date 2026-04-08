@@ -1726,8 +1726,14 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
     generatePdf: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
-        const inv = await getInvoiceById(input.id);
+        let inv = await getInvoiceById(input.id);
         if (!inv) throw new Error('Dokument nicht gefunden');
+        // Wenn noch ENTWURF-Nummer → jetzt echte Nummer vergeben
+        if ((inv as any).invoiceNumber?.startsWith('ENTWURF')) {
+          await assignInvoiceNumber(input.id);
+          inv = await getInvoiceById(input.id);
+          if (!inv) throw new Error('Dokument nicht gefunden');
+        }
         const cs = await getCompanySettings();
         // Kundennummer für PDF nachladen
         const recipientCustomer = (inv as any).customerId ? await getCustomerById((inv as any).customerId) : null;
