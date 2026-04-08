@@ -938,7 +938,7 @@ export default function Invoices() {
                   {inv.isLocked ? <Lock className="w-3 h-3 text-yellow-400" /> : null}
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm text-muted-foreground">{inv.issueDate}</span>
+                  <span className="text-sm text-muted-foreground">{formatDateDE(inv.issueDate)}</span>
                   <span className="font-bold text-green-400">{formatEur(inv.totalGross)}</span>
                 </div>
               </div>
@@ -948,7 +948,7 @@ export default function Invoices() {
                 ) : (
                   [inv.recipientCompany, inv.recipientName].filter(Boolean).join(' — ')
                 )}
-                {inv.dueDate && <span className="ml-3 text-xs">Fällig: {inv.dueDate}</span>}
+                {inv.dueDate && <span className="ml-3 text-xs">Fällig: {formatDateDE(inv.dueDate)}</span>}
               </div>
               {/* Aktionen */}
               <div className="mt-3 flex gap-2 flex-wrap">
@@ -1651,9 +1651,9 @@ export default function Invoices() {
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-3 text-xs">
-                <div><span className="text-muted-foreground">Datum:</span> {detailData.issueDate}</div>
-                <div><span className="text-muted-foreground">Fällig:</span> {detailData.dueDate ?? '—'}</div>
-                <div><span className="text-muted-foreground">Lieferdatum:</span> {detailData.deliveryDate ?? '—'}</div>
+                <div><span className="text-muted-foreground">Datum:</span> {formatDateDE(detailData.issueDate)}</div>
+                <div><span className="text-muted-foreground">Fällig:</span> {detailData.dueDate ? formatDateDE(detailData.dueDate) : '—'}</div>
+                <div><span className="text-muted-foreground">Lieferdatum:</span> {detailData.deliveryDate ? formatDateDE(detailData.deliveryDate) : '—'}</div>
               </div>
               <table className="w-full text-xs border-collapse">
                 <thead><tr className="border-b border-border text-muted-foreground">
