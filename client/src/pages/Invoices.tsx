@@ -661,7 +661,18 @@ export default function Invoices() {
   }
   function copyItem(idx: number) {
     setItems(prev => {
-      const copy = { ...prev[idx] };
+      const src = prev[idx];
+      const copy = {
+        ...src,
+        unitPriceNet: src.unitPriceNet || '0.00',
+        quantity: src.quantity || '1',
+        taxRate: src.taxRate || '19',
+        lineTotalNet: src.lineTotalNet || '0.00',
+        lineTax: src.lineTax || '0.00',
+        lineTotalGross: src.lineTotalGross || '0.00',
+        discount: src.discount || '0',
+        discountedNet: src.discountedNet || '0.00',
+      };
       const next = [copy, ...prev].map((it, i) => ({ ...it, position: i + 1 }));
       return next;
     });
