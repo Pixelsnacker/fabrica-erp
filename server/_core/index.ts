@@ -8,7 +8,7 @@ import { registerExportRoutes } from "../exportZip";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
-import { getDueNoteReminders, markReminderSent, getOverdueInvoicesForReminder, markOverdueReminderSent, getCompanySettings } from "../db";
+import { getDueNoteReminders, markReminderSent, getOverdueInvoicesForReminder, markOverdueReminderSent, markInvoicesAsOverdue, getCompanySettings } from "../db";
 import { sendEmail } from "../email";
 import { notifyOwner } from "./notification";
 
@@ -110,6 +110,11 @@ setInterval(async () => {
     if (overdueLastRun === parseInt(today.replace(/-/g, ''))) return; // heute schon gelaufen
     overdueLastRun = parseInt(today.replace(/-/g, ''));
 
+    // Schritt 1: Status aller fälligen Rechnungen auf 'overdue' setzen (unabhängig von E-Mail-Einstellung)
+    const updated = await markInvoicesAsOverdue();
+    if (updated > 0) console.log(`[OverdueStatus] ${updated} Rechnung(en) auf 'overdue' gesetzt`);
+
+    // Schritt 2: E-Mail-Erinnerung (nur wenn aktiviert)
     const settings = await getCompanySettings();
     if (!settings?.overdueReminderEnabled) return;
 

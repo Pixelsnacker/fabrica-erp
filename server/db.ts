@@ -1478,3 +1478,20 @@ export async function markOverdueReminderSent(invoiceId: number): Promise<void> 
     [invoiceId]
   );
 }
+
+export async function markInvoicesAsOverdue(): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const result = await db.execute(
+    `UPDATE invoices
+     SET status = 'overdue'
+     WHERE type = 'invoice'
+       AND status = 'sent'
+       AND due_date IS NOT NULL
+       AND due_date < ?
+       AND is_locked = 0`,
+    [today]
+  );
+  return (result as any)[0]?.affectedRows ?? 0;
+}
