@@ -1006,6 +1006,15 @@ export async function getInvoiceById(id: number) {
 
 async function insertInvoiceItemsRaw(pool: mysql.Pool, invoiceId: number, items: InsertInvoiceItem[]) {
   if (items.length === 0) return;
+  // Hilfsfunktion: konvertiert jeden Wert zu einem gültigen Dezimalstring
+  // Komma wird zu Punkt, null/undefined/leer wird zu '0.00'
+  function toDecimal(v: any, fallback = '0.00'): string {
+    if (v === null || v === undefined || v === '') return fallback;
+    const s = String(v).replace(',', '.');
+    const n = parseFloat(s);
+    if (isNaN(n)) return fallback;
+    return n.toFixed(2);
+  }
   // Direktes SQL ohne id-Feld (Drizzle übergibt id als DEFAULT was TiDB ablehnt)
   const placeholders = items.map(() =>
     '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
@@ -1015,18 +1024,18 @@ async function insertInvoiceItemsRaw(pool: mysql.Pool, invoiceId: number, items:
     values.push(
       invoiceId,
       item.position ?? 1,
-      item.description,
-      item.quantity ?? '1.000',
+      item.description ?? '',
+      toDecimal(item.quantity, '1.000'),
       item.unit ?? 'Stk.',
-      item.unitPriceNet ?? '0.00',
-      item.taxRate ?? '19.00',
-      item.lineTotalNet ?? '0.00',
-      item.lineTax ?? '0.00',
-      item.lineTotalGross ?? '0.00',
+      toDecimal(item.unitPriceNet),
+      toDecimal(item.taxRate, '19.00'),
+      toDecimal(item.lineTotalNet),
+      toDecimal(item.lineTax),
+      toDecimal(item.lineTotalGross),
       item.longDescription ?? null,
       item.isOptional ?? 0,
-      item.discount ?? '0.00',
-      item.discountedNet ?? '0.00',
+      toDecimal(item.discount),
+      toDecimal(item.discountedNet),
     );
   }
   await pool.execute(
