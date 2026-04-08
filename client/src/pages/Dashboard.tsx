@@ -2,7 +2,7 @@ import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { TrendingUp, FolderKanban, Euro, ArrowRight, Plus, HardDrive, Wifi, WifiOff, Loader2, AlertTriangle, FileCheck, Calendar } from "lucide-react";
+import { TrendingUp, FolderKanban, Euro, ArrowRight, Plus, HardDrive, Wifi, WifiOff, Loader2, AlertTriangle, FileCheck, Calendar, Receipt, Clock } from "lucide-react";
 import { useLocation } from "wouter";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
@@ -37,6 +37,7 @@ export default function Dashboard() {
     { retry: false, refetchOnWindowFocus: false }
   );
   const { data: expiringDocs } = trpc.supplierDocs.expiringDocs.useQuery();
+  const { data: invoiceStats, isLoading: invoiceStatsLoading } = trpc.dashboard.invoiceStats.useQuery();
 
   const recentProjects = projects?.slice(0, 6) ?? [];
 
@@ -113,6 +114,78 @@ export default function Dashboard() {
             </div>
             <div className="text-xs text-muted-foreground mt-0.5">
               {parseFloat(stats?.totalMarginPct ?? "0").toFixed(1)}% gesamt
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Offene & Überfällige Rechnungen Widget */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 md:gap-4">
+        {/* Gesamt offen */}
+        <Card
+          className="bg-card border-border cursor-pointer hover:border-primary/50 transition-colors"
+          onClick={() => setLocation("/invoices")}
+        >
+          <CardContent className="p-3 md:p-5">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-muted-foreground text-xs md:text-sm leading-tight">Offene Forderungen</span>
+              <Receipt className="h-3.5 w-3.5 md:h-4 md:w-4 text-primary shrink-0" />
+            </div>
+            <div className="text-xl md:text-2xl font-bold text-primary">
+              {invoiceStatsLoading ? "–" : `${parseFloat(invoiceStats?.totalOpenSum ?? "0").toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`}
+            </div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              {invoiceStats ? `${invoiceStats.openCount + invoiceStats.overdueCount} Rechnung${(invoiceStats.openCount + invoiceStats.overdueCount) !== 1 ? 'en' : ''} gesamt offen` : '–'}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Versendet (offen) */}
+        <Card
+          className="bg-card border-border cursor-pointer hover:border-blue-400/50 transition-colors"
+          onClick={() => setLocation("/invoices")}
+        >
+          <CardContent className="p-3 md:p-5">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-muted-foreground text-xs md:text-sm leading-tight">Versendet (offen)</span>
+              <Clock className="h-3.5 w-3.5 md:h-4 md:w-4 text-blue-400 shrink-0" />
+            </div>
+            <div className="text-xl md:text-2xl font-bold text-blue-400">
+              {invoiceStatsLoading ? "–" : `${parseFloat(invoiceStats?.openSum ?? "0").toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`}
+            </div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              {invoiceStats ? `${invoiceStats.openCount} Rechnung${invoiceStats.openCount !== 1 ? 'en' : ''}` : '–'}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Überfällig */}
+        <Card
+          className={`border cursor-pointer transition-colors ${
+            (invoiceStats?.overdueCount ?? 0) > 0
+              ? 'bg-red-950/30 border-red-500/40 hover:border-red-400'
+              : 'bg-card border-border hover:border-green-400/50'
+          }`}
+          onClick={() => setLocation("/invoices")}
+        >
+          <CardContent className="p-3 md:p-5">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-muted-foreground text-xs md:text-sm leading-tight">Überfällig</span>
+              <AlertTriangle className={`h-3.5 w-3.5 md:h-4 md:w-4 shrink-0 ${
+                (invoiceStats?.overdueCount ?? 0) > 0 ? 'text-red-400' : 'text-muted-foreground'
+              }`} />
+            </div>
+            <div className={`text-xl md:text-2xl font-bold ${
+              (invoiceStats?.overdueCount ?? 0) > 0 ? 'text-red-400' : 'text-muted-foreground'
+            }`}>
+              {invoiceStatsLoading ? "–" : `${parseFloat(invoiceStats?.overdueSum ?? "0").toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`}
+            </div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              {invoiceStats
+                ? invoiceStats.overdueCount > 0
+                  ? `${invoiceStats.overdueCount} Rechnung${invoiceStats.overdueCount !== 1 ? 'en' : ''} überfällig`
+                  : 'Keine überfälligen Rechnungen'
+                : '–'}
             </div>
           </CardContent>
         </Card>

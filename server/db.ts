@@ -1495,3 +1495,33 @@ export async function markInvoicesAsOverdue(): Promise<number> {
   );
   return (result as any)[0]?.affectedRows ?? 0;
 }
+
+export async function getInvoiceStats(): Promise<{
+  openCount: number;
+  openSum: string;
+  overdueCount: number;
+  overdueSum: string;
+  totalOpenSum: string;
+}> {
+  const db = await getDb();
+  if (!db) return { openCount: 0, openSum: '0.00', overdueCount: 0, overdueSum: '0.00', totalOpenSum: '0.00' };
+  const [rows] = await db.execute(
+    `SELECT
+       SUM(CASE WHEN status = 'sent'    THEN 1 ELSE 0 END) AS openCount,
+       SUM(CASE WHEN status = 'sent'    THEN COALESCE(total_gross, 0) ELSE 0 END) AS openSum,
+       SUM(CASE WHEN status = 'overdue' THEN 1 ELSE 0 END) AS overdueCount,
+       SUM(CASE WHEN status = 'overdue' THEN COALESCE(total_gross, 0) ELSE 0 END) AS overdueSum
+     FROM invoices
+     WHERE type = 'invoice' AND status IN ('sent', 'overdue')`
+  ) as any;
+  const r = (rows as any[])[0] ?? {};
+  const openSum    = parseFloat(r.openSum    ?? 0);
+  const overdueSum = parseFloat(r.overdueSum ?? 0);
+  return {
+    openCount:    Number(r.openCount    ?? 0),
+    openSum:      openSum.toFixed(2),
+    overdueCount: Number(r.overdueCount ?? 0),
+    overdueSum:   overdueSum.toFixed(2),
+    totalOpenSum: (openSum + overdueSum).toFixed(2),
+  };
+}

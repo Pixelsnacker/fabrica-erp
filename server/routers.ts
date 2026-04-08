@@ -25,7 +25,7 @@ import {
   getKnowledgeEntries, createKnowledgeEntry, updateKnowledgeEntry, deleteKnowledgeEntry,
   getImageLibrary, createImageEntry, deleteImageEntry,
   getAiSessions, createAiSession, updateAiSession,
-  getDashboardStats,
+  getDashboardStats, getInvoiceStats,
   getQuickNotes, createQuickNote, deleteQuickNote, updateQuickNote, getDueQuickNoteReminders, markQuickNoteReminderSent,
   getFullExport,
   getNotes, getNoteById, createNote, updateNote, deleteNote,
@@ -59,6 +59,9 @@ export const appRouter = router({
   dashboard: router({
     stats: protectedProcedure.query(async () => {
       return getDashboardStats();
+    }),
+    invoiceStats: protectedProcedure.query(async () => {
+      return getInvoiceStats();
     }),
   }),
 
