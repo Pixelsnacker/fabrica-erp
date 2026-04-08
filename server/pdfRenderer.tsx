@@ -66,7 +66,7 @@ const S = StyleSheet.create({
 
   // Titel
   docTitle: { fontSize: 16, fontFamily: 'Helvetica-Bold', marginBottom: 4 },
-  docNumber: { fontSize: 9, color: '#555', marginBottom: 12 },
+  docNumber: { fontSize: 9, color: '#555', marginBottom: 32 },
 
   // Intro-Text
   introText: { fontSize: 9, marginBottom: 10, lineHeight: 1.5 },
