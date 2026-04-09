@@ -396,10 +396,11 @@ function PortalChat({ projectId, password, senderName, onLogout }: {
           className="h-[35px] object-contain shrink-0"
         />
         <div className="flex-1 min-w-0">
-          <p className="text-xs text-slate-500">
-            Kundenportal{liveCustomerName ? <span className="ml-1.5 font-medium text-slate-700">· {liveCustomerName}</span> : null}
-          </p>
-          <p className="text-sm font-semibold text-slate-900 truncate">{liveProjectTitle}</p>
+          <p className="text-xs text-slate-500">Kundenportal</p>
+          {liveCustomerName && (
+            <p className="text-sm font-bold text-slate-900 truncate">{liveCustomerName}</p>
+          )}
+          <p className={`truncate ${liveCustomerName ? 'text-xs text-slate-500' : 'text-sm font-semibold text-slate-900'}`}>{liveProjectTitle}</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <div className="flex items-center gap-1.5 text-xs text-slate-500">

@@ -13,6 +13,7 @@ import {
   projectPortalConfig,
   projects,
   customers,
+  suppliers,
 } from "../drizzle/schema";
 import { eq, asc, and } from "drizzle-orm";
 import { storagePut } from "./storage";
@@ -417,23 +418,30 @@ export const chatRouter = router({
       const valid = await bcrypt.compare(input.password, cfg.passwordHash);
       if (!valid) throw new TRPCError({ code: "UNAUTHORIZED", message: "Nicht autorisiert" });
       const [project] = await db
-        .select({ id: projects.id, title: projects.title, customerId: projects.customerId })
+        .select({ id: projects.id, title: projects.title, customerId: projects.customerId, supplierId: projects.supplierId })
         .from(projects)
         .where(eq(projects.id, input.projectId))
         .limit(1);
-      let customerName: string | null = null;
+      let entityName: string | null = null;
       if (project?.customerId) {
         const [customer] = await db
           .select({ name: customers.name, company: customers.company })
           .from(customers)
           .where(eq(customers.id, project.customerId))
           .limit(1);
-        if (customer) customerName = customer.company ?? customer.name ?? null;
+        if (customer) entityName = customer.company ?? customer.name ?? null;
+      } else if (project?.supplierId) {
+        const [supplier] = await db
+          .select({ name: suppliers.name, company: suppliers.company })
+          .from(suppliers)
+          .where(eq(suppliers.id, project.supplierId))
+          .limit(1);
+        if (supplier) entityName = supplier.company ?? supplier.name ?? null;
       }
       return {
         projectTitle: project?.title ?? `Projekt #${input.projectId}`,
         chatClosed: cfg.chatClosed === 1,
-        customerName: customerName ?? undefined,
+        customerName: entityName ?? undefined,
       };
     }),
 });
