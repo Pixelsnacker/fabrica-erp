@@ -50,15 +50,15 @@ const S = StyleSheet.create({
   },
 
   // Header
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
-  logo: { width: 108, height: 48, objectFit: 'contain' },
+  headerRow: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'flex-start', marginBottom: 20 },
+  logo: { width: 130, height: 60, objectFit: 'contain' },
   companyBlock: { textAlign: 'right', fontSize: 8, color: '#555', lineHeight: 1.5 },
 
   // Absender-Zeile (klein über Empfänger)
-  senderLine: { fontSize: 7, color: '#888', marginBottom: 3 },
+  senderLine: { fontSize: 7, color: '#888', marginBottom: 8, borderBottomWidth: 0.5, borderBottomColor: '#ccc', paddingBottom: 4 },
 
   // Adressblock
-  addressRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
+  addressRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24 },
   recipientBlock: { width: '55%' },
   recipientName: { fontSize: 9, fontFamily: 'Helvetica-Bold', marginBottom: 1 },
   recipientText: { fontSize: 9, lineHeight: 1.5 },
@@ -69,7 +69,7 @@ const S = StyleSheet.create({
 
   // Titel
   docTitle: { fontSize: 16, fontFamily: 'Helvetica-Bold', marginBottom: 4 },
-  docNumber: { fontSize: 9, color: '#555', marginBottom: 32 },
+  docNumber: { fontSize: 9, color: '#555', marginBottom: 16 },
 
   // Intro-Text
   introText: { fontSize: 9, marginBottom: 10, lineHeight: 1.5 },
@@ -195,18 +195,13 @@ export function InvoicePDF({ inv, cs }: { inv: InvoiceWithItems; cs: CompanySett
   return (
     <Document>
       <Page size="A4" style={S.page}>
-        {/* Header: Logo + Firmenname */}
+        {/* Header: Firmenname links, Logo rechts */}
         <View style={S.headerRow}>
           {cs?.logoUrl ? (
             <Image style={S.logo} src={cs.logoUrl} />
           ) : (
             <Text style={{ fontSize: 14, fontFamily: 'Helvetica-Bold' }}>{cs?.name ?? ''}</Text>
           )}
-          <View style={S.companyBlock}>
-            <Text>{cs?.name ?? ''}</Text>
-            <Text>{cs?.street ?? ''}</Text>
-            <Text>{[cs?.zip, cs?.city].filter(Boolean).join(' ')}</Text>
-          </View>
         </View>
 
         {/* Empfänger */}
