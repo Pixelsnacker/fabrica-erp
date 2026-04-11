@@ -55,10 +55,10 @@ const S = StyleSheet.create({
   companyBlock: { textAlign: 'right', fontSize: 8, color: '#555', lineHeight: 1.5 },
 
   // Absender-Zeile (klein über Empfänger)
-  senderLine: { fontSize: 7, color: '#888', marginBottom: 8, borderBottomWidth: 0.5, borderBottomColor: '#ccc', paddingBottom: 4 },
+  senderLine: { fontSize: 7, color: '#888', marginBottom: 4 },
 
   // Adressblock
-  addressRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24 },
+  addressRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
   recipientBlock: { width: '55%' },
   recipientName: { fontSize: 9, fontFamily: 'Helvetica-Bold', marginBottom: 1 },
   recipientText: { fontSize: 9, lineHeight: 1.5 },
@@ -68,8 +68,8 @@ const S = StyleSheet.create({
   metaValue: { fontSize: 8, color: '#1a1a1a' },
 
   // Titel
-  docTitle: { fontSize: 16, fontFamily: 'Helvetica-Bold', marginBottom: 4 },
-  docNumber: { fontSize: 9, color: '#555', marginBottom: 16 },
+  docTitle: { fontSize: 16, fontFamily: 'Helvetica-Bold', marginBottom: 2 },
+  docNumber: { fontSize: 9, color: '#555', marginBottom: 8 },
 
   // Intro-Text
   introText: { fontSize: 9, marginBottom: 10, lineHeight: 1.5 },
@@ -79,12 +79,12 @@ const S = StyleSheet.create({
   tableRow: { flexDirection: 'row', borderBottomWidth: 0.3, borderBottomColor: '#e0e0e0', paddingVertical: 4, paddingHorizontal: 4 },
   tableRowAlt: { flexDirection: 'row', borderBottomWidth: 0.3, borderBottomColor: '#e0e0e0', paddingVertical: 4, paddingHorizontal: 4, backgroundColor: '#fafafa' },
   colPos: { width: '5%', fontSize: 8 },
-  colDesc: { width: '42%', fontSize: 8, paddingRight: 4 },
-  colQty: { width: '8%', fontSize: 8, textAlign: 'right' },
-  colUnit: { width: '8%', fontSize: 8, textAlign: 'center' },
-  colPrice: { width: '12%', fontSize: 8, textAlign: 'right' },
-  colTax: { width: '8%', fontSize: 8, textAlign: 'center' },
-  colTotal: { width: '17%', fontSize: 8, textAlign: 'right' },
+  colDesc: { width: '48%', fontSize: 8, paddingRight: 4 },
+  colQty: { width: '12%', fontSize: 8, textAlign: 'right' },
+  colUnit: { width: '0%', fontSize: 8, textAlign: 'center' },
+  colPrice: { width: '17%', fontSize: 8, textAlign: 'right' },
+  colTax: { width: '0%', fontSize: 8, textAlign: 'center' },
+  colTotal: { width: '18%', fontSize: 8, textAlign: 'right' },
   colHeaderText: { fontFamily: 'Helvetica-Bold', fontSize: 8 },
   longDesc: { fontSize: 7.5, color: '#555', marginTop: 2, lineHeight: 1.4 },
   optionalBadge: { fontSize: 7, color: '#888', marginTop: 1 },
@@ -167,11 +167,9 @@ function TableRow({ item, idx, isDeliveryNote }: { item: InvoiceItem; idx: numbe
         <Text style={{ fontSize: 8 }}>{item.description}</Text>
         {item.longDescription ? <Text style={S.longDesc}>{item.longDescription}</Text> : null}
       </View>
-      <Text style={S.colQty}>{fmtQty(item.quantity)}</Text>
-      <Text style={S.colUnit}>{item.unit ?? 'Stk.'}</Text>
-      <Text style={S.colPrice}>{fmt(item.unitPriceNet)} EUR</Text>
-      <Text style={S.colTax}>{fmt(item.taxRate)} %</Text>
-      <Text style={S.colTotal}>{totalDisplay}</Text>
+      <Text style={[S.colQty, { width: '12%' }]}>{fmtQty(item.quantity)}&nbsp;{item.unit ?? 'Stk.'}</Text>
+      <Text style={[S.colPrice, { width: '17%' }]}>{fmt(item.unitPriceNet)}&nbsp;EUR</Text>
+      <Text style={[S.colTotal, { width: '18%' }]}>{totalDisplay}</Text>
     </View>
   );
 }
@@ -255,13 +253,11 @@ export function InvoicePDF({ inv, cs }: { inv: InvoiceWithItems; cs: CompanySett
           </View>
         ) : (
           <View style={S.tableHeader}>
-            <Text style={[S.colPos, S.colHeaderText]}>#</Text>
+            <Text style={[S.colPos, S.colHeaderText]}>Pos.</Text>
             <Text style={[S.colDesc, S.colHeaderText]}>Beschreibung</Text>
-            <Text style={[S.colQty, S.colHeaderText]}>Menge</Text>
-            <Text style={[S.colUnit, S.colHeaderText]}>Einh.</Text>
-            <Text style={[S.colPrice, S.colHeaderText]}>EP netto</Text>
-            <Text style={[S.colTax, S.colHeaderText]}>MwSt</Text>
-            <Text style={[S.colTotal, S.colHeaderText]}>Gesamt</Text>
+            <Text style={[{ width: '12%', fontSize: 8, textAlign: 'right' as const }, S.colHeaderText]}>Menge</Text>
+            <Text style={[{ width: '17%', fontSize: 8, textAlign: 'right' as const }, S.colHeaderText]}>Einzelpreis</Text>
+            <Text style={[{ width: '18%', fontSize: 8, textAlign: 'right' as const }, S.colHeaderText]}>Gesamtpreis</Text>
           </View>
         )}
         {inv.items.map((item, idx) => (
