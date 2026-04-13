@@ -8,6 +8,7 @@ import { todoRouter } from "./todoRouter";
 import { chatExportRouter } from "./chatExportRouter";
 import { deleteChatRouter } from "./deleteChatRouter";
 import { invokeLLM } from "./_core/llm";
+import { runAiDocumentChat } from "./aiDocumentTools";
 import { storagePut } from "./storage";
 import { renderInvoicePdf } from "./pdfRenderer";
 import archiver from "archiver";
@@ -1162,9 +1163,20 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
       const reply = typeof rawContent === "string" ? rawContent : "Keine Antwort erhalten.";
       return { reply };
     }),
+    // KI-gestützte Dokument-Erstellung per Prompt (Function Calling)
+    createDocument: protectedProcedure.input(z.object({
+      messages: z.array(z.object({
+        role: z.enum(["user", "assistant"]),
+        content: z.string(),
+      })),
+    })).mutation(async ({ input }) => {
+      const result = await runAiDocumentChat(
+        input.messages.map(m => ({ role: m.role as "user" | "assistant", content: m.content }))
+      );
+      return result;
+    }),
   }),
-
-  // ─── Quick Notes ────────────────────────────────────────────────────────────
+  // ─── Quick Notess ────────────────────────────────────────────────────────────
   quickNotes: router({
     list: protectedProcedure
       .input(z.object({ projectId: z.number().optional().nullable() }).optional())
