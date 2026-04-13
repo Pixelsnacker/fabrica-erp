@@ -283,11 +283,33 @@ export default function Invoices() {
   const generatePdfMut = trpc.invoices.generatePdf.useMutation();
   const generateEInvoiceMut = trpc.invoices.generateEInvoice.useMutation();
   const exportZipMut = trpc.invoices.exportZip.useMutation();
+  // PDF-Vorschau State
+  const [pdfPreview, setPdfPreview] = useState<{ url: string; filename: string } | null>(null);
+
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [exportYear, setExportYear] = useState(new Date().getFullYear());
   const [exportMonth, setExportMonth] = useState(0); // 0 = ganzes Jahr
   const [exportTypes, setExportTypes] = useState<string[]>([]); // leer = alle
   const [exportLoading, setExportLoading] = useState(false);
+
+  async function previewPDF(inv: any) {
+    const toastId = toast.loading('PDF wird geladen...');
+    try {
+      const result = await generatePdfMut.mutateAsync({ id: inv.id });
+      if (!result?.pdf) throw new Error('Kein PDF erhalten');
+      const byteChars = atob(result.pdf);
+      const byteArr = new Uint8Array(byteChars.length);
+      for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
+      const blob = new Blob([byteArr], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      setPdfPreview({ url, filename: result.filename ?? (inv.invoiceNumber + '.pdf') });
+      toast.dismiss(toastId);
+    } catch (err) {
+      toast.dismiss(toastId);
+      toast.error('PDF-Erstellung fehlgeschlagen');
+      console.error(err);
+    }
+  }
 
   async function handleExportZip() {
     setExportLoading(true);
@@ -957,6 +979,9 @@ export default function Invoices() {
                 )}
                 <Button size="sm" variant="outline" onClick={() => setShowDetail(inv.id)}>
                   <Eye className="w-3 h-3 mr-1" /> Ansicht
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => previewPDF(inv)} title="PDF Vorschau">
+                  <Eye className="w-3 h-3 mr-1" /> Vorschau
                 </Button>
                 <Button size="sm" variant="outline" onClick={() => downloadPDF(inv)} title="PDF herunterladen">
                   <Download className="w-3 h-3 mr-1" /> PDF
@@ -1681,6 +1706,7 @@ export default function Invoices() {
                 <p className="text-xs text-muted-foreground break-all">SHA-256: {detailData.contentHash}</p>
               )}
               <div className="flex gap-2 flex-wrap">
+                <Button size="sm" variant="outline" onClick={() => previewPDF(detailData)}><Eye className="w-3 h-3 mr-1" /> Vorschau</Button>
                  <Button size="sm" variant="outline" onClick={() => downloadPDF(detailData)}><Download className="w-3 h-3 mr-1" /> PDF</Button>
                 {['invoice','credit_note'].includes(detailData.type) && (
                   <Button size="sm" variant="outline" className="text-emerald-400 border-emerald-400/30" onClick={() => downloadEInvoice(detailData)} title="E-Rechnung (ZUGFeRD 2.3)">
@@ -2262,6 +2288,43 @@ export default function Invoices() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* PDF-Vorschau Modal */}
+      {pdfPreview && (
+        <Dialog open={true} onOpenChange={() => {
+          URL.revokeObjectURL(pdfPreview.url);
+          setPdfPreview(null);
+        }}>
+          <DialogContent className="max-w-5xl w-full h-[90vh] flex flex-col p-0 gap-0">
+            <DialogHeader className="px-4 py-3 border-b border-border shrink-0 flex flex-row items-center justify-between">
+              <DialogTitle className="text-sm font-medium flex items-center gap-2">
+                <FileText className="w-4 h-4 text-primary" />
+                {pdfPreview.filename}
+              </DialogTitle>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    const a = document.createElement('a');
+                    a.href = pdfPreview.url;
+                    a.download = pdfPreview.filename;
+                    a.click();
+                  }}
+                >
+                  <Download className="w-3.5 h-3.5 mr-1.5" /> Herunterladen
+                </Button>
+              </div>
+            </DialogHeader>
+            <div className="flex-1 min-h-0">
+              <iframe
+                src={pdfPreview.url}
+                className="w-full h-full border-0"
+                title="PDF Vorschau"
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </DashboardLayout>
   );
 }
