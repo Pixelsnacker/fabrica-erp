@@ -447,7 +447,7 @@ export default function Invoices() {
     issueDate: new Date().toISOString().slice(0, 10),
     dueDate: '',
     deliveryDate: '',
-    paymentTerms: 'Zahlbar innerhalb von 14 Tagen ohne Abzug.',
+    paymentTerms: '',
     taxMode: 'standard' as TaxMode,
     introText: '',
     notes: '',
@@ -500,7 +500,7 @@ export default function Invoices() {
     const footer = companySettings?.invoiceFooter ?? '';
     const isSupplierType = type === 'purchase_order' || !!prefill?.supplierId;
     setRecipientType(isSupplierType ? 'supplier' : 'customer');
-    setForm({ type, customerId: prefill?.customerId, supplierId: prefill?.supplierId, projectId: prefill?.projectId, ...sender, recipientName: '', recipientCompany: '', recipientStreet: '', recipientZip: '', recipientCity: '', recipientEmail: '', issueDate: new Date().toISOString().slice(0, 10), dueDate: '', deliveryDate: '', paymentTerms: 'Zahlbar innerhalb von 14 Tagen ohne Abzug.', taxMode: companySettings?.kleinunternehmer ? 'kleinunternehmer' : 'standard', introText: '', notes: '', footerText: footer });
+    setForm({ type, customerId: prefill?.customerId, supplierId: prefill?.supplierId, projectId: prefill?.projectId, ...sender, recipientName: '', recipientCompany: '', recipientStreet: '', recipientZip: '', recipientCity: '', recipientEmail: '', issueDate: new Date().toISOString().slice(0, 10), dueDate: '', deliveryDate: '', paymentTerms: '', taxMode: companySettings?.kleinunternehmer ? 'kleinunternehmer' : 'standard', introText: '', notes: '', footerText: footer });
     // Wenn Projekt-Positionen mitgegeben werden, vorausfüllen
     const taxMode = companySettings?.kleinunternehmer ? 'kleinunternehmer' : 'standard';
     if (prefill?.projectItems?.length) {
@@ -622,7 +622,7 @@ export default function Invoices() {
         issueDate: inv.issueDate ?? new Date().toISOString().slice(0, 10),
         dueDate: inv.dueDate ?? '',
         deliveryDate: inv.deliveryDate ?? '',
-        paymentTerms: inv.paymentTerms ?? 'Zahlbar innerhalb von 14 Tagen ohne Abzug.',
+        paymentTerms: inv.paymentTerms ?? '',
         taxMode: inv.taxMode ?? 'standard',
         introText: inv.introText ?? '',
         notes: inv.notes ?? '',
