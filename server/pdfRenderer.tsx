@@ -428,13 +428,15 @@ export function InvoicePDF({ inv, cs }: { inv: InvoiceWithItems; cs: CompanySett
         {/* ── Zahlungsart ── */}
         {inv.paymentTerms && inv.type !== 'purchase_order' ? (
           <>
-            <Text style={S.paymentMethodLabel}>
-              {inv.paymentTerms.toLowerCase().includes('paypal') ? 'PayPal' :
-               inv.paymentTerms.toLowerCase().includes('überweisung') ? 'Überweisung' :
-               inv.paymentTerms.toLowerCase().includes('lastschrift') ? 'Lastschrift' :
-               inv.paymentTerms.toLowerCase().includes('bar') ? 'Barzahlung' :
-               ''}
-            </Text>
+            {(inv.paymentTerms.toLowerCase().includes('paypal') ||
+               inv.paymentTerms.toLowerCase().includes('überweisung') ||
+               inv.paymentTerms.toLowerCase().includes('lastschrift')) ? (
+              <Text style={S.paymentMethodLabel}>
+                {inv.paymentTerms.toLowerCase().includes('paypal') ? 'PayPal' :
+                 inv.paymentTerms.toLowerCase().includes('überweisung') ? 'Überweisung' :
+                 'Lastschrift'}
+              </Text>
+            ) : null}
             <Text style={S.paymentText}>{inv.paymentTerms}</Text>
           </>
         ) : null}

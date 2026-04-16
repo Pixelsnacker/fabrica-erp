@@ -1872,6 +1872,64 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
           count: filtered.length,
         };
       }),
+
+    // ─── Zahlungserinnerung an Kunden senden ─────────────────────────────────
+    sendPaymentReminder: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        to: z.string().email(),
+        cc: z.string().optional(),
+        subject: z.string(),
+        body: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        const inv = await getInvoiceById(input.id);
+        if (!inv) throw new Error('Rechnung nicht gefunden');
+        const cs = await getCompanySettings();
+        if (!cs?.smtpHost || !cs?.smtpUser || !cs?.smtpPass) {
+          throw new Error('SMTP nicht konfiguriert. Bitte SMTP-Einstellungen in den Firmen-Einstellungen hinterlegen.');
+        }
+        const { sendEmail } = await import('./email');
+        const signatureHtml = cs.emailSignature
+          ? `<div style="margin-top:32px;padding-top:16px;border-top:1px solid #e5e7eb;font-size:11px;color:#6b7280;white-space:pre-wrap;">${cs.emailSignature}</div>`
+          : '';
+        const bodyEscaped = input.body.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br/>');
+        const html = `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;font-size:13px;color:#111;max-width:600px;margin:0 auto;padding:24px;">
+  <div style="margin-bottom:20px;">
+    ${cs.logoUrl ? `<img src="${cs.logoUrl}" alt="Logo" style="max-height:60px;" />` : `<strong>${cs.name ?? 'Fabrica GmbH'}</strong>`}
+  </div>
+  <div style="line-height:1.7;margin-bottom:24px;">${bodyEscaped}</div>
+  ${signatureHtml}
+</body></html>`;
+        // PDF der Rechnung als Anhang
+        let pdfBuffer: Buffer | undefined;
+        try {
+          const recipientCustomer = (inv as any).customerId ? await getCustomerById((inv as any).customerId) : null;
+          const invWithCustomerNumber = { ...inv, recipientCustomerNumber: (recipientCustomer as any)?.customerNumber ?? null };
+          pdfBuffer = await renderInvoicePdf(invWithCustomerNumber as any, cs);
+        } catch (e) {
+          console.error('[sendPaymentReminder] PDF-Fehler:', e);
+        }
+        const result = await sendEmail({
+          smtpHost: cs.smtpHost,
+          smtpPort: cs.smtpPort ?? 587,
+          smtpUser: cs.smtpUser,
+          smtpPass: cs.smtpPass,
+          smtpFrom: cs.smtpFrom ?? cs.smtpUser,
+          smtpSecure: Boolean(cs.smtpSecure),
+          to: input.to,
+          cc: input.cc,
+          subject: input.subject,
+          html,
+          attachments: pdfBuffer ? [{
+            filename: `${(inv as any).invoiceNumber ?? 'Rechnung'}.pdf`,
+            content: pdfBuffer,
+            contentType: 'application/pdf',
+          }] : undefined,
+        });
+        if (!result.success) throw new Error(result.error ?? 'E-Mail-Versand fehlgeschlagen');
+        return { success: true, messageId: result.messageId };
+      }),
   }),
   // ─── KI-Textverbesserung ──────────────────────────────────────────────────────────────────────────────
   textImprove: router({
