@@ -3178,24 +3178,55 @@ Diese Nachricht ist ausschließlich für den oben bezeichneten Adressaten bestim
       .mutation(async ({ input }) => {
         const db = await (await import('./db')).getDb();
         if (!db) throw new Error('DB nicht verfügbar');
-        const { customerFiles } = await import('../drizzle/schema');
-        const { eq, and, desc } = await import('drizzle-orm');
+        const { cadFiles, projectDocuments, invoices: invoicesTable, projects } = await import('../drizzle/schema');
+        const { eq, inArray, isNotNull, and, desc } = await import('drizzle-orm');
 
-        // Dateien aus DB laden
-        let files;
+        // Alle Projekte des Kunden ermitteln
+        let projectIds: number[] = [];
         if (input.projectId) {
-          files = await db.select().from(customerFiles)
-            .where(and(eq(customerFiles.customerId, input.customerId), eq(customerFiles.projectId, input.projectId)))
-            .orderBy(desc(customerFiles.createdAt));
+          projectIds = [input.projectId];
         } else {
-          files = await db.select().from(customerFiles)
-            .where(eq(customerFiles.customerId, input.customerId))
-            .orderBy(desc(customerFiles.createdAt));
+          const customerProjects = await db.select({ id: projects.id })
+            .from(projects)
+            .where(eq(projects.customerId, input.customerId));
+          projectIds = customerProjects.map(p => p.id);
         }
+        if (projectIds.length === 0) throw new Error('Keine Projekte für diesen Kunden gefunden');
 
-        if (files.length === 0) throw new Error('Keine Dateien vorhanden');
+        // Dateien aus allen Quellen laden
+        const cad = projectIds.length > 0 ? await db.select().from(cadFiles)
+          .where(inArray(cadFiles.projectId, projectIds))
+          .orderBy(desc(cadFiles.createdAt)) : [];
+        const docs = projectIds.length > 0 ? await db.select().from(projectDocuments)
+          .where(inArray(projectDocuments.projectId, projectIds))
+          .orderBy(desc(projectDocuments.createdAt)) : [];
+        const invs = await db.select().from(invoicesTable)
+          .where(and(eq(invoicesTable.customerId, input.customerId), isNotNull(invoicesTable.pdfUrl)))
+          .orderBy(desc(invoicesTable.createdAt));
 
-        // Dateien von Google Drive herunterladen und ZIP erstellen
+        // Alle Dateien mit URL und Ordnernamen zusammenstellen
+        type ZipEntry = { url: string; folder: string; filename: string };
+        const entries: ZipEntry[] = [
+          ...cad.filter(f => f.fileUrl).map(f => ({
+            url: f.fileUrl,
+            folder: 'CAD-Daten',
+            filename: f.filename,
+          })),
+          ...docs.filter(f => f.fileUrl).map(f => ({
+            url: f.fileUrl,
+            folder: f.category || 'Dokumente',
+            filename: f.filename,
+          })),
+          ...invs.filter(f => f.pdfUrl).map(f => ({
+            url: f.pdfUrl!,
+            folder: 'Rechnungen',
+            filename: `${f.invoiceNumber || 'Rechnung'}.pdf`,
+          })),
+        ];
+
+        if (entries.length === 0) throw new Error('Keine Dateien vorhanden');
+
+        // ZIP erstellen
         const archiver = (await import('archiver')).default;
         const { PassThrough } = await import('stream');
         const https = await import('https');
@@ -3208,35 +3239,32 @@ Diese Nachricht ist ausschließlich für den oben bezeichneten Adressaten bestim
         const archive = archiver('zip', { zlib: { level: 6 } });
         archive.pipe(passThrough);
 
-        // Jede Datei von Drive herunterladen und zum Archiv hinzufügen
-        for (const file of files) {
-          const downloadUrl = `https://drive.google.com/uc?export=download&id=${file.driveFileId}`;
-          const fileBuffer = await new Promise<Buffer>((resolve, reject) => {
-            const protocol = downloadUrl.startsWith('https') ? https : http;
-            const req = (protocol as any).get(downloadUrl, (res: any) => {
-              // Handle redirects
-              if (res.statusCode === 302 || res.statusCode === 301) {
-                const redirectUrl = res.headers.location;
-                const redirectProto = redirectUrl.startsWith('https') ? https : http;
-                (redirectProto as any).get(redirectUrl, (res2: any) => {
-                  const chunks2: Buffer[] = [];
-                  res2.on('data', (c: Buffer) => chunks2.push(c));
-                  res2.on('end', () => resolve(Buffer.concat(chunks2)));
-                  res2.on('error', reject);
-                }).on('error', reject);
-              } else {
-                const chunks2: Buffer[] = [];
-                res.on('data', (c: Buffer) => chunks2.push(c));
-                res.on('end', () => resolve(Buffer.concat(chunks2)));
-                res.on('error', reject);
-              }
+        for (const entry of entries) {
+          try {
+            const fileBuffer = await new Promise<Buffer>((resolve, reject) => {
+              const protocol = entry.url.startsWith('https') ? https : http;
+              (protocol as any).get(entry.url, (res: any) => {
+                if (res.statusCode === 302 || res.statusCode === 301) {
+                  const redirectUrl = res.headers.location;
+                  const redirectProto = redirectUrl.startsWith('https') ? https : http;
+                  (redirectProto as any).get(redirectUrl, (res2: any) => {
+                    const c2: Buffer[] = [];
+                    res2.on('data', (c: Buffer) => c2.push(c));
+                    res2.on('end', () => resolve(Buffer.concat(c2)));
+                    res2.on('error', reject);
+                  }).on('error', reject);
+                } else {
+                  const c2: Buffer[] = [];
+                  res.on('data', (c: Buffer) => c2.push(c));
+                  res.on('end', () => resolve(Buffer.concat(c2)));
+                  res.on('error', reject);
+                }
+              }).on('error', reject);
             });
-            req.on('error', reject);
-          });
-
-          // Kategorie-Ordner im ZIP
-          const categoryFolder = file.category || 'sonstiges';
-          archive.append(fileBuffer, { name: `${categoryFolder}/${file.filename}` });
+            archive.append(fileBuffer, { name: `${entry.folder}/${entry.filename}` });
+          } catch (err) {
+            console.warn(`ZIP: Datei übersprungen (${entry.filename}):`, err);
+          }
         }
 
         await archive.finalize();
@@ -3247,7 +3275,7 @@ Diese Nachricht ist ausschließlich für den oben bezeichneten Adressaten bestim
         const zipKey = `customer-akte-exports/${input.customerId}-${Date.now()}.zip`;
         const { url } = await storagePut(zipKey, zipBuffer, 'application/zip');
 
-        return { url, fileCount: files.length };
+        return { url, fileCount: entries.length };
       }),
 
     // Google Drive Verbindung testen
