@@ -906,17 +906,19 @@ export default function Invoices() {
 
         {/* Tabs + Suche */}
         <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+          <div className="overflow-x-auto w-full sm:w-auto">
           <Tabs value={tab} onValueChange={v => setTab(v as any)}>
-            <TabsList className="flex flex-wrap gap-1 h-auto">
+            <TabsList className="flex flex-nowrap gap-1 h-auto min-w-max">
               <TabsTrigger value="all">Alle</TabsTrigger>
               <TabsTrigger value="offer">Angebote</TabsTrigger>
               <TabsTrigger value="invoice">Rechnungen</TabsTrigger>
-              <TabsTrigger value="order_confirmation">AB</TabsTrigger>
+              <TabsTrigger value="order_confirmation">Auftragsbestätigungen</TabsTrigger>
+              <TabsTrigger value="delivery_note">Lieferscheine</TabsTrigger>
               <TabsTrigger value="purchase_order">Bestellungen</TabsTrigger>
               <TabsTrigger value="credit_note">Gutschriften</TabsTrigger>
-              <TabsTrigger value="delivery_note">Lieferscheine</TabsTrigger>
             </TabsList>
           </Tabs>
+          </div>
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input className="pl-9" placeholder="Suchen..." value={search} onChange={e => setSearch(e.target.value)} />
