@@ -380,6 +380,7 @@ export const invoices = mysqlTable("invoices", {
   issueDate: varchar("issue_date", { length: 20 }),
   dueDate: varchar("due_date", { length: 20 }),
   deliveryDate: varchar("delivery_date", { length: 20 }),
+  customerOrderNumber: varchar("customer_order_number", { length: 100 }),
   paymentTerms: varchar("payment_terms", { length: 255 }).default('Zahlbar innerhalb von 14 Tagen ohne Abzug.'),
   // Steuer
   taxMode: mysqlEnum("tax_mode", ['standard','reduced','mixed','tax_free','kleinunternehmer']).default('standard'),

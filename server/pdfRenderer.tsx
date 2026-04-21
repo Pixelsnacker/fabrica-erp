@@ -345,6 +345,14 @@ export function InvoicePDF({ inv, cs }: { inv: InvoiceWithItems; cs: CompanySett
             {/* Trennzeile */}
             <View style={S.metaDivider} />
 
+            {/* Kunden-Bestellnummer */}
+            {(inv as any).customerOrderNumber ? (
+              <View style={S.metaRow}>
+                <Text style={S.metaLabel}>Ihre Bestell-Nr.</Text>
+                <Text style={S.metaValue}>{(inv as any).customerOrderNumber}</Text>
+              </View>
+            ) : null}
+
             {/* Kundennummer */}
             {inv.recipientCustomerNumber ? (
               <View style={S.metaRow}>

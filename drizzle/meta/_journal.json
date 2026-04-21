@@ -260,6 +260,13 @@
       "when": 1775677009874,
       "tag": "0036_first_tenebrous",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "5",
+      "when": 1776793898182,
+      "tag": "0037_bright_celestials",
+      "breakpoints": true
     }
   ]
 }

@@ -1,0 +1,1 @@
+ALTER TABLE `invoices` ADD `customer_order_number` varchar(100);

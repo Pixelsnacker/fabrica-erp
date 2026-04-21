@@ -447,6 +447,7 @@ export default function Invoices() {
     issueDate: new Date().toISOString().slice(0, 10),
     dueDate: '',
     deliveryDate: '',
+    customerOrderNumber: '',
     paymentTerms: '',
     taxMode: 'standard' as TaxMode,
     introText: '',
@@ -622,6 +623,7 @@ export default function Invoices() {
         issueDate: inv.issueDate ?? new Date().toISOString().slice(0, 10),
         dueDate: inv.dueDate ?? '',
         deliveryDate: inv.deliveryDate ?? '',
+        customerOrderNumber: inv.customerOrderNumber ?? '',
         paymentTerms: inv.paymentTerms ?? '',
         taxMode: inv.taxMode ?? 'standard',
         introText: inv.introText ?? '',
@@ -1207,6 +1209,13 @@ export default function Invoices() {
               <div><Label>Ausstellungsdatum *</Label><Input type="date" value={form.issueDate} onChange={e => setForm(f => ({ ...f, issueDate: e.target.value }))} /></div>
               <div><Label>Fälligkeitsdatum</Label><Input type="date" value={form.dueDate} onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))} /></div>
               <div><Label>Lieferdatum</Label><Input type="date" value={form.deliveryDate} onChange={e => setForm(f => ({ ...f, deliveryDate: e.target.value }))} /></div>
+            </div>
+            {(form.type === 'order_confirmation' || form.type === 'invoice' || form.type === 'delivery_note') && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div><Label>Kunden-Bestellnummer</Label><Input placeholder="z.B. PO-12345" value={(form as any).customerOrderNumber ?? ''} onChange={e => setForm(f => ({ ...f, customerOrderNumber: e.target.value }))} /></div>
+              </div>
+            )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <div>
                 <Label>Steuerregelung *</Label>
                 <Select value={form.taxMode} onValueChange={v => { setForm(f => ({ ...f, taxMode: v as TaxMode })); setItems(prev => prev.map(it => calcItem(it, v as TaxMode))); }}>
