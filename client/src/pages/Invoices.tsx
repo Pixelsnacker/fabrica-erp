@@ -1026,7 +1026,7 @@ export default function Invoices() {
                   </Button>
                 )}
                 {/* In Rechnung umwandeln — nur für Angebote, die nicht storniert/bereits umgewandelt sind */}
-                {inv.type === 'offer' && inv.status !== 'cancelled' && inv.status !== 'invoiced' && (
+                {['offer','order_confirmation','delivery_note'].includes(inv.type) && inv.status !== 'cancelled' && inv.status !== 'invoiced' && (
                   <Button
                     size="sm"
                     variant="outline"
@@ -2130,76 +2130,75 @@ export default function Invoices() {
       {/* ─── Konvertierungs-Dialog ───────────────────────────────────────────────────────────────────────────────────── */}
       <Dialog open={showConvertDialog !== null} onOpenChange={() => setShowConvertDialog(null)}>
         <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <ArrowRight className="w-5 h-5 text-green-400" />
-              Angebot konvertieren
-            </DialogTitle>
-          </DialogHeader>
-          <div className="py-4 space-y-3">
-            <p className="text-sm text-muted-foreground">Wähle den Zieldokumenttyp. Alle Positionen und Kundendaten werden übernommen.</p>
-            <div className="grid gap-2">
-              <Button
-                variant="outline"
-                className="justify-start gap-3 h-14 text-left"
-                disabled={convertMut.isPending}
-                onClick={() => convertMut.mutate({ offerId: showConvertDialog!, targetType: 'order_confirmation' })}
-              >
-                <div className="w-8 h-8 rounded-full bg-cyan-500/20 flex items-center justify-center">
-                  <CheckCircle className="w-4 h-4 text-cyan-400" />
+          {(() => {
+            const convertingDoc = invoiceList.find((i: any) => i.id === showConvertDialog);
+            const srcType = convertingDoc?.type ?? 'offer';
+            const srcLabel = TYPE_LABELS[srcType as InvoiceType] ?? srcType;
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <ArrowRight className="w-5 h-5 text-green-400" />
+                    {srcLabel} konvertieren
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="py-4 space-y-3">
+                  <p className="text-sm text-muted-foreground">Wähle den Zieldokumenttyp. Alle Positionen und Kundendaten werden übernommen.</p>
+                  <div className="grid gap-2">
+                    {!['order_confirmation','delivery_note'].includes(srcType) && (
+                      <Button
+                        variant="outline"
+                        className="justify-start gap-3 h-14 text-left"
+                        disabled={convertMut.isPending}
+                        onClick={() => convertMut.mutate({ offerId: showConvertDialog!, targetType: 'order_confirmation' })}
+                      >
+                        <div className="w-8 h-8 rounded-full bg-cyan-500/20 flex items-center justify-center">
+                          <CheckCircle className="w-4 h-4 text-cyan-400" />
+                        </div>
+                        <div>
+                          <div className="font-medium">Auftragsbestätigung</div>
+                          <div className="text-xs text-muted-foreground">Angebot wird als angenommen markiert (AB-Nummer)</div>
+                        </div>
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      className="justify-start gap-3 h-14 text-left"
+                      disabled={convertMut.isPending}
+                      onClick={() => convertMut.mutate({ offerId: showConvertDialog!, targetType: 'invoice' })}
+                    >
+                      <div className="w-8 h-8 rounded-full bg-yellow-500/20 flex items-center justify-center">
+                        <Receipt className="w-4 h-4 text-yellow-400" />
+                      </div>
+                      <div>
+                        <div className="font-medium">Rechnung</div>
+                        <div className="text-xs text-muted-foreground">Direkt zur Rechnung umwandeln (RE-Nummer)</div>
+                      </div>
+                    </Button>
+                    {srcType !== 'delivery_note' && (
+                      <Button
+                        variant="outline"
+                        className="justify-start gap-3 h-14 text-left border-emerald-500/30 hover:bg-emerald-500/10"
+                        disabled={convertMut.isPending}
+                        onClick={() => convertMut.mutate({ offerId: showConvertDialog!, targetType: 'delivery_note' })}
+                      >
+                        <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                          <Truck className="w-4 h-4 text-emerald-400" />
+                        </div>
+                        <div>
+                          <div className="font-medium text-emerald-400">Lieferschein</div>
+                          <div className="text-xs text-muted-foreground">Positionen ohne Preise übernehmen (LS-Nummer)</div>
+                        </div>
+                      </Button>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <div className="font-medium">Auftragsbestätigung</div>
-                  <div className="text-xs text-muted-foreground">Angebot wird als angenommen markiert (AB-Nummer)</div>
-                </div>
-              </Button>
-              <Button
-                variant="outline"
-                className="justify-start gap-3 h-14 text-left"
-                disabled={convertMut.isPending}
-                onClick={() => convertMut.mutate({ offerId: showConvertDialog!, targetType: 'invoice' })}
-              >
-                <div className="w-8 h-8 rounded-full bg-yellow-500/20 flex items-center justify-center">
-                  <Receipt className="w-4 h-4 text-yellow-400" />
-                </div>
-                <div>
-                  <div className="font-medium">Rechnung</div>
-                  <div className="text-xs text-muted-foreground">Direkt zur Rechnung umwandeln (RE-Nummer)</div>
-                </div>
-              </Button>
-              <Button
-                variant="outline"
-                className="justify-start gap-3 h-14 text-left"
-                disabled={convertMut.isPending}
-                onClick={() => convertMut.mutate({ offerId: showConvertDialog!, targetType: 'purchase_order' })}
-              >
-                <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center">
-                  <Package className="w-4 h-4 text-purple-400" />
-                </div>
-                <div>
-                  <div className="font-medium">Bestellung</div>
-                  <div className="text-xs text-muted-foreground">Als Bestellung an Lieferanten (BE-Nummer)</div>
-                </div>
-              </Button>
-              <Button
-                variant="outline"
-                className="justify-start gap-3 h-14 text-left border-emerald-500/30 hover:bg-emerald-500/10"
-                disabled={convertMut.isPending}
-                onClick={() => convertMut.mutate({ offerId: showConvertDialog!, targetType: 'delivery_note' })}
-              >
-                <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                  <Truck className="w-4 h-4 text-emerald-400" />
-                </div>
-                <div>
-                  <div className="font-medium text-emerald-400">Lieferschein</div>
-                  <div className="text-xs text-muted-foreground">Positionen ohne Preise übernehmen (LS-Nummer)</div>
-                </div>
-              </Button>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setShowConvertDialog(null)}>Abbrechen</Button>
-          </DialogFooter>
+                <DialogFooter>
+                  <Button variant="ghost" onClick={() => setShowConvertDialog(null)}>Abbrechen</Button>
+                </DialogFooter>
+              </>
+            );
+          })()}
         </DialogContent>
       </Dialog>
 
