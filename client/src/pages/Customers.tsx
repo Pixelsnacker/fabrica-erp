@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from "react";
+import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +19,7 @@ import {
   Plus, Search, Users, Mail, Phone, Building2, MapPin, Edit2, Trash2, User,
   Upload, FileSpreadsheet, CheckCircle2, AlertCircle, X, ChevronDown, ChevronUp,
   FolderOpen, Download, FileText, Image, File, Shield, ClipboardList, Package,
-  Loader2, ExternalLink, FolderSync, Wifi, WifiOff, Tag, AlertTriangle, Globe,
+  Loader2, ExternalLink, FolderSync, Wifi, WifiOff, Tag, AlertTriangle, Globe, Receipt,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -831,7 +832,134 @@ function CustomerAkte({ customer }: { customer: { id: number; name: string; comp
   );
 }
 
-// ─── Hauptkomponente ──────────────────────────────────────────────────────────
+// ─── Dokumente-Tab für Kundenakte ────────────────────────────────────
+const CUST_DOC_TYPE_LABELS: Record<string, string> = {
+  offer: 'Angebot', invoice: 'Rechnung', order_confirmation: 'Auftragsbestätigung',
+  delivery_note: 'Lieferschein', credit_note: 'Gutschrift', purchase_order: 'Bestellung',
+};
+const CUST_DOC_TYPE_COLORS: Record<string, string> = {
+  offer: 'text-blue-400', invoice: 'text-green-400', order_confirmation: 'text-yellow-400',
+  delivery_note: 'text-purple-400', credit_note: 'text-red-400', purchase_order: 'text-orange-400',
+};
+const CUST_DOC_STATUS_LABELS: Record<string, string> = {
+  draft: 'Entwurf', sent: 'Versendet', paid: 'Bezahlt', cancelled: 'Storniert',
+  overdue: 'Überfällig', accepted: 'Angenommen', rejected: 'Abgelehnt',
+  partial: 'Teilbezahlt', open: 'Offen', delivered: 'Geliefert',
+};
+function fmtCustCurrency(v: any) {
+  const n = parseFloat(v ?? '0');
+  return isNaN(n) ? '—' : n.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+}
+function fmtCustDate(v: any) {
+  if (!v) return '—';
+  const d = new Date(typeof v === 'number' ? v : v);
+  if (isNaN(d.getTime())) return String(v);
+  return d.toLocaleDateString('de-DE');
+}
+function CustomerInvoicesTab({ customerId, onClose }: { customerId: number; onClose: () => void }) {
+  const [, setLocation] = useLocation();
+  const [activeType, setActiveType] = useState<string>('all');
+  const [search, setSearch] = useState('');
+  const { data: docs = [], isLoading } = trpc.invoices.listByCustomer.useQuery({ customerId });
+  const types = ['all', 'offer', 'invoice', 'order_confirmation', 'delivery_note', 'credit_note', 'purchase_order'];
+  const typeLabels: Record<string, string> = { all: 'Alle', ...CUST_DOC_TYPE_LABELS };
+  const filtered = (docs as any[]).filter(d => {
+    if (activeType !== 'all' && d.type !== activeType) return false;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      return (
+        (d.invoice_number ?? d.invoiceNumber ?? '').toLowerCase().includes(q) ||
+        (d.recipient_name ?? d.recipientName ?? '').toLowerCase().includes(q) ||
+        (d.recipient_company ?? d.recipientCompany ?? '').toLowerCase().includes(q)
+      );
+    }
+    return true;
+  });
+  const typeCounts = (docs as any[]).reduce((acc: Record<string, number>, d: any) => {
+    acc[d.type] = (acc[d.type] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  return (
+    <div className="space-y-3">
+      <div className="relative">
+        <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+        <input
+          type="text"
+          placeholder="Suche nach Nummer oder Empfänger…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="w-full pl-8 pr-3 py-2 text-sm bg-secondary border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
+        />
+      </div>
+      <div className="flex gap-1.5 flex-wrap">
+        {types.map(t => (
+          <button
+            key={t}
+            onClick={() => setActiveType(t)}
+            className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+              activeType === t
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-secondary text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {typeLabels[t]}{t !== 'all' && typeCounts[t] ? ` (${typeCounts[t]})` : t === 'all' ? ` (${(docs as any[]).length})` : ''}
+          </button>
+        ))}
+      </div>
+      {isLoading ? (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground py-6">
+          <Loader2 className="h-4 w-4 animate-spin" />Lade Dokumente…
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-10 gap-3">
+          <FileText className="h-10 w-10 text-muted-foreground opacity-30" />
+          <p className="text-sm text-muted-foreground">
+            {(docs as any[]).length === 0
+              ? 'Noch keine Dokumente für diesen Kunden'
+              : 'Keine Treffer für diese Filterauswahl'}
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-1.5">
+          {filtered.map((doc: any) => {
+            const num = doc.invoice_number ?? doc.invoiceNumber ?? `#${doc.id}`;
+            const recipient = doc.recipient_company ?? doc.recipientCompany ?? doc.recipient_name ?? doc.recipientName ?? '—';
+            const total = doc.total_gross ?? doc.totalGross ?? '0';
+            const status = doc.status ?? 'draft';
+            const issueDate = doc.issue_date ?? doc.issueDate;
+            const color = CUST_DOC_TYPE_COLORS[doc.type] ?? 'text-muted-foreground';
+            return (
+              <div
+                key={doc.id}
+                className="flex items-center gap-3 p-3 rounded-lg bg-card border border-border hover:border-primary/40 cursor-pointer transition-all group"
+                onClick={() => { onClose(); setLocation(`/invoices/${doc.id}`); }}
+              >
+                <FileText className={`h-4 w-4 shrink-0 ${color}`} />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-medium">{num}</span>
+                    <span className={`text-xs ${color}`}>{CUST_DOC_TYPE_LABELS[doc.type] ?? doc.type}</span>
+                    <span className="text-xs text-muted-foreground">{recipient}</span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-xs text-muted-foreground">{fmtCustDate(issueDate)}</span>
+                    <span className="text-xs text-muted-foreground">·</span>
+                    <span className="text-xs font-medium">{fmtCustCurrency(total)}</span>
+                    <span className="text-xs text-muted-foreground">·</span>
+                    <span className="text-xs text-muted-foreground">{CUST_DOC_STATUS_LABELS[status] ?? status}</span>
+                  </div>
+                </div>
+                <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Hauptkomponente ────────────────────────────────
 export default function Customers() {
   const [search, setSearch] = useState("");
   const [showCreate, setShowCreate] = useState(false);
@@ -1124,7 +1252,22 @@ export default function Customers() {
                 Kundenakte: {akteCustomer.company || akteCustomer.name}
               </DialogTitle>
             </DialogHeader>
-            <CustomerAkte customer={akteCustomer} />
+            <Tabs defaultValue="akte">
+              <TabsList className="w-full">
+                <TabsTrigger value="akte" className="flex-1 gap-1.5">
+                  <FolderOpen className="h-3.5 w-3.5" />Dateien &amp; Projekte
+                </TabsTrigger>
+                <TabsTrigger value="dokumente" className="flex-1 gap-1.5">
+                  <Receipt className="h-3.5 w-3.5" />Angebote &amp; Rechnungen
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="akte" className="mt-4">
+                <CustomerAkte customer={akteCustomer} />
+              </TabsContent>
+              <TabsContent value="dokumente" className="mt-4">
+                <CustomerInvoicesTab customerId={akteCustomer.id} onClose={() => setAkteCustomer(null)} />
+              </TabsContent>
+            </Tabs>
           </DialogContent>
         </Dialog>
       )}

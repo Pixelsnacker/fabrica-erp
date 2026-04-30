@@ -1396,6 +1396,12 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
     list: protectedProcedure.input(z.object({ type: z.string().optional(), status: z.string().optional() }).optional()).query(async ({ input }) => {
       return getInvoices(input ?? {});
     }),
+    listByProject: protectedProcedure.input(z.object({ projectId: z.number(), type: z.string().optional() })).query(async ({ input }) => {
+      return getInvoices({ projectId: input.projectId, type: input.type });
+    }),
+    listByCustomer: protectedProcedure.input(z.object({ customerId: z.number(), type: z.string().optional() })).query(async ({ input }) => {
+      return getInvoices({ customerId: input.customerId, type: input.type });
+    }),
     getById: protectedProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
       return getInvoiceById(input.id);
     }),

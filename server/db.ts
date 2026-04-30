@@ -978,7 +978,7 @@ export async function getNextInvoiceNumber(type: 'invoice' | 'offer' | 'credit_n
   return `${prefix}${sep}${paddedNum}`;
 }
 
-export async function getInvoices(filters?: { type?: string; status?: string }) {
+export async function getInvoices(filters?: { type?: string; status?: string; projectId?: number; customerId?: number }) {
   const db = await getDb();
   if (!db) return [];
   let query = db.select().from(invoices);
@@ -986,6 +986,8 @@ export async function getInvoices(filters?: { type?: string; status?: string }) 
   return rows.filter(r => {
     if (filters?.type && r.type !== filters.type) return false;
     if (filters?.status && r.status !== filters.status) return false;
+    if (filters?.projectId !== undefined && r.projectId !== filters.projectId) return false;
+    if (filters?.customerId !== undefined && r.customerId !== filters.customerId) return false;
     return true;
   });
 }
