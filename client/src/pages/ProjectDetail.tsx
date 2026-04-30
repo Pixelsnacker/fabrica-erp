@@ -1030,7 +1030,7 @@ function ProjectInvoicesTab({ projectId }: { projectId: number }) {
               <div
                 key={doc.id}
                 className="flex items-center gap-3 p-3 rounded-lg bg-card border border-border hover:border-primary/40 cursor-pointer transition-all group"
-                onClick={() => setLocation(`/invoices/${doc.id}`)}
+                onClick={() => setLocation(`/invoices?detail=${doc.id}`)}
               >
                 <FileText className={`h-4 w-4 shrink-0 ${color}`} />
                 <div className="flex-1 min-w-0">

@@ -565,6 +565,17 @@ export default function Invoices() {
     { enabled: pendingProjectId !== undefined }
   );
 
+  // URL-Parameter: ?detail=ID → Detail-Dialog direkt öffnen
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const detailId = params.get('detail');
+    if (detailId) {
+      const id = parseInt(detailId);
+      if (!isNaN(id)) setShowDetail(id);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
   // URL-Parameter verarbeiten (/invoices/new?projectId=1&customerId=2)
   useEffect(() => {
     if (location.startsWith('/invoices/new')) {
