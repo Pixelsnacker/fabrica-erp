@@ -207,6 +207,29 @@ function ReminderItem({
   );
 }
 
+// ─── URL-Linkify Hilfsfunktion ───────────────────────────────────────────────
+function renderContent(text: string): React.ReactNode {
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const parts = text.split(urlRegex);
+  return parts.map((part, i) => {
+    if (urlRegex.test(part)) {
+      return (
+        <a
+          key={i}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-cyan-400 hover:text-cyan-300 underline break-all"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {part}
+        </a>
+      );
+    }
+    return part;
+  });
+}
+
 // ─── Note Card ────────────────────────────────────────────────────────────────
 function NoteCard({
   note,
@@ -294,7 +317,7 @@ function NoteCard({
       {expanded && note.content && (
         <CardContent className="px-4 pb-3 pt-0">
           <p className="text-sm text-slate-300 whitespace-pre-wrap leading-relaxed pl-7">
-            {note.content}
+            {renderContent(note.content)}
           </p>
         </CardContent>
       )}
