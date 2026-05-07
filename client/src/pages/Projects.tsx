@@ -243,6 +243,11 @@ export default function Projects() {
                     </div>
                     <div className="flex items-center gap-3 mt-1">
                       <span className="text-xs text-muted-foreground">{TYPE_LABELS[project.type] ?? project.type}</span>
+                      {(project.customerCompany || project.customerName) && (
+                        <span className="text-xs text-cyan-400/80 font-medium truncate max-w-[200px]">
+                          {project.customerCompany || project.customerName}
+                        </span>
+                      )}
                       {project.deadline && (
                         <span className="text-xs text-muted-foreground flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
@@ -286,6 +291,11 @@ export default function Projects() {
                           <CardContent className="p-3">
                             <div className="font-medium text-sm truncate">{project.title}</div>
                             <div className="text-xs text-muted-foreground mt-1">{TYPE_LABELS[project.type] ?? project.type}</div>
+                            {(project.customerCompany || project.customerName) && (
+                              <div className="text-xs text-cyan-400/80 font-medium truncate mt-0.5">
+                                {project.customerCompany || project.customerName}
+                              </div>
+                            )}
                             <div className="flex items-center justify-between mt-2">
                               <span className="text-xs text-primary font-medium">{parseFloat(project.totalVk ?? "0").toLocaleString("de-DE", { minimumFractionDigits: 0 })} €</span>
                               <span className="text-xs text-green-400">{parseFloat(project.marginPercent ?? "0").toFixed(0)}%</span>
