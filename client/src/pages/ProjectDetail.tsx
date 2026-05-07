@@ -1086,6 +1086,11 @@ export default function ProjectDetail() {
   const [showEditComplaint, setShowEditComplaint] = useState<number | null>(null);
   const [showOfferUpload, setShowOfferUpload] = useState<number | null>(null);
   const [showDocUpload, setShowDocUpload] = useState(false);
+  const [showDocTxtDialog, setShowDocTxtDialog] = useState(false);
+  const [docTxtFilename, setDocTxtFilename] = useState("");
+  const [docTxtContent, setDocTxtContent] = useState("");
+  const [savingDocTxt, setSavingDocTxt] = useState(false);
+  const docUploadMut = trpc.projectDocs.upload.useMutation({ onError: (e) => toast.error("Upload fehlgeschlagen: " + e.message) });
   const [showEditProject, setShowEditProject] = useState(false);
   const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
   const [editProjectForm, setEditProjectForm] = useState({ title: '', projectNumber: '', type: 'other', notes: '' });
@@ -1977,9 +1982,14 @@ export default function ProjectDetail() {
                 </SelectContent>
               </Select>
             </div>
-            <Button size="sm" onClick={() => setShowDocUpload(true)} className="gap-2">
-              <Upload className="h-4 w-4" />Dokument hochladen
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setShowDocTxtDialog(true)} className="gap-2">
+                <FileText className="h-4 w-4" />TXT erstellen
+              </Button>
+              <Button size="sm" onClick={() => setShowDocUpload(true)} className="gap-2">
+                <Upload className="h-4 w-4" />Dokument hochladen
+              </Button>
+            </div>
           </div>
           {(projectDocs as any[]).length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 gap-3 border-2 border-dashed border-border rounded-lg">
@@ -2143,6 +2153,55 @@ export default function ProjectDetail() {
           onSuccess={() => { utils.projectDocs.list.invalidate({ projectId: id }); setShowDocUpload(false); }}
         />
       )}
+      {/* TXT-Erstellen Dialog für Dokumente-Tab */}
+      <Dialog open={showDocTxtDialog} onOpenChange={setShowDocTxtDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Neue TXT-Datei erstellen</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs mb-1 block">Dateiname</Label>
+              <Input
+                value={docTxtFilename}
+                onChange={e => setDocTxtFilename(e.target.value)}
+                placeholder="z.B. notizen, readme, anleitung"
+                className="h-8 text-sm"
+              />
+              <p className="text-xs text-muted-foreground mt-1">.txt wird automatisch angehängt</p>
+            </div>
+            <div>
+              <Label className="text-xs mb-1 block">Inhalt</Label>
+              <Textarea
+                value={docTxtContent}
+                onChange={e => setDocTxtContent(e.target.value)}
+                placeholder="Text hier eingeben..."
+                className="min-h-[200px] text-sm font-mono resize-y"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setShowDocTxtDialog(false)}>Abbrechen</Button>
+            <Button size="sm" disabled={savingDocTxt} className="gap-2" onClick={async () => {
+              const name = (docTxtFilename.trim() || "notiz").replace(/\.txt$/i, "") + ".txt";
+              setSavingDocTxt(true);
+              try {
+                const base64 = btoa(unescape(encodeURIComponent(docTxtContent)));
+                await docUploadMut.mutateAsync({ projectId: id, filename: name, fileBase64: base64, mimeType: "text/plain", category: "other" });
+                utils.projectDocs.list.invalidate({ projectId: id });
+                toast.success(`${name} erstellt`);
+                setShowDocTxtDialog(false);
+                setDocTxtFilename("");
+                setDocTxtContent("");
+              } catch { toast.error("Fehler beim Erstellen"); }
+              setSavingDocTxt(false);
+            }}>
+              {savingDocTxt ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+              Speichern
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Dialogs ── */}
       <Dialog open={showAddItem} onOpenChange={setShowAddItem}>
@@ -3490,8 +3549,72 @@ function CadTabContent({ projectId, cadFiles, onRefresh }: {
   const formatBytes = (b: number) => b < 1024 ? `${b} B` : b < 1024 * 1024 ? `${(b / 1024).toFixed(1)} KB` : `${(b / (1024 * 1024)).toFixed(1)} MB`;
   const getExt = (fn: string) => fn.split(".").pop()?.toLowerCase() ?? "";
 
+  // TXT-Erstellen Dialog
+  const [showTxtDialog, setShowTxtDialog] = useState(false);
+  const [txtFilename, setTxtFilename] = useState("");
+  const [txtContent, setTxtContent] = useState("");
+  const [savingTxt, setSavingTxt] = useState(false);
+  const handleSaveTxt = async () => {
+    const name = (txtFilename.trim() || "notiz").replace(/\.txt$/i, "") + ".txt";
+    setSavingTxt(true);
+    try {
+      const base64 = btoa(unescape(encodeURIComponent(txtContent)));
+      await uploadMut.mutateAsync({ projectId, filename: name, fileData: base64, mimeType: "text/plain", version: 1 });
+      onRefresh();
+      toast.success(`${name} erstellt`);
+      setShowTxtDialog(false);
+      setTxtFilename("");
+      setTxtContent("");
+    } catch { toast.error("Fehler beim Erstellen"); }
+    setSavingTxt(false);
+  };
+
   return (
     <div className="space-y-4">
+      {/* TXT-Erstellen Dialog */}
+      <Dialog open={showTxtDialog} onOpenChange={setShowTxtDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Neue TXT-Datei erstellen</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs mb-1 block">Dateiname</Label>
+              <Input
+                value={txtFilename}
+                onChange={e => setTxtFilename(e.target.value)}
+                placeholder="z.B. notizen, readme, anleitung"
+                className="h-8 text-sm"
+              />
+              <p className="text-xs text-muted-foreground mt-1">.txt wird automatisch angehängt</p>
+            </div>
+            <div>
+              <Label className="text-xs mb-1 block">Inhalt</Label>
+              <Textarea
+                value={txtContent}
+                onChange={e => setTxtContent(e.target.value)}
+                placeholder="Text hier eingeben..."
+                className="min-h-[200px] text-sm font-mono resize-y"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setShowTxtDialog(false)}>Abbrechen</Button>
+            <Button size="sm" onClick={handleSaveTxt} disabled={savingTxt} className="gap-2">
+              {savingTxt ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+              Speichern
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Header mit TXT-Button */}
+      <div className="flex justify-end">
+        <Button variant="outline" size="sm" onClick={() => setShowTxtDialog(true)} className="gap-2">
+          <FileText className="h-3.5 w-3.5" />TXT erstellen
+        </Button>
+      </div>
+
       {/* Upload-Bereich */}
       <div
         className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-colors"
