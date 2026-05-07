@@ -209,10 +209,12 @@ function ReminderItem({
 
 // ─── URL-Linkify Hilfsfunktion ───────────────────────────────────────────────
 function renderContent(text: string): React.ReactNode {
-  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  // Regex ohne /g-Flag für split, damit alle URLs korrekt erkannt werden
+  const urlRegex = /(https?:\/\/[^\s]+)/;
   const parts = text.split(urlRegex);
   return parts.map((part, i) => {
-    if (urlRegex.test(part)) {
+    // Neue Regex-Instanz pro Prüfung vermeidet den /g-lastIndex-Bug
+    if (/^https?:\/\/.+/.test(part)) {
       return (
         <a
           key={i}
