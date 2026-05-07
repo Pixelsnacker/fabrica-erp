@@ -181,9 +181,18 @@ export async function getProjects(filters?: { status?: string; type?: string }) 
   const conditions = [];
   if (filters?.status) conditions.push(eq(projects.status, filters.status as any));
   if (filters?.type) conditions.push(eq(projects.type, filters.type as any));
+  // LEFT JOIN auf customers um Kundennamen direkt in der Liste anzuzeigen
+  const baseQuery = db
+    .select({
+      ...projects,
+      customerName: customers.name,
+      customerCompany: customers.company,
+    })
+    .from(projects)
+    .leftJoin(customers, eq(projects.customerId, customers.id));
   const query = conditions.length > 0
-    ? db.select().from(projects).where(and(...conditions)).orderBy(desc(projects.createdAt))
-    : db.select().from(projects).orderBy(desc(projects.createdAt));
+    ? baseQuery.where(and(...conditions)).orderBy(desc(projects.createdAt))
+    : baseQuery.orderBy(desc(projects.createdAt));
   return query;
 }
 
