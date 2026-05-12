@@ -117,12 +117,16 @@ export default function Projects() {
   const activeProjects = projects.filter(p => p.status !== 'rejected');
   const filtered = activeProjects.filter(p =>
     p.title.toLowerCase().includes(search.toLowerCase()) ||
-    (p.projectNumber ?? "").toLowerCase().includes(search.toLowerCase())
+    (p.projectNumber ?? "").toLowerCase().includes(search.toLowerCase()) ||
+    ((p as any).customerCompany ?? "").toLowerCase().includes(search.toLowerCase()) ||
+    ((p as any).customerName ?? "").toLowerCase().includes(search.toLowerCase())
   );
 
   const filteredArchive = (archivedProjects as any[]).filter((p: any) =>
     p.title.toLowerCase().includes(search.toLowerCase()) ||
-    (p.projectNumber ?? "").toLowerCase().includes(search.toLowerCase())
+    (p.projectNumber ?? "").toLowerCase().includes(search.toLowerCase()) ||
+    (p.customerCompany ?? "").toLowerCase().includes(search.toLowerCase()) ||
+    (p.customerName ?? "").toLowerCase().includes(search.toLowerCase())
   );
 
   const currentYear = new Date().getFullYear();
