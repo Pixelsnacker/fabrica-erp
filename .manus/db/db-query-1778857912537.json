@@ -1,0 +1,80 @@
+{
+  "query": "SELECT id, invoice_number, type, status, is_locked FROM invoices WHERE type = 'offer' ORDER BY created_at DESC LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 9NNjvn7NV7enobv.7ea640e70a8c --database YMZow7uQxpBVyBGbmbpvvd --execute SELECT id, invoice_number, type, status, is_locked FROM invoices WHERE type = 'offer' ORDER BY created_at DESC LIMIT 10;",
+  "rows": [
+    {
+      "id": "1020001",
+      "invoice_number": "AN-2026-1879",
+      "type": "offer",
+      "status": "draft",
+      "is_locked": "0"
+    },
+    {
+      "id": "990001",
+      "invoice_number": "AN-2026-1878",
+      "type": "offer",
+      "status": "accepted",
+      "is_locked": "0"
+    },
+    {
+      "id": "930001",
+      "invoice_number": "AN-2026-1877",
+      "type": "offer",
+      "status": "sent",
+      "is_locked": "0"
+    },
+    {
+      "id": "900004",
+      "invoice_number": "AN-2026-1876",
+      "type": "offer",
+      "status": "invoiced",
+      "is_locked": "0"
+    },
+    {
+      "id": "900001",
+      "invoice_number": "AN-2026-1875",
+      "type": "offer",
+      "status": "invoiced",
+      "is_locked": "0"
+    },
+    {
+      "id": "870001",
+      "invoice_number": "AN-2026-1874",
+      "type": "offer",
+      "status": "sent",
+      "is_locked": "0"
+    },
+    {
+      "id": "810002",
+      "invoice_number": "AN-2026-1873",
+      "type": "offer",
+      "status": "sent",
+      "is_locked": "0"
+    },
+    {
+      "id": "810001",
+      "invoice_number": "AN-2026-1872",
+      "type": "offer",
+      "status": "sent",
+      "is_locked": "0"
+    },
+    {
+      "id": "750001",
+      "invoice_number": "AN-2026-1871",
+      "type": "offer",
+      "status": "accepted",
+      "is_locked": "0"
+    },
+    {
+      "id": "720002",
+      "invoice_number": "AN-2026-1870",
+      "type": "offer",
+      "status": "paid",
+      "is_locked": "0"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tinvoice_number\ttype\tstatus\tis_locked\n1020001\tAN-2026-1879\toffer\tdraft\t0\n990001\tAN-2026-1878\toffer\taccepted\t0\n930001\tAN-2026-1877\toffer\tsent\t0\n900004\tAN-2026-1876\toffer\tinvoiced\t0\n900001\tAN-2026-1875\toffer\tinvoiced\t0\n870001\tAN-2026-1874\toffer\tsent\t0\n810002\tAN-2026-1873\toffer\tsent\t0\n810001\tAN-2026-1872\toffer\tsent\t0\n750001\tAN-2026-1871\toffer\taccepted\t0\n720002\tAN-2026-1870\toffer\tpaid\t0\n",
+  "stderr": "",
+  "execution_time_ms": 296
+}

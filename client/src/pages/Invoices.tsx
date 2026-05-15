@@ -658,10 +658,12 @@ export default function Invoices() {
   }, [editDetailData, pendingEditId]);
 
   function openEdit(inv: any) {
-    // Cache-Eintrag direkt löschen damit der Query beim nächsten Aufruf
-    // garantiert frische Daten vom Server lädt
-    queryClient.removeQueries({ queryKey: [['invoices', 'getById'], { input: { id: inv.id }, type: 'query' }] });
-    setPendingEditId(inv.id);
+    // Erst pendingEditId auf null setzen damit der useEffect bei gleichem ID erneut feuert
+    setPendingEditId(null);
+    // Cache invalidieren damit frische Daten geladen werden
+    queryClient.invalidateQueries({ queryKey: [['invoices', 'getById'], { input: { id: inv.id }, type: 'query' }] });
+    // Kurze Verzögerung damit React den State-Reset verarbeitet
+    setTimeout(() => setPendingEditId(inv.id), 50);
   }
 
   // Kunde auswählen → Empfänger vorausfüllen
