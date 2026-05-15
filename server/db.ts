@@ -35,6 +35,7 @@ export function resetDb() {
   _db = null;
   _pool = null;
 }
+export function getPool() { return _pool; }
 
 export async function getDb() {
   if (!process.env.DATABASE_URL) return null;
@@ -1459,7 +1460,9 @@ export async function getOverdueInvoicesForReminder(): Promise<Array<{
   const db = await getDb();
   if (!db) return [];
   const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-  const rows = await db.execute(
+  const pool = getPool();
+  if (!pool) return [];
+  const [rows] = await pool.execute(
     `SELECT id, invoice_number, recipient_company, recipient_name, due_date, total_gross
      FROM invoices
      WHERE type = 'invoice'
@@ -1469,8 +1472,8 @@ export async function getOverdueInvoicesForReminder(): Promise<Array<{
        AND overdue_reminder_sent = 0
        AND is_locked = 0`,
     [today]
-  );
-  const list = (rows as any)[0] as any[];
+  ) as any;
+  const list = rows as any[];
   return list.map((r: any) => ({
     id: r.id,
     invoiceNumber: r.invoice_number,
@@ -1484,7 +1487,9 @@ export async function getOverdueInvoicesForReminder(): Promise<Array<{
 export async function markOverdueReminderSent(invoiceId: number): Promise<void> {
   const db = await getDb();
   if (!db) return;
-  await db.execute(
+  const pool = getPool();
+  if (!pool) return;
+  await pool.execute(
     `UPDATE invoices SET overdue_reminder_sent = 1 WHERE id = ?`,
     [invoiceId]
   );
@@ -1494,7 +1499,9 @@ export async function markInvoicesAsOverdue(): Promise<number> {
   const db = await getDb();
   if (!db) return 0;
   const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-  const result = await db.execute(
+  const pool = getPool();
+  if (!pool) return 0;
+  const [result] = await pool.execute(
     `UPDATE invoices
      SET status = 'overdue'
      WHERE type = 'invoice'
@@ -1503,8 +1510,8 @@ export async function markInvoicesAsOverdue(): Promise<number> {
        AND due_date < ?
        AND is_locked = 0`,
     [today]
-  );
-  return (result as any)[0]?.affectedRows ?? 0;
+  ) as any;
+  return (result as any)?.affectedRows ?? 0;
 }
 
 export async function getInvoiceStats(): Promise<{

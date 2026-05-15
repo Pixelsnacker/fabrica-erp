@@ -433,7 +433,8 @@ function NoteDialog({
     try {
       const reader = new FileReader();
       reader.onload = async () => {
-        const base64 = (reader.result as string).split(",")[1];
+        const raw = reader.result as string;
+        const base64 = raw.split("base64,")[1] ?? raw.split(",")[1] ?? "";
         await uploadAttachment.mutateAsync({
           noteId,
           filename: file.name,

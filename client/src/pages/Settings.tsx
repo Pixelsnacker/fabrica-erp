@@ -191,7 +191,8 @@ export default function Settings() {
     }
     const reader = new FileReader();
     reader.onload = () => {
-      const base64 = (reader.result as string).split(",")[1];
+      const raw = reader.result as string;
+      const base64 = raw.split("base64,")[1] ?? raw.split(",")[1] ?? "";
       uploadLogo.mutate({ base64, mimeType: file.type, filename: file.name });
     };
     reader.readAsDataURL(file);

@@ -2193,7 +2193,7 @@ export default function ProjectDetail() {
                 setShowDocTxtDialog(false);
                 setDocTxtFilename("");
                 setDocTxtContent("");
-              } catch { toast.error("Fehler beim Erstellen"); }
+              } catch (err: any) { toast.error("Fehler beim Erstellen: " + (err?.message ?? String(err))); }
               setSavingDocTxt(false);
             }}>
               {savingDocTxt ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
@@ -2600,7 +2600,8 @@ function SupplierOfferDialog({ projectItemId, onClose, onSuccess }: { projectIte
     const reader = new FileReader();
     reader.onload = (e) => {
       setProgress(70);
-      const base64 = (e.target?.result as string).split(",")[1];
+      const raw = e.target?.result as string;
+      const base64 = raw.split("base64,")[1] ?? raw.split(",")[1] ?? "";
       upload.mutate({ projectItemId, filename: file.name, fileBase64: base64, mimeType: file.type });
     };
     reader.readAsDataURL(file);
@@ -2671,7 +2672,8 @@ function ComplaintEditDialog({ complaint, projectId, onClose, onSave, isPending 
     setIsUploading(true);
     const reader = new FileReader();
     reader.onload = (e) => {
-      const base64 = (e.target?.result as string).split(",")[1];
+      const raw = e.target?.result as string;
+      const base64 = raw.split("base64,")[1] ?? raw.split(",")[1] ?? "";
       addAttachment.mutate({ complaintId: complaint.id, filename: file.name, fileBase64: base64, mimeType: file.type });
     };
     reader.readAsDataURL(file);
@@ -2796,7 +2798,8 @@ function NoteDetailDialog({ noteId, onClose, onRefresh }: { noteId: number; onCl
     const reader = new FileReader();
     reader.onload = (e) => {
       setUploadProgress(60);
-      const base64 = (e.target?.result as string).split(",")[1];
+      const raw = e.target?.result as string;
+      const base64 = raw.split("base64,")[1] ?? raw.split(",")[1] ?? "";
       setUploadProgress(80);
       uploadAttachment.mutate({ noteId, filename: file.name, fileData: base64, mimeType: file.type, fileSize: file.size });
     };
@@ -3512,7 +3515,8 @@ function CadTabContent({ projectId, cadFiles, onRefresh }: {
       }
       const reader = new FileReader();
       reader.onload = async () => {
-        const base64 = (reader.result as string).split(",")[1];
+        const raw = reader.result as string;
+        const base64 = raw.split("base64,")[1] ?? raw.split(",")[1] ?? "";
         try {
           await uploadMut.mutateAsync({ projectId, filename: file.name, fileData: base64, mimeType: file.type || "application/octet-stream", version: 1 });
           resolve();
@@ -3567,7 +3571,7 @@ function CadTabContent({ projectId, cadFiles, onRefresh }: {
       setShowTxtDialog(false);
       setTxtFilename("");
       setTxtContent("");
-    } catch { toast.error("Fehler beim Erstellen"); }
+    } catch (err: any) { toast.error("Fehler beim Erstellen: " + (err?.message ?? String(err))); }
     setSavingTxt(false);
   };
 
