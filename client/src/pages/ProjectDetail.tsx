@@ -3481,7 +3481,7 @@ function CadTabContent({ projectId, cadFiles, onRefresh }: {
   const [uploadCurrentName, setUploadCurrentName] = useState('');
   const [viewerFile, setViewerFile] = useState<{ url: string; filename: string; fileSize?: number | null } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const uploadMut = trpc.cadFiles.upload.useMutation({ onError: () => toast.error("Upload fehlgeschlagen") });
+  const uploadMut = trpc.cadFiles.upload.useMutation({ onError: (err) => toast.error("Upload fehlgeschlagen: " + (err?.message ?? String(err))) });
   const deleteMut = trpc.cadFiles.delete.useMutation({
     onSuccess: () => { onRefresh(); toast.success("Datei gelöscht"); },
     onError: () => toast.error("Fehler beim Löschen"),

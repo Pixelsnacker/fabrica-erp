@@ -431,21 +431,27 @@ export async function updateShipment(id: number, data: Partial<InsertShipment>) 
 
 // ─── CAD Files ────────────────────────────────────────────────────────────────
 export async function getCadFilesByProject(projectId: number) {
-  const db = await getDb();
-  if (!db) return [];
-  return db.select().from(cadFiles).where(eq(cadFiles.projectId, projectId)).orderBy(desc(cadFiles.createdAt));
+  return withRetry(async () => {
+    const db = await getDb();
+    if (!db) return [];
+    return db.select().from(cadFiles).where(eq(cadFiles.projectId, projectId)).orderBy(desc(cadFiles.createdAt));
+  });
 }
 
 export async function createCadFile(data: InsertCadFile) {
-  const db = await getDb();
-  if (!db) throw new Error("DB not available");
-  await db.insert(cadFiles).values(data);
+  return withRetry(async () => {
+    const db = await getDb();
+    if (!db) throw new Error("DB not available");
+    await db.insert(cadFiles).values(data);
+  });
 }
 
 export async function deleteCadFile(id: number) {
-  const db = await getDb();
-  if (!db) throw new Error("DB not available");
-  await db.delete(cadFiles).where(eq(cadFiles.id, id));
+  return withRetry(async () => {
+    const db = await getDb();
+    if (!db) throw new Error("DB not available");
+    await db.delete(cadFiles).where(eq(cadFiles.id, id));
+  });
 }
 
 // ─── Consultation Entries ─────────────────────────────────────────────────────
