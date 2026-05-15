@@ -3282,7 +3282,9 @@ function ProjectDocUploadDialog({
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = async (e) => {
-        const base64 = (e.target?.result as string).split(",")[1];
+        const result = e.target?.result as string;
+        const base64 = result?.includes('base64,') ? result.split('base64,')[1] : result?.split(',')[1];
+        if (!base64) { toast.error(`${file.name}: Datei konnte nicht gelesen werden`); reject(); return; }
         try {
           await upload.mutateAsync({
             projectId,
@@ -3297,7 +3299,7 @@ function ProjectDocUploadDialog({
           resolve();
         } catch { reject(); }
       };
-      reader.onerror = () => reject();
+      reader.onerror = () => { toast.error(`${file.name}: Fehler beim Lesen`); reject(); };
       reader.readAsDataURL(file);
     });
   };

@@ -105,21 +105,9 @@ export function buildInvoiceHtml(inv: any, cs: any): string {
     size: A4;
     margin: 10mm 10mm 32mm 10mm;
   }
-  @font-face {
-    font-family: 'Noto Sans';
-    src: url('file:///usr/share/fonts/truetype/noto/NotoSans-Regular.ttf') format('truetype');
-    font-weight: normal;
-    font-style: normal;
-  }
-  @font-face {
-    font-family: 'Noto Sans';
-    src: url('file:///usr/share/fonts/truetype/noto/NotoSans-Bold.ttf') format('truetype');
-    font-weight: bold;
-    font-style: normal;
-  }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    font-family: 'Noto Sans', Arial, sans-serif;
+    font-family: Arial, Helvetica, sans-serif;
     font-size: 11px;
     color: #111;
     line-height: 1.5;

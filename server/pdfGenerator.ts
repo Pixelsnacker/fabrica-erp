@@ -105,21 +105,9 @@ function buildPdfHtml(data: OrderConfirmationData): string {
     size: A4;
     margin: 1cm;
   }
-  @font-face {
-    font-family: 'Noto Sans';
-    src: url('file:///usr/share/fonts/truetype/noto/NotoSans-Regular.ttf') format('truetype');
-    font-weight: normal;
-    font-style: normal;
-  }
-  @font-face {
-    font-family: 'Noto Sans';
-    src: url('file:///usr/share/fonts/truetype/noto/NotoSans-Bold.ttf') format('truetype');
-    font-weight: bold;
-    font-style: normal;
-  }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    font-family: 'Noto Sans', Arial, sans-serif;
+    font-family: Arial, Helvetica, sans-serif;
     font-size: 10pt;
     color: #111;
     background: #fff;
