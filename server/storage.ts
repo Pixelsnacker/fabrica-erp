@@ -75,21 +75,39 @@ export async function storagePut(
   const { baseUrl, apiKey } = getStorageConfig();
   const key = normalizeKey(relKey);
   const uploadUrl = buildUploadUrl(baseUrl, key);
-  const formData = toFormData(data, contentType, key.split("/").pop() ?? key);
-  const response = await fetch(uploadUrl, {
-    method: "POST",
-    headers: buildAuthHeaders(apiKey),
-    body: formData,
-  });
 
-  if (!response.ok) {
-    const message = await response.text().catch(() => response.statusText);
-    throw new Error(
-      `Storage upload failed (${response.status} ${response.statusText}): ${message}`
-    );
+  // Retry bis zu 3x bei 502/503/504 (kurzzeitiger Service-Ausfall)
+  const RETRYABLE = [502, 503, 504];
+  let lastError: Error | null = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) await new Promise(r => setTimeout(r, 1000 * attempt));
+    const formData = toFormData(data, contentType, key.split("/").pop() ?? key);
+    let response: Response;
+    try {
+      response = await fetch(uploadUrl, {
+        method: "POST",
+        headers: buildAuthHeaders(apiKey),
+        body: formData,
+      });
+    } catch (err: any) {
+      lastError = err;
+      continue; // Netzwerkfehler → retry
+    }
+    if (!response.ok) {
+      const message = await response.text().catch(() => response.statusText);
+      const err = new Error(
+        `Storage upload failed (${response.status} ${response.statusText}): ${message}`
+      );
+      if (RETRYABLE.includes(response.status)) {
+        lastError = err;
+        continue; // 502/503/504 → retry
+      }
+      throw err;
+    }
+    const url = (await response.json()).url;
+    return { key, url };
   }
-  const url = (await response.json()).url;
-  return { key, url };
+  throw lastError ?? new Error("Storage upload failed after 3 attempts");
 }
 
 export async function storageGet(relKey: string): Promise<{ key: string; url: string; }> {
