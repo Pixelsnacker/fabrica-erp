@@ -784,61 +784,69 @@ export const appRouter = router({
       uploadedBy: z.string().optional(),
     })).mutation(async ({ input, ctx }) => {
       const buffer = Buffer.from(input.fileData, "base64");
-      const fileKey = `cad-files/${input.projectId}/${Date.now()}-${input.filename}`;
-      const { url } = await storagePut(fileKey, buffer, input.mimeType);
-      await createCadFile({
-        projectId: input.projectId,
-        projectItemId: input.projectItemId,
-        filename: input.filename,
-        fileKey,
-        fileUrl: url,
-        fileSize: buffer.length,
-        mimeType: input.mimeType,
-        version: input.version,
-        versionNote: input.versionNote,
-        parentFileId: input.parentFileId,
-        uploadedBy: input.uploadedBy ?? ctx.user.name ?? "Unknown",
-      });
-      // Auto-Sync nach Google Drive (im Hintergrund, kein Fehler wenn Drive nicht verfügbar)
+
+      // ─── Primärer Upload: Google Drive ───────────────────────────────────────
+      let fileUrl: string;
+      let fileKey: string;
+      let driveFileId: string | undefined;
+      let driveSynced = 0;
+
       try {
         const project = await getProjectById(input.projectId);
         const { getSupplierById } = await import('./db');
         const customer = project?.customerId ? await getCustomerById(project.customerId) : null;
         const supplier = !customer && (project as any)?.supplierId ? await getSupplierById((project as any).supplierId) : null;
         const entityName = customer ? (customer.company || customer.name) : (supplier ? (supplier.company || supplier.name) : null);
-        if (entityName && project) {
-          const { uploadFileToDrive } = await import('./googleDrive');
-          const projectName = project.projectNumber
-            ? `${project.projectNumber} ${project.title}`.substring(0, 100)
-            : project.title.substring(0, 100);
-          const driveResult = await uploadFileToDrive({
-            filename: input.filename,
-            mimeType: input.mimeType,
-            buffer,
-            customerName: entityName,
-            projectName,
-          });
-          // Drive-Status in DB speichern
-          const db2 = await (await import('./db')).getDb();
-          if (db2) {
-            const { cadFiles: cadFilesTable } = await import('../drizzle/schema');
-            const { eq: eq2, desc: desc2 } = await import('drizzle-orm');
-            const [lastFile] = await db2.select({ id: cadFilesTable.id })
-              .from(cadFilesTable)
-              .where(eq2(cadFilesTable.projectId, input.projectId))
-              .orderBy(desc2(cadFilesTable.id))
-              .limit(1);
-            if (lastFile) {
-              await db2.update(cadFilesTable)
-                .set({ driveFileId: driveResult.fileId, driveSynced: 1 })
-                .where(eq2(cadFilesTable.id, lastFile.id));
-            }
-          }
-        } // end if entityName
-      } catch (e) {
-        console.warn('[Drive Sync] CAD-Upload Sync fehlgeschlagen:', e);
+
+        if (!entityName || !project) throw new Error('Kein Kunde/Lieferant für Drive-Upload gefunden');
+
+        const { uploadFileToDrive, getOrCreateCadFolder } = await import('./googleDrive');
+        const projectName = project.projectNumber
+          ? `${project.projectNumber} ${project.title}`.substring(0, 100)
+          : project.title.substring(0, 100);
+
+        // CAD-Unterordner: Fabrica ERP/Kunden/[Kundenname]/[Projektname]/CAD/
+        const cadFolderId = await getOrCreateCadFolder(entityName, projectName);
+
+        const driveResult = await uploadFileToDrive({
+          filename: input.filename,
+          mimeType: input.mimeType,
+          buffer,
+          customerName: entityName,
+          folderId: cadFolderId,
+        });
+
+        fileUrl = driveResult.fileUrl;
+        fileKey = driveResult.fileId; // Drive File ID als fileKey
+        driveFileId = driveResult.fileId;
+        driveSynced = 1;
+        console.log('[CAD Upload] Google Drive Upload erfolgreich:', driveResult.fileId);
+      } catch (driveErr) {
+        // ─── Fallback: Manus Storage ─────────────────────────────────────────────
+        console.warn('[CAD Upload] Google Drive fehlgeschlagen, Fallback auf Storage:', driveErr);
+        const storageKey = `cad-files/${input.projectId}/${Date.now()}-${input.filename}`;
+        const storageResult = await storagePut(storageKey, buffer, input.mimeType);
+        fileUrl = storageResult.url;
+        fileKey = storageKey;
       }
-      return { success: true, url };
+
+      await createCadFile({
+        projectId: input.projectId,
+        projectItemId: input.projectItemId,
+        filename: input.filename,
+        fileKey,
+        fileUrl,
+        fileSize: buffer.length,
+        mimeType: input.mimeType,
+        version: input.version,
+        versionNote: input.versionNote,
+        parentFileId: input.parentFileId,
+        uploadedBy: input.uploadedBy ?? ctx.user.name ?? "Unknown",
+        driveFileId: driveFileId ?? null,
+        driveSynced,
+      });
+
+      return { success: true, url: fileUrl };
     }),
     delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => { await deleteCadFile(input.id); return { success: true }; }),
 

@@ -26,7 +26,7 @@ function getDriveClient() {
 /**
  * Findet oder erstellt einen Ordner mit gegebenem Namen unter einem Parent
  */
-async function findOrCreateFolder(drive: ReturnType<typeof getDriveClient>, name: string, parentId?: string): Promise<string> {
+export async function findOrCreateFolder(drive: ReturnType<typeof getDriveClient>, name: string, parentId?: string): Promise<string> {
   // Sonderzeichen im Ordnernamen für die Query escapen
   const safeName = name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
   const query = parentId
@@ -436,4 +436,14 @@ export async function testDriveConnection(): Promise<{ ok: boolean; connected?: 
   } catch (err: any) {
     return { ok: false, connected: false, error: err.message };
   }
+}
+
+/**
+ * Gibt die Folder-ID für den CAD-Unterordner eines Projekts zurück
+ * Struktur: Fabrica ERP/Kunden/[Kundenname]/[Projektname]/CAD/
+ */
+export async function getOrCreateCadFolder(customerName: string, projectName: string): Promise<string> {
+  const drive = getDriveClient();
+  const projectFolderId = await getOrCreateProjectFolder(customerName, projectName);
+  return findOrCreateFolder(drive, 'CAD', projectFolderId);
 }
