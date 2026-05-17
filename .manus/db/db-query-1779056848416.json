@@ -1,0 +1,18 @@
+{
+  "query": "SELECT id, name, company, email, email2, email3 FROM customers WHERE company LIKE '%Werner Metall%' OR name LIKE '%Werner Metall%' LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 9NNjvn7NV7enobv.7ea640e70a8c --database YMZow7uQxpBVyBGbmbpvvd --execute SELECT id, name, company, email, email2, email3 FROM customers WHERE company LIKE '%Werner Metall%' OR name LIKE '%Werner Metall%' LIMIT 5;",
+  "rows": [
+    {
+      "id": "630001",
+      "name": "Heidrun Kaufhold",
+      "company": "Werner Metall GmbH",
+      "email": "NULL",
+      "email2": "info@werner-metall.de",
+      "email3": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tcompany\temail\temail2\temail3\n630001\tHeidrun Kaufhold\tWerner Metall GmbH\tNULL\tinfo@werner-metall.de\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 259
+}

@@ -550,7 +550,7 @@ export default function Invoices() {
           recipientStreet: (c as any).street ?? '',
           recipientZip: (c as any).zip ?? '',
           recipientCity: (c as any).city ?? '',
-          recipientEmail: (c as any).email ?? '',
+          recipientEmail: (c as any).email || (c as any).email2 || (c as any).email3 || '',
         }));
       }
     }
@@ -668,6 +668,8 @@ export default function Invoices() {
     const cid = parseInt(id);
     const c = customers.find((x: any) => x.id === cid);
     if (c) {
+      // Erste verfügbare E-Mail aus email, email2 oder email3 verwenden
+      const bestEmail = (c as any).email || (c as any).email2 || (c as any).email3 || '';
       setForm(f => ({
         ...f, customerId: cid,
         recipientName: c.name ?? '',
@@ -675,7 +677,7 @@ export default function Invoices() {
         recipientStreet: (c as any).street ?? '',
         recipientZip: (c as any).zip ?? '',
         recipientCity: (c as any).city ?? '',
-        recipientEmail: c.email ?? '',
+        recipientEmail: bestEmail,
       }));
     }
   }
