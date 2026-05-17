@@ -1,0 +1,17 @@
+{
+  "query": "SELECT id, name, website, logo_url, email FROM company_settings LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 9NNjvn7NV7enobv.7ea640e70a8c --database YMZow7uQxpBVyBGbmbpvvd --execute SELECT id, name, website, logo_url, email FROM company_settings LIMIT 5;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "Fabrica GmbH",
+      "website": "www.fabrica3d.de",
+      "logo_url": "https://d2xsxph8kpxj0f.cloudfront.net/310419663031764330/YMZow7uQxpBVyBGbmbpvvd/company/logo-1773149398720.png",
+      "email": "kontakt@fabrica3d.eu"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\twebsite\tlogo_url\temail\n1\tFabrica GmbH\twww.fabrica3d.de\thttps://d2xsxph8kpxj0f.cloudfront.net/310419663031764330/YMZow7uQxpBVyBGbmbpvvd/company/logo-1773149398720.png\tkontakt@fabrica3d.eu\n",
+  "stderr": "",
+  "execution_time_ms": 312
+}

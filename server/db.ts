@@ -97,8 +97,10 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     values.lastSignedIn = user.lastSignedIn;
     updateSet.lastSignedIn = user.lastSignedIn;
   }
-  if (!values.lastSignedIn) values.lastSignedIn = new Date().toISOString() as any;
-  if (Object.keys(updateSet).length === 0) updateSet.lastSignedIn = new Date().toISOString() as any;
+  // MySQL DATETIME Format: 'YYYY-MM-DD HH:MM:SS' (kein ISO-String mit T/Z)
+  const nowMysql = new Date().toISOString().slice(0, 19).replace('T', ' ');
+  if (!values.lastSignedIn) values.lastSignedIn = nowMysql as any;
+  if (Object.keys(updateSet).length === 0) updateSet.lastSignedIn = nowMysql as any;
   await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
 }
 
@@ -228,7 +230,10 @@ export async function createProject(data: InsertProject) {
 export async function updateProject(id: number, data: Partial<InsertProject>) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
-  await db.update(projects).set({ ...data, updatedAt: new Date().toISOString() as any }).where(eq(projects.id, id));
+  // updatedAt wird automatisch durch onUpdateNow() gesetzt – kein explizites Setzen nötig
+  // (new Date().toISOString() würde einen ungültigen MySQL DATETIME-String liefern)
+  const { updatedAt: _ignored, ...safeData } = data as any;
+  await db.update(projects).set(safeData).where(eq(projects.id, id));
 }
 
 export async function deleteProject(id: number) {
