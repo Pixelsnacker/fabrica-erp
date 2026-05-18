@@ -328,5 +328,13 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     );
   }
 
-  return (await response.json()) as InvokeResult;
+  const responseText = await response.text();
+  let parsed: InvokeResult;
+  try {
+    parsed = JSON.parse(responseText) as InvokeResult;
+  } catch {
+    // Antwort ist kein valides JSON (z.B. "Service Unavailable" als Plaintext)
+    throw new Error(`LLM-Dienst hat eine ungültige Antwort zurückgegeben (kein JSON): ${responseText.slice(0, 200)}`);
+  }
+  return parsed;
 }

@@ -193,7 +193,15 @@ export default function Invoices() {
       }
       setAiImproving(null);
     },
-    onError: (e) => { toast.error('KI-Fehler: ' + e.message); setAiImproving(null); },
+    onError: (e) => {
+      const msg = e.message ?? '';
+      if (msg.includes('nicht verfügbar') || msg.includes('Service Unavailable') || msg.includes('503') || msg.includes('unavailable')) {
+        toast.error('KI-Dienst ist momentan nicht verfügbar. Bitte in einigen Sekunden erneut versuchen.');
+      } else {
+        toast.error('KI-Fehler: ' + msg);
+      }
+      setAiImproving(null);
+    },
   });
   function triggerAiImprove(idx: number, field: 'description' | 'longDescription', mode: 'improve' | 'correct') {
     const text = items[idx]?.[field] ?? '';
