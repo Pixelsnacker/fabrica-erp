@@ -233,12 +233,13 @@ export default function Projects() {
             </div>
           ) : viewMode === "list" ? (
             <div className="space-y-2">
-              {filtered.map(project => (
+              {filtered.map((project, idx) => (
                 <div key={project.id} className={`flex items-center gap-2 md:gap-4 p-3 md:p-4 rounded-lg bg-card border cursor-pointer transition-all group ${
                     project.status === 'completed'
                       ? 'border-emerald-500/30 hover:border-emerald-500/60 opacity-75 hover:opacity-100'
                       : 'border-border hover:border-primary/50'
                   }`} onClick={() => setLocation(`/projects/${project.id}`)}>
+                  <div className="w-7 shrink-0 text-center text-xs font-mono text-muted-foreground/60 select-none">{idx + 1}</div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       {project.status === 'completed' && <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />}
