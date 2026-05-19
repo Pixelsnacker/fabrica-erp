@@ -239,12 +239,11 @@ export default function Projects() {
                       ? 'border-emerald-500/30 hover:border-emerald-500/60 opacity-75 hover:opacity-100'
                       : 'border-border hover:border-primary/50'
                   }`} onClick={() => setLocation(`/projects/${project.id}`)}>
-                  <div className="w-7 shrink-0 text-center text-xs font-mono text-muted-foreground/60 select-none">{idx + 1}</div>
+                  <div className="w-14 shrink-0 text-left text-xs font-mono text-muted-foreground/70 select-none">{project.projectNumber ?? String(idx + 1)}</div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       {project.status === 'completed' && <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />}
                       <span className="font-medium truncate">{project.title}</span>
-                      {project.projectNumber && <span className="text-xs text-muted-foreground">#{project.projectNumber}</span>}
                     </div>
                     <div className="flex items-center gap-3 mt-1">
                       <span className="text-xs text-muted-foreground">{TYPE_LABELS[project.type] ?? project.type}</span>

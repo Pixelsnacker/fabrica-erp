@@ -223,7 +223,28 @@ export async function getProjectById(id: number) {
 export async function createProject(data: InsertProject) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
-  const result = await db.insert(projects).values(data);
+
+  // Automatische Projektnummer YYYY-NNN generieren wenn keine angegeben
+  let projectNumber = data.projectNumber;
+  if (!projectNumber) {
+    const year = new Date().getFullYear();
+    const prefix = `${year}-`;
+    // Alle Projektnummern des aktuellen Jahres abfragen
+    const existing = await db
+      .select({ projectNumber: projects.projectNumber })
+      .from(projects)
+      .where(like(projects.projectNumber, `${prefix}%`));
+    // Höchste laufende Nummer ermitteln
+    let maxNum = 0;
+    for (const row of existing) {
+      const num = parseInt((row.projectNumber ?? "").replace(prefix, ""), 10);
+      if (!isNaN(num) && num > maxNum) maxNum = num;
+    }
+    const next = String(maxNum + 1).padStart(3, "0");
+    projectNumber = `${prefix}${next}`;
+  }
+
+  const result = await db.insert(projects).values({ ...data, projectNumber });
   return result;
 }
 
