@@ -26,7 +26,7 @@ import {
 import { CustomerFlagWarning } from "@/pages/Customers";
 
 // ─── Typen ───────────────────────────────────────────────────────────────────
-type TaxMode = 'standard' | 'reduced' | 'mixed' | 'tax_free' | 'kleinunternehmer';
+type TaxMode = 'standard' | 'reduced' | 'eu_b2b' | 'mixed' | 'tax_free' | 'kleinunternehmer';
 type InvoiceType = 'offer' | 'invoice' | 'credit_note' | 'order_confirmation' | 'purchase_order' | 'delivery_note';
 type InvoiceStatus = 'draft' | 'sent' | 'accepted' | 'invoiced' | 'paid' | 'cancelled' | 'overdue';
 
@@ -71,6 +71,7 @@ const TYPE_LABELS: Record<InvoiceType, string> = {
 const TAX_MODE_LABELS: Record<TaxMode, string> = {
   standard: '19% MwSt (Standard)',
   reduced: '7% MwSt (ermäßigt)',
+  eu_b2b: '0% MwSt (EU B2B / innergemeinschaftlich)',
   mixed: 'Gemischt (je Position)',
   tax_free: 'Steuerfrei (§4 UStG)',
   kleinunternehmer: 'Kleinunternehmer (§19 UStG)',
@@ -91,7 +92,7 @@ function parseGermanFloat(str: string | number | null | undefined): number {
 function calcItem(item: InvoiceItem, taxMode: TaxMode): InvoiceItem {
   const qty = parseGermanFloat(item.quantity) || 0;
   const price = parseGermanFloat(item.unitPriceNet) || 0;
-  const rate = taxMode === 'kleinunternehmer' || taxMode === 'tax_free' ? 0
+  const rate = taxMode === 'kleinunternehmer' || taxMode === 'tax_free' || taxMode === 'eu_b2b' ? 0
     : taxMode === 'standard' ? 19
     : taxMode === 'reduced' ? 7
     : parseGermanFloat(item.taxRate) || 19;
