@@ -390,6 +390,7 @@ export const invoices = mysqlTable("invoices", {
   totalGross: decimal("total_gross", { precision: 12, scale: 2 }).default('0.00'),
   currency: varchar({ length: 3 }).default('EUR'),
   // Texte
+  subject: varchar("subject", { length: 500 }),
   introText: text("intro_text"),
   notes: text(),
   footerText: text("footer_text"),

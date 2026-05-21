@@ -1,0 +1,1 @@
+ALTER TABLE `invoices` ADD `subject` varchar(500);

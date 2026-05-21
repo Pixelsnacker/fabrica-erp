@@ -459,6 +459,7 @@ export default function Invoices() {
     customerOrderNumber: '',
     paymentTerms: '',
     taxMode: 'standard' as TaxMode,
+    subject: '',
     introText: '',
     notes: '',
     footerText: '',
@@ -510,7 +511,7 @@ export default function Invoices() {
     const footer = companySettings?.invoiceFooter ?? '';
     const isSupplierType = type === 'purchase_order' || !!prefill?.supplierId;
     setRecipientType(isSupplierType ? 'supplier' : 'customer');
-    setForm({ type, customerId: prefill?.customerId, supplierId: prefill?.supplierId, projectId: prefill?.projectId, ...sender, recipientName: '', recipientCompany: '', recipientStreet: '', recipientZip: '', recipientCity: '', recipientEmail: '', issueDate: new Date().toISOString().slice(0, 10), dueDate: '', deliveryDate: '', paymentTerms: '', taxMode: companySettings?.kleinunternehmer ? 'kleinunternehmer' : 'standard', introText: '', notes: '', footerText: footer });
+    setForm({ type, customerId: prefill?.customerId, supplierId: prefill?.supplierId, projectId: prefill?.projectId, ...sender, recipientName: '', recipientCompany: '', recipientStreet: '', recipientZip: '', recipientCity: '', recipientEmail: '', issueDate: new Date().toISOString().slice(0, 10), dueDate: '', deliveryDate: '', paymentTerms: '', taxMode: companySettings?.kleinunternehmer ? 'kleinunternehmer' : 'standard', subject: '', introText: '', notes: '', footerText: footer });
     // Wenn Projekt-Positionen mitgegeben werden, vorausfüllen
     const taxMode = companySettings?.kleinunternehmer ? 'kleinunternehmer' : 'standard';
     if (prefill?.projectItems?.length) {
@@ -646,6 +647,7 @@ export default function Invoices() {
         customerOrderNumber: inv.customerOrderNumber ?? '',
         paymentTerms: inv.paymentTerms ?? '',
         taxMode: inv.taxMode ?? 'standard',
+        subject: inv.subject ?? '',
         introText: inv.introText ?? '',
         notes: inv.notes ?? '',
         footerText: inv.footerText ?? '',
@@ -997,6 +999,9 @@ export default function Invoices() {
                 )}
                 {inv.dueDate && <span className="ml-3 text-xs">Fällig: {formatDateDE(inv.dueDate)}</span>}
               </div>
+              {inv.subject && (
+                <div className="mt-0.5 text-sm text-foreground/70 italic">{inv.subject}</div>
+              )}
               {/* Aktionen */}
               <div className="mt-3 flex gap-2 flex-wrap">
                 {!inv.isLocked && (
@@ -1225,6 +1230,12 @@ export default function Invoices() {
                   <div className="col-span-2"><Label>E-Mail</Label><Input value={form.recipientEmail} onChange={e => setForm(f => ({ ...f, recipientEmail: e.target.value }))} /></div>
                 </div>
               </div>
+            </div>
+
+            {/* Betreff */}
+            <div>
+              <Label>Betreff</Label>
+              <Input placeholder="z.B. Angebot für 3D-Druck Urmodell Bronzeguss" value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} />
             </div>
 
             {/* Daten + Steuer */}

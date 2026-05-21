@@ -1102,10 +1102,10 @@ export async function createInvoice(data: InsertInvoice, items: InsertInvoiceIte
       recipient_name, recipient_company, recipient_street, recipient_zip, recipient_city, recipient_email,
       issue_date, due_date, delivery_date, payment_terms, tax_mode,
       subtotal_net, tax_amount, total_gross, currency,
-      intro_text, notes, footer_text,
+      subject, intro_text, notes, footer_text,
       pdf_url, pdf_key, content_hash, is_locked, cancelled_by, cancels_invoice,
       created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?),
     [
       data.invoiceNumber ?? `ENTWURF-${now}`,
       data.type ?? 'invoice',
@@ -1138,6 +1138,7 @@ export async function createInvoice(data: InsertInvoice, items: InsertInvoiceIte
       data.taxAmount ?? '0.00',
       data.totalGross ?? '0.00',
       data.currency ?? 'EUR',
+      (data as any).subject ?? null,
       data.introText ?? null,
       data.notes ?? null,
       data.footerText ?? null,

@@ -1447,6 +1447,7 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
       subtotalNet: z.string().optional(),
       taxAmount: z.string().optional(),
       totalGross: z.string().optional(),
+      subject: z.string().optional(),
       introText: z.string().optional(),
       notes: z.string().optional(),
       footerText: z.string().optional(),
@@ -1524,6 +1525,7 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
       subtotalNet: z.string().optional(),
       taxAmount: z.string().optional(),
       totalGross: z.string().optional(),
+      subject: z.string().optional(),
       introText: z.string().optional(),
       notes: z.string().optional(),
       footerText: z.string().optional(),
@@ -1662,6 +1664,7 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
           taxAmount: input.targetType === 'delivery_note' ? null : offer.taxAmount,
           totalGross: input.targetType === 'delivery_note' ? null : offer.totalGross,
           currency: offer.currency,
+          subject: offer.subject ?? null,
           introText: input.targetType === 'delivery_note'
             ? `Lieferschein zu Angebot ${offer.invoiceNumber}`
             : offer.introText,

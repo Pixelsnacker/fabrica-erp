@@ -276,6 +276,7 @@ export function buildInvoiceHtml(inv: any, cs: any): string {
 
 <!-- ══ BETREFF ══ -->
 <div class="doc-subject">${escHtml(docTitle)} Nr. ${escHtml(inv.invoiceNumber ?? '')}</div>
+${(inv as any).subject ? `<div style="font-size:12px;font-weight:600;margin-bottom:12px;margin-top:4px;">Betreff: ${escHtml((inv as any).subject)}</div>` : ''}
 
 ${inv.introText ? `<p style="margin-bottom:16px;font-size:11px;">${escHtml(inv.introText)}</p>` : ''}
 
