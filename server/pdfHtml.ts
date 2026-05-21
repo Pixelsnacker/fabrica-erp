@@ -310,7 +310,6 @@ ${!isPurchaseOrder && (inv.paymentTerms || inv.senderIban) ? `<div class="paymen
   ${inv.senderIban ? 'IBAN: ' + escHtml(inv.senderIban) + (inv.senderBic ? ' | BIC: ' + escHtml(inv.senderBic) : '') : ''}
 </div>` : ''}
 
-${inv.notes ? `<div class="notes">${escHtml(inv.notes)}</div>` : ''}
 ${inv.footerText ? `<p style="margin-top:16px;font-size:9px;color:#888;">${escHtml(inv.footerText)}</p>` : ''}
 
 <!-- ══ FUSSZEILE ══ -->
