@@ -1745,7 +1745,7 @@ export default function Invoices() {
                     <FileText className="w-3 h-3 mr-1" /> E-Rechnung
                   </Button>
                 )}
-                {detailData.type === 'offer' && (
+                {['offer', 'order_confirmation', 'delivery_note'].includes(detailData.type) && (
                     <Button size="sm" variant="outline" className="text-green-400 border-green-400/30 hover:bg-green-400/10" onClick={() => setShowConvertDialog(detailData.id)}>
                       <ArrowRight className="w-3 h-3 mr-1" /> Konvertieren
                     </Button>

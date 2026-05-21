@@ -1623,7 +1623,7 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
         // Angebot laden
         const offer = await getInvoiceById(input.offerId);
         if (!offer) throw new Error('Angebot nicht gefunden');
-        if (offer.type !== 'offer') throw new Error('Nur Angebote können konvertiert werden');
+        if (!['offer', 'order_confirmation', 'delivery_note'].includes(offer.type)) throw new Error('Nur Angebote, Auftragsbestätigungen und Lieferscheine können konvertiert werden');
         // Neue Nummer vergeben
         const invoiceNumber = await getNextInvoiceNumber(input.targetType);
         const today = new Date().toISOString().slice(0, 10);
