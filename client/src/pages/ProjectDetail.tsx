@@ -2956,7 +2956,7 @@ function ProjectDocCard({ doc, onDelete, supplierName, onNoteUpdated }: {
 
   const updateNote = trpc.projectDocs.updateNote.useMutation({
     onSuccess: () => { setEditingNote(false); onNoteUpdated(); },
-    onError: (e: any) => { import("sonner").then((m: any) => m.toast.error("Fehler: " + e.message)); },
+    onError: (e: any) => { toast.error("Fehler: " + e.message); },
   });
 
   const updateCategory = trpc.projectDocs.updateCategory.useMutation({
