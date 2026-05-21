@@ -457,7 +457,7 @@ export default function Invoices() {
     dueDate: '',
     deliveryDate: '',
     customerOrderNumber: '',
-    paymentTerms: '',
+    paymentTerms: 'Zahlung sofort nach Rechnungserhalt',
     taxMode: 'standard' as TaxMode,
     subject: '',
     introText: '',
@@ -511,7 +511,7 @@ export default function Invoices() {
     const footer = companySettings?.invoiceFooter ?? '';
     const isSupplierType = type === 'purchase_order' || !!prefill?.supplierId;
     setRecipientType(isSupplierType ? 'supplier' : 'customer');
-    setForm({ type, customerId: prefill?.customerId, supplierId: prefill?.supplierId, projectId: prefill?.projectId, ...sender, recipientName: '', recipientCompany: '', recipientStreet: '', recipientZip: '', recipientCity: '', recipientEmail: '', issueDate: new Date().toISOString().slice(0, 10), dueDate: '', deliveryDate: '', paymentTerms: '', taxMode: companySettings?.kleinunternehmer ? 'kleinunternehmer' : 'standard', subject: '', introText: '', notes: '', footerText: footer });
+    setForm({ type, customerId: prefill?.customerId, supplierId: prefill?.supplierId, projectId: prefill?.projectId, ...sender, recipientName: '', recipientCompany: '', recipientStreet: '', recipientZip: '', recipientCity: '', recipientEmail: '', issueDate: new Date().toISOString().slice(0, 10), dueDate: '', deliveryDate: '', paymentTerms: 'Zahlung sofort nach Rechnungserhalt', taxMode: companySettings?.kleinunternehmer ? 'kleinunternehmer' : 'standard', subject: '', introText: '', notes: '', footerText: footer });
     // Wenn Projekt-Positionen mitgegeben werden, vorausfüllen
     const taxMode = companySettings?.kleinunternehmer ? 'kleinunternehmer' : 'standard';
     if (prefill?.projectItems?.length) {
@@ -645,7 +645,7 @@ export default function Invoices() {
         dueDate: inv.dueDate ?? '',
         deliveryDate: inv.deliveryDate ?? '',
         customerOrderNumber: inv.customerOrderNumber ?? '',
-        paymentTerms: inv.paymentTerms ?? '',
+        paymentTerms: inv.paymentTerms ?? 'Zahlung sofort nach Rechnungserhalt',
         taxMode: inv.taxMode ?? 'standard',
         subject: inv.subject ?? '',
         introText: inv.introText ?? '',
@@ -1499,7 +1499,7 @@ export default function Invoices() {
             <div className="grid grid-cols-1 gap-3">
               <div><Label>Einleitungstext</Label><Textarea value={form.introText} onChange={e => setForm(f => ({ ...f, introText: e.target.value }))} rows={2} placeholder="z.B. Vielen Dank für Ihre Anfrage..." /></div>
               {form.type !== 'purchase_order' && (
-                <div><Label>Zahlungsbedingungen</Label><Input value={form.paymentTerms} onChange={e => setForm(f => ({ ...f, paymentTerms: e.target.value }))} /></div>
+                <div><Label>Zahlungsbedingungen</Label><Select value={form.paymentTerms} onValueChange={v => setForm(f => ({ ...f, paymentTerms: v }))}><SelectTrigger><SelectValue placeholder="Zahlungsbedingung wählen" /></SelectTrigger><SelectContent><SelectItem value="Zahlung sofort nach Rechnungserhalt">Zahlung sofort nach Rechnungserhalt</SelectItem><SelectItem value="Zahlung innerhalb von 14 Tagen">Zahlung innerhalb von 14 Tagen</SelectItem><SelectItem value="Zahlung innerhalb von 30 Tagen">Zahlung innerhalb von 30 Tagen</SelectItem><SelectItem value="Zahlung sofort, 3% Skonto">Zahlung sofort, 3% Skonto</SelectItem></SelectContent></Select></div>
               )}
               <div><Label>Interne Notiz</Label><Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} /></div>
               <div><Label>Fußzeile</Label><Input value={form.footerText} onChange={e => setForm(f => ({ ...f, footerText: e.target.value }))} placeholder="z.B. Handelsregister, Geschäftsführer..." /></div>
