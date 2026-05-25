@@ -920,6 +920,9 @@ export default function Invoices() {
             <Button variant="outline" size="sm" onClick={() => openNew('purchase_order')}>
               <PackageSearch className="w-4 h-4 mr-1" /> Bestellung
             </Button>
+            <Button variant="outline" size="sm" onClick={() => openNew('delivery_note')}>
+              <Truck className="w-4 h-4 mr-1" /> Lieferschein
+            </Button>
             <Button size="sm" onClick={() => openNew('invoice')}>
               <Plus className="w-4 h-4 mr-1" /> Rechnung
             </Button>
