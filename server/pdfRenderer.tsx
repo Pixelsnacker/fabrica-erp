@@ -326,14 +326,6 @@ export function InvoicePDF({ inv, cs }: { inv: InvoiceWithItems; cs: CompanySett
               </View>
             ) : null}
 
-            {/* Leistungszeitraum / Lieferdatum */}
-            {inv.deliveryDate ? (
-              <View style={S.metaRow}>
-                <Text style={S.metaLabel}>Leistungszeitraum</Text>
-                <Text style={S.metaValue}>{inv.deliveryDate}</Text>
-              </View>
-            ) : null}
-
             {/* Fälligkeitsdatum */}
             {inv.dueDate && inv.type === 'invoice' ? (
               <View style={S.metaRow}>
