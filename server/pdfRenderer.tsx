@@ -366,6 +366,13 @@ export function InvoicePDF({ inv, cs }: { inv: InvoiceWithItems; cs: CompanySett
         {/* ── Dokumenttitel ── */}
         <Text style={S.docTitle}>{docTitle}</Text>
 
+        {/* ── Betreff ── */}
+        {(inv as any).subject ? (
+          <Text style={{ fontSize: 10, fontFamily: 'Helvetica-Bold', marginBottom: 8, marginTop: 2 }}>
+            Betreff: {(inv as any).subject}
+          </Text>
+        ) : null}
+
         {/* ── Einleitungstext ── */}
         {inv.introText ? (
           <Text style={S.introText}>{inv.introText}</Text>
