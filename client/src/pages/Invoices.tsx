@@ -982,7 +982,7 @@ export default function Invoices() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div className="flex items-center gap-3 flex-wrap">
                   <span className={`font-mono font-semibold text-sm ${inv.invoiceNumber === 'ENTWURF' ? 'text-yellow-400/80 italic' : ''}`}>{inv.invoiceNumber}</span>
-                  <Badge variant="outline" className="text-xs">{TYPE_LABELS[inv.type as InvoiceType]}</Badge>
+                  <Badge variant="outline" className="text-xs">{inv.type === 'invoice' && inv.status === 'cancelled' ? 'Stornorechnung' : TYPE_LABELS[inv.type as InvoiceType]}</Badge>
                   <Badge className={`text-xs border ${STATUS_COLORS[inv.status as InvoiceStatus]}`}>
                     {STATUS_LABELS[inv.status as InvoiceStatus]}
                   </Badge>
@@ -990,7 +990,7 @@ export default function Invoices() {
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-sm text-muted-foreground">{formatDateDE(inv.issueDate)}</span>
-                  <span className="font-bold text-green-400">{formatEur(inv.totalGross)}</span>
+                  <span className={`font-bold ${inv.type === 'invoice' && inv.status === 'cancelled' ? 'text-red-400' : 'text-green-400'}`}>{inv.type === 'invoice' && inv.status === 'cancelled' ? '−' + formatEur(inv.totalGross) : formatEur(inv.totalGross)}</span>
                 </div>
               </div>
               <div className="mt-1 text-sm text-muted-foreground">
@@ -1700,7 +1700,7 @@ export default function Invoices() {
       <Dialog open={showDetail !== null} onOpenChange={() => setShowDetail(null)}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{detailData?.invoiceNumber} — {TYPE_LABELS[detailData?.type as InvoiceType]}</DialogTitle>
+            <DialogTitle>{detailData?.invoiceNumber} — {detailData?.type === 'invoice' && detailData?.status === 'cancelled' ? 'Stornorechnung' : TYPE_LABELS[detailData?.type as InvoiceType]}</DialogTitle>
           </DialogHeader>
           {detailData && (
             <div className="space-y-4 text-sm">
@@ -1745,7 +1745,7 @@ export default function Invoices() {
               <div className="flex justify-end text-sm space-y-1 flex-col items-end">
                 <div className="flex gap-4 text-muted-foreground"><span>Netto:</span><span>{formatEur(detailData.subtotalNet)}</span></div>
                 <div className="flex gap-4 text-muted-foreground"><span>MwSt:</span><span>{formatEur(detailData.taxAmount)}</span></div>
-                <div className="flex gap-4 font-bold text-base"><span>Gesamt:</span><span className="text-green-400">{formatEur(detailData.totalGross)}</span></div>
+                <div className="flex gap-4 font-bold text-base"><span>Gesamt:</span><span className={detailData.type === 'invoice' && detailData.status === 'cancelled' ? 'text-red-400' : 'text-green-400'}>{detailData.type === 'invoice' && detailData.status === 'cancelled' ? '−' + formatEur(detailData.totalGross) : formatEur(detailData.totalGross)}</span></div>
               </div>
               {detailData.contentHash && (
                 <p className="text-xs text-muted-foreground break-all">SHA-256: {detailData.contentHash}</p>

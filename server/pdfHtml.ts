@@ -30,7 +30,8 @@ export function buildInvoiceHtml(inv: any, cs: any): string {
   const isPurchaseOrder = inv.type === 'purchase_order';
   const agbText: string = (cs?.agbText ?? '').trim();
   const logoUrl: string = cs?.logoUrl ?? '';
-  const docTitle = TYPE_LABELS[inv.type] ?? inv.type;
+  const isCancelledInvoice = inv.type === 'invoice' && inv.status === 'cancelled';
+  const docTitle = isCancelledInvoice ? 'Stornorechnung' : (TYPE_LABELS[inv.type] ?? inv.type);
 
   const taxModeNote = inv.taxMode === 'kleinunternehmer'
     ? '<p style="margin-top:16px;font-size:11px;">Gemäß §19 UStG wird keine Umsatzsteuer berechnet.</p>'
@@ -276,6 +277,7 @@ export function buildInvoiceHtml(inv: any, cs: any): string {
 
 <!-- ══ BETREFF ══ -->
 <div class="doc-subject">${escHtml(docTitle)} Nr. ${escHtml(inv.invoiceNumber ?? '')}</div>
+${isCancelledInvoice ? '<div style="font-size:11px;color:#cc0000;font-weight:600;margin-bottom:10px;margin-top:2px;">Dieses Dokument storniert die ursprüngliche Rechnung.</div>' : ''}
 ${(inv as any).subject ? `<div style="font-size:12px;font-weight:600;margin-bottom:12px;margin-top:4px;">Betreff: ${escHtml((inv as any).subject)}</div>` : ''}
 
 ${inv.introText ? `<p style="margin-bottom:16px;font-size:11px;">${escHtml(inv.introText)}</p>` : ''}
@@ -299,7 +301,7 @@ ${inv.introText ? `<p style="margin-bottom:16px;font-size:11px;">${escHtml(inv.i
     ${pdfDiscount > 0 ? `<tr style="color:#c47a00;"><td>Rabatt gesamt:</td><td style="text-align:right">-${fmt(pdfDiscount)}</td></tr>` : ''}
     <tr><td style="color:#555;">Gesamtbetrag netto</td><td style="text-align:right">${fmt(pdfNet)}</td></tr>
     <tr><td style="color:#555;">Umsatzsteuer ${inv.taxMode === 'kleinunternehmer' ? '0' : '19'}%</td><td style="text-align:right">${fmt(pdfTax)}</td></tr>
-    <tr class="total-row"><td>Gesamtbetrag brutto</td><td style="text-align:right">${fmt(pdfGross)}</td></tr>
+    <tr class="total-row"><td>Gesamtbetrag brutto</td><td style="text-align:right${isCancelledInvoice ? ';color:#cc0000' : ''}">${isCancelledInvoice ? '−' : ''}${fmt(pdfGross)}</td></tr>
   </table>
 </div>
 

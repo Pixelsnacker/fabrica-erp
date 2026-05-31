@@ -265,8 +265,11 @@ export function InvoicePDF({ inv, cs }: { inv: InvoiceWithItems; cs: CompanySett
     [cs?.zip, cs?.city].filter(Boolean).join(' '),
   ].filter(Boolean).join(' · ');
 
-  // Dokumenttitel
-  const docTitle = `${typeLabel(inv.type)} Nr. ${inv.invoiceNumber}`;
+  // Dokumenttitel — bei stornierten Rechnungen: Stornorechnung
+  const isCancelledInvoice = inv.type === 'invoice' && inv.status === 'cancelled';
+  const docTitle = isCancelledInvoice
+    ? `Stornorechnung Nr. ${inv.invoiceNumber}`
+    : `${typeLabel(inv.type)} Nr. ${inv.invoiceNumber}`;
 
   // Ansprechpartner aus company_settings (Name des Inhabers)
   const contactPerson = cs?.name ?? '';
@@ -366,6 +369,13 @@ export function InvoicePDF({ inv, cs }: { inv: InvoiceWithItems; cs: CompanySett
         {/* ── Dokumenttitel ── */}
         <Text style={S.docTitle}>{docTitle}</Text>
 
+        {/* ── Storno-Hinweis ── */}
+        {isCancelledInvoice ? (
+          <Text style={{ fontSize: 9, color: '#cc0000', marginBottom: 8, marginTop: 2 }}>
+            Dieses Dokument storniert die ursprüngliche Rechnung.
+          </Text>
+        ) : null}
+
         {/* ── Betreff ── */}
         {(inv as any).subject ? (
           <Text style={{ fontSize: 10, fontFamily: 'Helvetica-Bold', marginBottom: 8, marginTop: 2 }}>
@@ -418,7 +428,9 @@ export function InvoicePDF({ inv, cs }: { inv: InvoiceWithItems; cs: CompanySett
             <View style={S.summaryDivider} />
             <View style={S.summaryTotalRow}>
               <Text style={S.summaryTotalLabel}>Gesamtbetrag brutto</Text>
-              <Text style={S.summaryTotalValue}>{fmt(inv.totalGross)} EUR</Text>
+              <Text style={[S.summaryTotalValue, isCancelledInvoice ? { color: '#cc0000' } : {}]}>
+                {isCancelledInvoice ? '−' : ''}{fmt(inv.totalGross)} EUR
+              </Text>
             </View>
             {/* Optionale Positionen */}
             {inv.items.some(i => i.isOptional) ? (
