@@ -213,7 +213,7 @@ function Footer({ cs, type }: { cs: CompanySettings | null; type: string }) {
 }
 
 // ─── Tabellenzeile ────────────────────────────────────────────────────────────
-function TableRow({ item, idx, isDeliveryNote }: { item: InvoiceItem; idx: number; isDeliveryNote?: boolean }) {
+function TableRow({ item, idx, isDeliveryNote, isCancelledInvoice }: { item: InvoiceItem; idx: number; isDeliveryNote?: boolean; isCancelledInvoice?: boolean }) {
   const rowStyle = S.tableRow; // kein Zebra-Muster wie in Vorlage
   if (isDeliveryNote) {
     return (
@@ -227,9 +227,10 @@ function TableRow({ item, idx, isDeliveryNote }: { item: InvoiceItem; idx: numbe
       </View>
     );
   }
+  const neg = isCancelledInvoice ? '−' : '';
   const totalDisplay = item.isOptional
-    ? `(${fmt(item.lineTotalNet)} EUR)`
-    : `${fmt(item.lineTotalNet)} EUR`;
+    ? `(${neg}${fmt(item.lineTotalNet)} EUR)`
+    : `${neg}${fmt(item.lineTotalNet)} EUR`;
   return (
     <View style={rowStyle} wrap={false}>
       <Text style={S.colPos}>{item.isOptional ? 'Opt.' : item.position}</Text>
@@ -239,7 +240,7 @@ function TableRow({ item, idx, isDeliveryNote }: { item: InvoiceItem; idx: numbe
         {item.isOptional ? <Text style={S.optionalBadge}>(Optional)</Text> : null}
       </View>
       <Text style={S.colQty}>{fmtQty(item.quantity)}&nbsp;{item.unit ?? 'Stk.'}</Text>
-      <Text style={S.colPrice}>{fmt(item.unitPriceNet)}&nbsp;EUR</Text>
+      <Text style={S.colPrice}>{neg}{fmt(item.unitPriceNet)}&nbsp;EUR</Text>
       <Text style={S.colTotal}>{totalDisplay}</Text>
     </View>
   );
@@ -405,7 +406,7 @@ export function InvoicePDF({ inv, cs }: { inv: InvoiceWithItems; cs: CompanySett
           </View>
         )}
         {inv.items.map((item, idx) => (
-          <TableRow key={item.id} item={item} idx={idx} isDeliveryNote={inv.type === 'delivery_note'} />
+          <TableRow key={item.id} item={item} idx={idx} isDeliveryNote={inv.type === 'delivery_note'} isCancelledInvoice={isCancelledInvoice} />
         ))}
 
         {/* ── Summenblock (nicht bei Lieferschein) ── */}
@@ -413,7 +414,7 @@ export function InvoicePDF({ inv, cs }: { inv: InvoiceWithItems; cs: CompanySett
           <View style={S.summaryBlock}>
             <View style={S.summaryRow}>
               <Text style={S.summaryLabel}>Gesamtbetrag netto</Text>
-              <Text style={S.summaryValue}>{fmt(inv.subtotalNet)} EUR</Text>
+              <Text style={S.summaryValue}>{isCancelledInvoice ? '−' : ''}{fmt(inv.subtotalNet)} EUR</Text>
             </View>
             <View style={S.summaryRow}>
               <Text style={S.summaryLabel}>
@@ -423,7 +424,7 @@ export function InvoicePDF({ inv, cs }: { inv: InvoiceWithItems; cs: CompanySett
                   ? 'Keine MwSt. (§4 UStG)'
                   : `Umsatzsteuer ${taxRate}%`}
               </Text>
-              <Text style={S.summaryValue}>{fmt(inv.taxAmount)} EUR</Text>
+              <Text style={S.summaryValue}>{isCancelledInvoice ? '−' : ''}{fmt(inv.taxAmount)} EUR</Text>
             </View>
             <View style={S.summaryDivider} />
             <View style={S.summaryTotalRow}>

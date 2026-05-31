@@ -58,9 +58,9 @@ export function buildInvoiceHtml(inv: any, cs: any): string {
         <span style="font-weight:600;">${escHtml(it.description ?? '')}</span>${optionalBadge}${discountCell}${longDesc}
       </td>
       <td style="padding:5px 6px;border-bottom:1px solid #e8e8e8;text-align:right;vertical-align:top;white-space:nowrap;">${parseFloat(it.quantity ?? 1).toLocaleString('de-DE')}&nbsp;${escHtml(it.unit ?? 'Stk.')}</td>
-      <td style="padding:5px 6px;border-bottom:1px solid #e8e8e8;text-align:right;vertical-align:top;white-space:nowrap;">${parseFloat(it.unitPriceNet ?? 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}&nbsp;EUR</td>
+      <td style="padding:5px 6px;border-bottom:1px solid #e8e8e8;text-align:right;vertical-align:top;white-space:nowrap;">${isCancelledInvoice ? '−' : ''}${parseFloat(it.unitPriceNet ?? 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}&nbsp;EUR</td>
       <td style="padding:5px 6px;border-bottom:1px solid #e8e8e8;text-align:right;vertical-align:top;white-space:nowrap;">${it.taxRate ?? 19}&nbsp;%</td>
-      <td style="padding:5px 6px;border-bottom:1px solid #e8e8e8;text-align:right;vertical-align:top;white-space:nowrap;font-weight:600;">${parseFloat(it.lineTotalNet ?? 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}&nbsp;EUR</td>
+      <td style="padding:5px 6px;border-bottom:1px solid #e8e8e8;text-align:right;vertical-align:top;white-space:nowrap;font-weight:600;">${isCancelledInvoice ? '−' : ''}${parseFloat(it.lineTotalNet ?? 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}&nbsp;EUR</td>
     </tr>`;
   }).join('');
 
@@ -299,8 +299,8 @@ ${inv.introText ? `<p style="margin-bottom:16px;font-size:11px;">${escHtml(inv.i
 <div class="totals-section">
   <table class="totals-table">
     ${pdfDiscount > 0 ? `<tr style="color:#c47a00;"><td>Rabatt gesamt:</td><td style="text-align:right">-${fmt(pdfDiscount)}</td></tr>` : ''}
-    <tr><td style="color:#555;">Gesamtbetrag netto</td><td style="text-align:right">${fmt(pdfNet)}</td></tr>
-    <tr><td style="color:#555;">Umsatzsteuer ${inv.taxMode === 'kleinunternehmer' ? '0' : '19'}%</td><td style="text-align:right">${fmt(pdfTax)}</td></tr>
+    <tr><td style="color:#555;">Gesamtbetrag netto</td><td style="text-align:right">${isCancelledInvoice ? '−' : ''}${fmt(pdfNet)}</td></tr>
+    <tr><td style="color:#555;">Umsatzsteuer ${inv.taxMode === 'kleinunternehmer' ? '0' : '19'}%</td><td style="text-align:right">${isCancelledInvoice ? '−' : ''}${fmt(pdfTax)}</td></tr>
     <tr class="total-row"><td>Gesamtbetrag brutto</td><td style="text-align:right${isCancelledInvoice ? ';color:#cc0000' : ''}">${isCancelledInvoice ? '−' : ''}${fmt(pdfGross)}</td></tr>
   </table>
 </div>

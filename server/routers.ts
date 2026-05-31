@@ -1775,7 +1775,8 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
         const recipientCustomer = (inv as any).customerId ? await getCustomerById((inv as any).customerId) : null;
         const invWithCustomerNumber = { ...inv, recipientCustomerNumber: (recipientCustomer as any)?.customerNumber ?? null };
         const pdfBuffer = await renderInvoicePdf(invWithCustomerNumber as any, cs);
-        const filename = inv.invoiceNumber + '.pdf';
+        const isCancelledInvoice = (inv as any).type === 'invoice' && (inv as any).status === 'cancelled';
+        const filename = inv.invoiceNumber + (isCancelledInvoice ? '_S' : '') + '.pdf';
 
         // Automatisch in Google Drive hochladen wenn Angebot einem Projekt zugeordnet ist
         let driveFileId: string | null = null;
