@@ -500,6 +500,7 @@ export function InvoicePDF({ inv, cs }: { inv: InvoiceWithItems; cs: CompanySett
 
 // ─── Render-Funktion ──────────────────────────────────────────────────────────
 export async function renderInvoicePdf(inv: InvoiceWithItems, cs: CompanySettings | null): Promise<Buffer> {
+  console.log('[renderInvoicePdf] type:', (inv as any).type, 'status:', (inv as any).status, 'isCancelled:', (inv as any).type === 'invoice' && (inv as any).status === 'cancelled');
   const element = React.createElement(InvoicePDF, { inv, cs }) as any;
   const buf = await renderToBuffer(element);
   return Buffer.from(buf);

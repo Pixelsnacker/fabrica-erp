@@ -19,7 +19,7 @@ import {
   Plus, FileText, Receipt, Search, Download, Lock, XCircle,
   ChevronDown, ChevronUp, Trash2, Eye, History, AlertTriangle,
   CheckCircle, Clock, Send, Euro, Loader2, Printer, BookOpen, ArrowRight,
-  PackageSearch, FolderOpen, Package, Copy, Sparkles, Check, X, Truck, Mail
+  PackageSearch, FolderOpen, Package, Copy, Sparkles, Check, X, Truck, Mail, Bell
 } from "lucide-react";
 
 // ─── PDF Download ───────────────────────────────────────────────────────────
@@ -379,7 +379,13 @@ export default function Invoices() {
   // E-Mail-Versand
   const [showEmailDialog, setShowEmailDialog] = useState<number | null>(null);
   const [emailForm, setEmailForm] = useState({ to: '', cc: '', subject: '', body: '' });
+  const [showReminderDialog, setShowReminderDialog] = useState<number | null>(null);
+  const [reminderForm, setReminderForm] = useState({ to: '', cc: '', subject: '', body: '' });
   // Gmail-Entwurf
+  const sendPaymentReminderMut = trpc.invoices.sendPaymentReminder.useMutation({
+    onSuccess: () => { toast.success('Zahlungserinnerung erfolgreich versendet!'); setShowReminderDialog(null); },
+    onError: (e) => toast.error('Fehler: ' + e.message),
+  });
   const [showGmailDialog, setShowGmailDialog] = useState<number | null>(null);
   const [gmailDraftData, setGmailDraftData] = useState<{ to: string; subject: string; body: string; pdfUrl: string; pdfFilename: string; invoiceNumber: string } | null>(null);
   const [gmailDraftSent, setGmailDraftSent] = useState(false);
@@ -1046,6 +1052,19 @@ export default function Invoices() {
                     Gmail
                   </Button>
                   </>
+                )}
+                {inv.type === 'invoice' && (inv.status === 'sent' || inv.status === 'overdue') && (
+                  <Button size="sm" variant="outline" className="text-orange-400 border-orange-400/30 hover:bg-orange-400/10" onClick={() => {
+                    setReminderForm({
+                      to: inv.recipientEmail ?? '',
+                      cc: '',
+                      subject: `Zahlungserinnerung: Rechnung ${inv.invoiceNumber}`,
+                      body: `Sehr geehrte Damen und Herren,\n\nwir erlauben uns, Sie freundlich an die offene Rechnung ${inv.invoiceNumber} vom ${inv.issueDate ?? ''} in Höhe von ${parseFloat(String(inv.totalGross ?? 0)).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR zu erinnern.\n\nFalls Sie die Zahlung bereits veranlasst haben, betrachten Sie dieses Schreiben bitte als gegenstandslos.\n\nWir bitten Sie, den offenen Betrag innerhalb von 7 Tagen auf unser Konto zu überweisen.\n\nBei Fragen stehen wir Ihnen gerne zur Verfügung.\n\nMit freundlichen Grüßen\nFabrica GmbH`,
+                    });
+                    setShowReminderDialog(inv.id);
+                  }}>
+                    <Bell className="w-3 h-3 mr-1" /> Zahlungserinnerung
+                  </Button>
                 )}
                 {!inv.isLocked && inv.type === 'invoice' && inv.status !== 'cancelled' && (
                   <Button size="sm" variant="outline" className="text-yellow-400 border-yellow-400/30" onClick={() => { if (confirm('Rechnung finalisieren (GoBD-gesperrt)?')) lockMut.mutate({ id: inv.id }); }}>
@@ -1763,7 +1782,20 @@ export default function Invoices() {
                       <ArrowRight className="w-3 h-3 mr-1" /> Konvertieren
                     </Button>
                   )}
-                  {['offer','order_confirmation','purchase_order'].includes(detailData.type) && (
+                  {detailData.type === 'invoice' && (detailData.status === 'sent' || detailData.status === 'overdue') && (
+                  <Button size="sm" variant="outline" className="text-orange-400 border-orange-400/30 hover:bg-orange-400/10" onClick={() => {
+                    setReminderForm({
+                      to: detailData.recipientEmail ?? '',
+                      cc: '',
+                      subject: `Zahlungserinnerung: Rechnung ${detailData.invoiceNumber}`,
+                      body: `Sehr geehrte Damen und Herren,\n\nwir erlauben uns, Sie freundlich an die offene Rechnung ${detailData.invoiceNumber} vom ${detailData.issueDate ?? ''} in Höhe von ${parseFloat(String(detailData.totalGross ?? 0)).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR zu erinnern.\n\nFalls Sie die Zahlung bereits veranlasst haben, betrachten Sie dieses Schreiben bitte als gegenstandslos.\n\nWir bitten Sie, den offenen Betrag innerhalb von 7 Tagen auf unser Konto zu überweisen.\n\nBei Fragen stehen wir Ihnen gerne zur Verfügung.\n\nMit freundlichen Grüßen\nFabrica GmbH`,
+                    });
+                    setShowReminderDialog(detailData.id);
+                  }}>
+                    <Bell className="w-3 h-3 mr-1" /> Zahlungserinnerung
+                  </Button>
+                )}
+                {['offer','order_confirmation','purchase_order'].includes(detailData.type) && (
                     <>
                     <Button size="sm" variant="outline" className="text-blue-400 border-blue-400/30" onClick={() => {
                       const typeLabel = TYPE_LABELS[detailData.type as InvoiceType] ?? detailData.type;
@@ -2369,6 +2401,77 @@ export default function Invoices() {
           </DialogContent>
         </Dialog>
       )}
+      {/* ─── Zahlungserinnerung Dialog ─────────────────────────────────────── */}
+      <Dialog open={showReminderDialog !== null} onOpenChange={() => setShowReminderDialog(null)}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Bell className="h-5 w-5 text-orange-400" />
+              Zahlungserinnerung senden
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <Label>Empfänger (An)*</Label>
+              <Input
+                value={reminderForm.to}
+                onChange={e => setReminderForm(f => ({ ...f, to: e.target.value }))}
+                placeholder="kunde@beispiel.de"
+                type="email"
+              />
+            </div>
+            <div>
+              <Label>CC (optional)</Label>
+              <Input
+                value={reminderForm.cc}
+                onChange={e => setReminderForm(f => ({ ...f, cc: e.target.value }))}
+                placeholder="kopie@beispiel.de"
+                type="email"
+              />
+            </div>
+            <div>
+              <Label>Betreff*</Label>
+              <Input
+                value={reminderForm.subject}
+                onChange={e => setReminderForm(f => ({ ...f, subject: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Label>Nachricht*</Label>
+              <Textarea
+                value={reminderForm.body}
+                onChange={e => setReminderForm(f => ({ ...f, body: e.target.value }))}
+                rows={8}
+                placeholder="Ihre Nachricht an den Kunden..."
+              />
+              <p className="text-xs text-muted-foreground mt-1">Die Rechnung wird als PDF-Anhang mitgesendet. Die E-Mail-Signatur aus den Einstellungen wird automatisch angehängt.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowReminderDialog(null)}>Abbrechen</Button>
+            <Button
+              onClick={() => {
+                if (!reminderForm.to || !reminderForm.subject || !reminderForm.body) {
+                  toast.error('Bitte Empfänger, Betreff und Nachricht ausfüllen.');
+                  return;
+                }
+                sendPaymentReminderMut.mutate({
+                  id: showReminderDialog!,
+                  to: reminderForm.to,
+                  cc: reminderForm.cc || undefined,
+                  subject: reminderForm.subject,
+                  body: reminderForm.body,
+                });
+              }}
+              disabled={sendPaymentReminderMut.isPending}
+              className="gap-2 bg-orange-500 hover:bg-orange-600 text-white"
+            >
+              {sendPaymentReminderMut.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bell className="w-4 h-4" />}
+              Zahlungserinnerung senden
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }
