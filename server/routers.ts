@@ -1468,11 +1468,10 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
       })).default([]),
     })).mutation(async ({ input, ctx }) => {
       const { items, ...invoiceData } = input;
-      // Angebote, Rechnungen, Gutschriften und AB bekommen die Nummer erst beim Senden
-      // Bestellungen und Lieferscheine bekommen die Nummer sofort (interne Dokumente)
-      const needsNumberOnSend = ['invoice', 'credit_note', 'order_confirmation', 'offer'].includes(input.type);
+      // Alle Dokumenttypen bekommen beim Anlegen eine ENTWURF-Nummer.
+      // Die echte fortlaufende Nummer wird erst beim Abschließen (changeStatus → nicht-draft) vergeben.
       // Eindeutige ENTWURF-Nummer mit Timestamp um UNIQUE-Constraint-Konflikte zu vermeiden
-      const invoiceNumber = needsNumberOnSend ? `ENTWURF-${Date.now()}` : await getNextInvoiceNumber(input.type);
+      const invoiceNumber = `ENTWURF-${Date.now()}`;
       const mappedItems = items.map(it => ({
         ...it,
         isOptional: it.isOptional ? 1 : 0,
@@ -1626,14 +1625,14 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
         const offer = await getInvoiceById(input.offerId);
         if (!offer) throw new Error('Angebot nicht gefunden');
         if (!['offer', 'order_confirmation', 'delivery_note'].includes(offer.type)) throw new Error('Nur Angebote, Auftragsbestätigungen und Lieferscheine können konvertiert werden');
-        // Neue Nummer vergeben
-        const invoiceNumber = await getNextInvoiceNumber(input.targetType);
+        // Neues Dokument bekommt ENTWURF-Nummer; echte Nummer erst beim Abschließen
+        const draftNumber = `ENTWURF-${Date.now()}`;
         const today = new Date().toISOString().slice(0, 10);
         // Fälligkeitsdatum: heute + 14 Tage (nur bei Rechnung relevant)
         const dueDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
         // Neues Dokument aus Angebotsdaten erstellen
         const invoiceData: any = {
-          invoiceNumber,
+          invoiceNumber: draftNumber,
           type: input.targetType as any,
           status: 'draft' as const,
           customerId: offer.customerId,
@@ -1691,15 +1690,15 @@ Beantworte Fragen zu Kunden, Projekten, Rechnungen, Terminen und Geschäftsdaten
         // Angebot-Status setzen (bei Lieferschein bleibt Angebot auf 'accepted')
         const newStatus = input.targetType === 'invoice' ? 'invoiced' : 'accepted';
         await changeInvoiceStatus(input.offerId, newStatus, ctx.user.email ?? 'system');
-        return { id: newId, invoiceNumber };
+        return { id: newId, invoiceNumber: draftNumber };
       }),
     duplicate: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input, ctx }) => {
         const original = await getInvoiceById(input.id);
         if (!original) throw new Error('Dokument nicht gefunden');
-        // Neue Nummer vergeben (gleicher Typ)
-        const invoiceNumber = await getNextInvoiceNumber(original.type);
+        // Kopie bekommt ENTWURF-Nummer; echte Nummer erst beim Abschließen
+        const invoiceNumber = `ENTWURF-${Date.now()}`;
         const today = new Date().toISOString().slice(0, 10);
         const copyData: any = {
           invoiceNumber,

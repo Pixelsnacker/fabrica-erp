@@ -1318,12 +1318,15 @@ export async function deleteInvoiceDraft(id: number) {
   await db.delete(invoices).where(eq(invoices.id, id));
 }
 
-/** Vergibt die nächste fortlaufende Nummer an einen Entwurf (z.B. beim Senden einer Rechnung) */
+/** Vergibt die nächste fortlaufende Nummer an einen Entwurf (z.B. beim Abschließen einer Rechnung).
+ * Alle Dokumente im Status draft haben eine ENTWURF-{timestamp}-Nummer.
+ * Diese Funktion ersetzt sie atomar durch die nächste Sequenznummer.
+ */
 export async function assignInvoiceNumber(id: number): Promise<string | null> {
   const db = await getDb();
   if (!db) return null;
   const inv = await db.select().from(invoices).where(eq(invoices.id, id)).limit(1);
-  // Alle ENTWURF-Nummern ersetzen (auch ENTWURF-{timestamp})
+  // Nur ENTWURF-Nummern ersetzen (alle Typen, nicht nur invoice/offer)
   if (!inv[0] || !inv[0].invoiceNumber?.startsWith('ENTWURF')) return inv[0]?.invoiceNumber ?? null;
   const newNumber = await getNextInvoiceNumber(inv[0].type as any);
   await db.update(invoices).set({ invoiceNumber: newNumber, updatedAt: Date.now() }).where(eq(invoices.id, id));

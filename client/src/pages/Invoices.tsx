@@ -245,8 +245,8 @@ export default function Invoices() {
       if (data?.id) utils.invoices.getById.invalidate({ id: data.id });
       setShowForm(false);
       const typeLabel = TYPE_LABELS[form.type as InvoiceType] ?? 'Dokument';
-      const numLabel = data?.invoiceNumber ?? '';
-      toast.success(`✅ ${typeLabel} erstellt — Nr. ${numLabel}`);
+      const numLabel = data?.invoiceNumber?.startsWith('ENTWURF') ? `Entwurf #${data?.id}` : (data?.invoiceNumber ?? '');
+      toast.success(`✅ ${typeLabel} als Entwurf gespeichert${numLabel ? ' — ' + numLabel : ''}`);
     },
     onError: (err) => toast.error(`Fehler beim Erstellen: ${err.message}`),
   });
@@ -352,7 +352,8 @@ export default function Invoices() {
       utils.invoices.getById.invalidate({ id: vars.offerId });
       if (data?.id) utils.invoices.getById.invalidate({ id: data.id });
       const label = vars.targetType === 'invoice' ? 'Rechnung' : vars.targetType === 'order_confirmation' ? 'Auftragsbestätigung' : vars.targetType === 'delivery_note' ? 'Lieferschein' : 'Bestellung';
-      toast.success(`✅ ${label} ${data.invoiceNumber} wurde erstellt`);
+      const draftLabel = data.invoiceNumber?.startsWith('ENTWURF') ? `Entwurf #${data.id}` : data.invoiceNumber;
+      toast.success(`✅ ${label} ${draftLabel} als Entwurf erstellt`);
       setShowConvertDialog(null);
     },
     onError: (e: { message: string }) => toast.error('Fehler: ' + e.message),
@@ -362,7 +363,8 @@ export default function Invoices() {
   const duplicateMut = trpc.invoices.duplicate.useMutation({
     onSuccess: (data: { id?: number; invoiceNumber: string }) => {
       utils.invoices.list.invalidate();
-      toast.success(`✅ Kopie ${data.invoiceNumber} erstellt — jetzt Kunden ändern`);
+      const copyLabel = data.invoiceNumber?.startsWith('ENTWURF') ? `Entwurf #${data.id}` : data.invoiceNumber;
+      toast.success(`✅ Kopie ${copyLabel} erstellt — jetzt Kunden ändern`);
       // Cache leeren und Kopie direkt zum Bearbeiten öffnen
       if (data.id) {
         queryClient.removeQueries({ queryKey: [['invoices', 'getById'], { input: { id: data.id }, type: 'query' }] });
@@ -987,7 +989,7 @@ export default function Invoices() {
             <div key={inv.id} className="bg-card border border-border rounded-lg p-4 hover:border-primary/40 transition-colors">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div className="flex items-center gap-3 flex-wrap">
-                  <span className={`font-mono font-semibold text-sm ${inv.invoiceNumber === 'ENTWURF' ? 'text-yellow-400/80 italic' : ''}`}>{inv.invoiceNumber}</span>
+                  <span className={`font-mono font-semibold text-sm ${inv.invoiceNumber?.startsWith('ENTWURF') ? 'text-yellow-400/80 italic' : ''}`}>{inv.invoiceNumber?.startsWith('ENTWURF') ? `Entwurf #${inv.id}` : inv.invoiceNumber}</span>
                   <Badge variant="outline" className="text-xs">{inv.type === 'invoice' && inv.status === 'cancelled' ? 'Stornorechnung' : TYPE_LABELS[inv.type as InvoiceType]}</Badge>
                   <Badge className={`text-xs border ${STATUS_COLORS[inv.status as InvoiceStatus]}`}>
                     {STATUS_LABELS[inv.status as InvoiceStatus]}
